@@ -18,9 +18,9 @@ np.set_printoptions(precision=3, suppress=True) #makes numpy easier to read with
 df = create_df()
 
 """ drop whatever you are not predicting or predicting with here"""
-#df = df.drop("phi", axis=1)
+df = df.drop("phi", axis=1)
 df = df.drop("theta", axis=1)
-df = df.drop("height", axis=1)
+#df = df.drop("height", axis=1)
 # df = df.drop("front 0 x", axis=1)
 # df = df.drop("front 0 y", axis=1)
 # df = df.drop("front 0 z", axis=1)
@@ -29,9 +29,9 @@ df = df.drop("height", axis=1)
 # df = df.drop("front 1 z", axis=1)
 # df = df.drop("init x", axis=1)
 # df = df.drop("init y", axis=1)
-#df = df.drop("init z", axis=1)
-df = df.drop("dist btw frts", axis=1)
-df = df.drop("linearity", axis=1)
+# df = df.drop("init z", axis=1)
+# df = df.drop("dist btw frts", axis=1)
+# df = df.drop("linearity", axis=1)
 
 """ sampling the dataset randomly """
 train_dataset = df.sample(frac=0.8, random_state=0)
@@ -42,8 +42,8 @@ print(train_dataset.describe().transpose())
 train_features = train_dataset.copy()
 test_features = test_dataset.copy()
 
-train_labels = train_features.pop('phi')
-test_labels = test_features.pop('phi')
+train_labels = train_features.pop('height')
+test_labels = test_features.pop('height')
 print(train_dataset.describe().transpose()[['mean', 'std']])
 
 #quote from tensorflow:
@@ -81,7 +81,7 @@ linear_model.compile(
 history = linear_model.fit(
     train_features,
     train_labels,
-    epochs=500,
+    epochs=120,
     # Suppress logging.
     verbose=0,
     # Calculate validation results on 20% of the training data.
@@ -99,6 +99,18 @@ plt.xlabel('Epoch')
 plt.ylabel('Error [height]')
 plt.legend()
 plt.grid(True)
+plt.show()
+
+test_predictions = linear_model.predict(test_features).flatten()
+
+a = plt.axes(aspect='equal')
+plt.scatter(test_labels, test_predictions)
+plt.xlabel('True heights [ft]')
+plt.ylabel('Predicted heights [MPG]')
+lims = [0, 3.5]
+plt.xlim(lims)
+plt.ylim(lims)
+_ = plt.plot(lims, lims)
 plt.show()
 
 print(df)
