@@ -9,6 +9,7 @@ import seaborn as sns
 import numpy as np
 import matplotlib.pyplot as plt
 import tensorflow as tf
+import tensorflow_addons as tfa
 import keras
 from keras import layers
 
@@ -19,8 +20,8 @@ df = create_df()
 
 """ drop whatever you are not predicting or predicting with here"""
 df = df.drop("phi", axis=1)
-df = df.drop("theta", axis=1)
-#df = df.drop("height", axis=1)
+# df = df.drop("theta", axis=1)
+df = df.drop("height", axis=1)
 # df = df.drop("front 0 x", axis=1)
 # df = df.drop("front 0 y", axis=1)
 # df = df.drop("front 0 z", axis=1)
@@ -30,6 +31,7 @@ df = df.drop("theta", axis=1)
 # df = df.drop("init x", axis=1)
 # df = df.drop("init y", axis=1)
 # df = df.drop("init z", axis=1)
+# df = df.drop("crack len", axis=1)
 # df = df.drop("dist btw frts", axis=1)
 # df = df.drop("linearity", axis=1)
 
@@ -42,8 +44,8 @@ print(train_dataset.describe().transpose())
 train_features = train_dataset.copy()
 test_features = test_dataset.copy()
 
-train_labels = train_features.pop('height')
-test_labels = test_features.pop('height')
+train_labels = train_features.pop('theta')
+test_labels = test_features.pop('theta')
 print(train_dataset.describe().transpose()[['mean', 'std']])
 
 #quote from tensorflow:
@@ -81,7 +83,7 @@ linear_model.compile(
 history = linear_model.fit(
     train_features,
     train_labels,
-    epochs=120,
+    epochs=900,
     # Suppress logging.
     verbose=0,
     # Calculate validation results on 20% of the training data.
@@ -96,21 +98,38 @@ plt.plot(history.history['loss'], label='loss (mean absolute error)')
 plt.plot(history.history['val_loss'], label='val_loss')
 #plt.ylim([0, 4])
 plt.xlabel('Epoch')
-plt.ylabel('Error [height]')
+plt.ylabel('Error [deg]')
 plt.legend()
 plt.grid(True)
 plt.show()
 
+
+""" makes predictions with the test dataset and plots them. Good predictions should lie on the line. """
 test_predictions = linear_model.predict(test_features).flatten()
 
 a = plt.axes(aspect='equal')
 plt.scatter(test_labels, test_predictions)
-plt.xlabel('True heights [ft]')
-plt.ylabel('Predicted heights [MPG]')
-lims = [0, 3.5]
+plt.xlabel('True heights [deg]')
+plt.ylabel('Predicted heights [deg]')
+lims = [0, max(test_labels)]
 plt.xlim(lims)
 plt.ylim(lims)
 _ = plt.plot(lims, lims)
 plt.show()
+
+
+""" gets r^2 value of the test dataset with the predictions made from above ^ """
+metric = tfa.metrics.r_square.RSquare()
+metric.update_state(test_labels, test_predictions)
+result = metric.result()
+print("Test R^2 = " + str(result.numpy()))
+
+
+""" gets r^2 value of the training dataset """
+training_predictions = linear_model.predict(train_features).flatten()
+metric = tfa.metrics.r_square.RSquare()
+metric.update_state(train_labels, training_predictions)
+result = metric.result()
+print("Training R^2 = " + str(result.numpy()))
 
 print(df)
