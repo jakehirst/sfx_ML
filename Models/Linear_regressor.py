@@ -17,8 +17,7 @@ import tensorflow_probability as tfp
 
 np.set_printoptions(precision=3, suppress=True) #makes numpy easier to read with prints
 
-df = create_df()
-print(df)
+df = pd.read_csv("C:\\Users\\u1056\\sfx\\ML\\Feature_gathering\\OG_dataframe.csv")
 
 """ drop whatever you are not predicting or predicting with here"""
 df = df.drop("phi", axis=1)
