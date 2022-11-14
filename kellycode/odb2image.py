@@ -7,8 +7,8 @@ import time
 origin_file = "C:\\Users\\u1056\\sfx\\good_simies"
 #origin_file = "Z:\\Good_simulations"
 wireframe = False
-# destination_file = "G:/ODB Images/Original Images/"
-destination_file = "C:\\Users\\u1056\sfx\\temp_images"
+destination_file = "C:\\Users\\u1056\\sfx\\images_sfx\\Original\\OG"
+# destination_file = "C:\\Users\\u1056\sfx\\temp_images"
 file_type = '.odb'
 file_name_list = []
 dir_list = []

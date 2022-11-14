@@ -22,9 +22,9 @@ def get_distances_from_initiation(simulation_folder, simulation):
 #https://vvvv.org/blog/polar-spherical-and-geographic-coordinates#:~:text=The%20definition%20of%20the%20spherical%20coordinates%20has%20two,longitude%20does%20not%20match%20with%20the%20two%20angles.
 def cart_to_spherical(cartesian):
     x = cartesian[0]; y = cartesian[1]; z = cartesian[2]
-    azimuthal = m.atan(y/x)
+    azimuthal = m.atan2(y, x) #theta
     r = m.sqrt(x**2 + y**2 + z**2)
-    polar = m.acos(z/r)
+    polar = m.acos(z/r) #phi
     return [r, polar, azimuthal]
 
 
@@ -33,6 +33,10 @@ def get_arc_len(pt_a, pt_b):
     a = cart_to_spherical(pt_a)
     b = cart_to_spherical(pt_b)
 
+    phi = a[1] * 180 / m.pi
+    theta = a[2] * 180 / m.pi
+    #print("\nphi = " + str(phi))
+    #print("theta = " + str(theta) + "\n")
     #lattitudes and longitudes are in degrees right here
     latitude_a = (a[1] * 180 / m.pi) - 90
     latitude_b = (b[1] * 180 / m.pi) - 90
@@ -64,6 +68,7 @@ def haversine(lat1, lon1, lat2, lon2):
 distances of all of the front locations combined, assuming that the skull is a perfect sphere with radius of 1 so that
 we can hopefully capture the non-linearity of the crack. linearity of 1 = perfectly straight crack. """
 def get_linearity(simulation_folder, simulation):
+    #print(simulation)
     d0, d1 = get_distances_from_initiation(simulation_folder, simulation)
     init_cite = get_initiation_cite(simulation_folder, simulation)
     front_locations = get_all_front_locations(simulation_folder, simulation)

@@ -4,6 +4,8 @@ import json
 from front_locations import *
 from initiation_sites import *
 from linearity import *
+from width_of_crack import *
+import tensorflow_probability as tfp
 
 #gets the maximum steps and UCIs from the simulation_results folder
 def get_max_step_and_max_UCIs():
@@ -34,6 +36,48 @@ def turn_filename_to_labels(filename):
     labels.append(float(filename.split("_")[-1])) #theta
     return labels
 
+""" finds the correlation between a given feature and a label, using Pearson Correlation. """
+def Pearson_Correlation(feature, label, df):
+    y = df[label]
+    x = df[feature]
+    new_df = pd.concat([x, y], axis=1)
+    return new_df.corr()
+
+""" finds the pearson correlation of each feature and prints it out"""
+def Pearson_Correlations_for_df(df, label):
+    Correlations = dict()
+    print("\n\n***** CORRELATION FOR " + label + " *****")
+    for feature in df.columns.to_list():
+        if(feature == "height" or feature == "phi" or feature =="theta" or feature =="x" or feature =="y" or feature =="z"):
+            continue
+        pc = Pearson_Correlation(feature, label, df)
+        Correlations[feature + "/" + label] = pc[label][feature]
+        print("\n"+ feature + "/" + label+" = " + str(pc[label][feature]))
+    return Correlations
+
+""" just turns phi and theta into cartesian points (with r being assumed to be 1) """
+def PhiTheta_to_cartesian(df):
+    phis = df["phi"]
+    thetas = df["theta"]
+    x = []
+    y = []
+    z = []
+    for i in range(len(phis)):
+        x.append(m.sin(phis[i]) * m.cos(thetas[i]))
+        y.append(m.sin(phis[i]) * m.sin(thetas[i]))
+        z.append(m.cos(phis[i]))
+    
+    df=df.drop("phi", axis=1)
+    df=df.drop("theta", axis=1)
+    cart = pd.DataFrame({'x': x,
+                        'y': y,
+                        'z': z})
+    df = pd.concat([df, cart], axis=1)
+    return df
+
+""" saves the dataframe to the specified filepath"""
+def save_df(df, filepath):
+    df.to_csv(filepath)
 
 def create_df():
     maxes = get_max_step_and_max_UCIs()
@@ -75,6 +119,12 @@ def create_df():
     #goes through each of the simulations and gathers features for the dataframe
     for key in maxes.keys():
         #TODO: add feature gathering functions as necessary here
+
+        #TODO: delete this below
+        #max_crack_width(folder_path, key, maxes[key][0], maxes[key][1])
+        #mean_crack_width(folder_path, key)
+        #TODO: delete this above
+
         labels = turn_filename_to_labels(key)
         final_front_locations = get_final_front_locations(folder_path, key, maxes[key][0], maxes[key][1])
         initiation_cite = get_initiation_cite(folder_path, key)
@@ -123,4 +173,12 @@ def create_df():
 
 
 
-#create_df()
+df = create_df()
+save_df(df, "C:\\Users\\u1056\\sfx\\ML\\Feature_gathering\\OG_dataframe.csv")
+df = PhiTheta_to_cartesian(df)
+save_df(df, "C:\\Users\\u1056\\sfx\\ML\\Feature_gathering\\OG_dataframe_cartesian.csv")
+Pearson_Correlations_for_df(df, "height")
+Pearson_Correlations_for_df(df, "x")
+Pearson_Correlations_for_df(df, "y")
+Pearson_Correlations_for_df(df, "z")
+

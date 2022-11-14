@@ -12,16 +12,18 @@ import tensorflow as tf
 import tensorflow_addons as tfa
 import keras
 from keras import layers
+import tensorflow_probability as tfp
 
 
 np.set_printoptions(precision=3, suppress=True) #makes numpy easier to read with prints
 
 df = create_df()
+print(df)
 
 """ drop whatever you are not predicting or predicting with here"""
 df = df.drop("phi", axis=1)
-# df = df.drop("theta", axis=1)
-df = df.drop("height", axis=1)
+df = df.drop("theta", axis=1)
+# df = df.drop("height", axis=1)
 # df = df.drop("front 0 x", axis=1)
 # df = df.drop("front 0 y", axis=1)
 # df = df.drop("front 0 z", axis=1)
@@ -44,8 +46,8 @@ print(train_dataset.describe().transpose())
 train_features = train_dataset.copy()
 test_features = test_dataset.copy()
 
-train_labels = train_features.pop('theta')
-test_labels = test_features.pop('theta')
+train_labels = train_features.pop('height')
+test_labels = test_features.pop('height')
 print(train_dataset.describe().transpose()[['mean', 'std']])
 
 #quote from tensorflow:
@@ -83,7 +85,7 @@ linear_model.compile(
 history = linear_model.fit(
     train_features,
     train_labels,
-    epochs=900,
+    epochs=50,
     # Suppress logging.
     verbose=0,
     # Calculate validation results on 20% of the training data.
@@ -109,8 +111,8 @@ test_predictions = linear_model.predict(test_features).flatten()
 
 a = plt.axes(aspect='equal')
 plt.scatter(test_labels, test_predictions)
-plt.xlabel('True heights [deg]')
-plt.ylabel('Predicted heights [deg]')
+plt.xlabel('True heights [ft]')
+plt.ylabel('Predicted heights [ft]')
 lims = [0, max(test_labels)]
 plt.xlim(lims)
 plt.ylim(lims)
