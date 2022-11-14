@@ -173,12 +173,12 @@ def create_df():
 
 
 
-df = create_df()
-save_df(df, "C:\\Users\\u1056\\sfx\\ML\\Feature_gathering\\OG_dataframe.csv")
-df = PhiTheta_to_cartesian(df)
-save_df(df, "C:\\Users\\u1056\\sfx\\ML\\Feature_gathering\\OG_dataframe_cartesian.csv")
-Pearson_Correlations_for_df(df, "height")
-Pearson_Correlations_for_df(df, "x")
-Pearson_Correlations_for_df(df, "y")
-Pearson_Correlations_for_df(df, "z")
+# df = create_df()
+# save_df(df, "C:\\Users\\u1056\\sfx\\ML\\Feature_gathering\\OG_dataframe.csv")
+# df = PhiTheta_to_cartesian(df)
+# save_df(df, "C:\\Users\\u1056\\sfx\\ML\\Feature_gathering\\OG_dataframe_cartesian.csv")
+# Pearson_Correlations_for_df(df, "height")
+# Pearson_Correlations_for_df(df, "x")
+# Pearson_Correlations_for_df(df, "y")
+# Pearson_Correlations_for_df(df, "z")
 
