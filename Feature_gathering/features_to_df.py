@@ -9,7 +9,8 @@ import tensorflow_probability as tfp
 
 #gets the maximum steps and UCIs from the simulation_results folder
 def get_max_step_and_max_UCIs():
-    folder_path = "C:\\Users\\u1056\\sfx\\good_simies\\"
+    #folder_path = "C:\\Users\\u1056\\sfx\\good_simies\\"
+    folder_path = "F:\\Jake\\good_simies\\"
     dic = {}
     for root, dirs, files in os.walk(folder_path):
         # select file name
@@ -98,8 +99,8 @@ def create_df():
             "phi", 
             "theta"]
     df = pd.DataFrame(columns=columns)
-    folder_path = "C:\\Users\\u1056\\sfx\\good_simies\\"
-
+    # folder_path = "C:\\Users\\u1056\\sfx\\good_simies\\"
+    folder_path = "F:\\Jake\\good_simies\\"
     front_0_array_x = []
     front_0_array_y = []
     front_0_array_z = []
@@ -173,11 +174,14 @@ def create_df():
 
 
 
-# df = create_df()
-# save_df(df, "C:\\Users\\u1056\\sfx\\ML\\Feature_gathering\\OG_dataframe.csv")
-# df = PhiTheta_to_cartesian(df)
-# save_df(df, "C:\\Users\\u1056\\sfx\\ML\\Feature_gathering\\OG_dataframe_cartesian.csv")
-# Pearson_Correlations_for_df(df, "height")
+df = create_df()
+print(df)
+Pearson_Correlations_for_df(df, "height")
+Pearson_Correlations_for_df(df, "phi")
+Pearson_Correlations_for_df(df, "theta")
+save_df(df, "C:\\Users\\u1056\\sfx\\ML\\Feature_gathering\\OG_dataframe.csv")
+df = PhiTheta_to_cartesian(df)
+save_df(df, "C:\\Users\\u1056\\sfx\\ML\\Feature_gathering\\OG_dataframe_cartesian.csv")
 # Pearson_Correlations_for_df(df, "x")
 # Pearson_Correlations_for_df(df, "y")
 # Pearson_Correlations_for_df(df, "z")

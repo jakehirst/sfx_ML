@@ -3,12 +3,11 @@ import os
 import time
 
 #Input = sys.argv[-1]
-# origin_file = "G:/SkullFx_Simulations"
-origin_file = "C:\\Users\\u1056\\sfx\\good_simies"
-#origin_file = "Z:\\Good_simulations"
+# origin_file = "C:\\Users\\u1056\\sfx\\good_simies"
+origin_file = "F:\\Jake\\good_simies"
 wireframe = False
 destination_file = "C:\\Users\\u1056\\sfx\\images_sfx\\Original\\OG"
-# destination_file = "C:\\Users\\u1056\sfx\\temp_images"
+# destination_file = "F:\\Jake\\brian_simies\\pics"
 file_type = '.odb'
 file_name_list = []
 dir_list = []
