@@ -7,6 +7,7 @@ from sklearn.model_selection import train_test_split
 import tensorflow as tf
 from sklearn.metrics import r2_score
 import numpy as np
+import matplotlib.pyplot as plt
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Activation, Dense
 from tensorflow.keras.optimizers import Adam
@@ -187,14 +188,16 @@ test_images = test_generator.flow_from_dataframe(
 
 
 """ start training """
-inputs = tf.keras.Input(shape=(256,256,1)) #not sure if the shape is right here. i got (256, 256, 1) by looking at train_images.image_shape
+inputs = tf.keras.Input(shape=(802, 642, 1)) #not sure if the shape is right here. i got (256, 256, 1) by looking at train_images.image_shape
+                                             #trying (642, 802, 3) by looking at img_arr_list[0].shape
+                                             #tryig  (256, 256, 3) by looking at train_images[0][0].shape
 x = tf.keras.layers.Conv2D(filters=16, kernel_size=(3,3), activation='relu')(inputs)
 x = tf.keras.layers.MaxPool2D()(x) #takes the max of each window to reduce the size of the image... dont know if i need this...
 x = tf.keras.layers.Conv2D(filters=16, kernel_size=(3,3), activation='relu')(inputs) #just increasing the filters here to get more features
 x = tf.keras.layers.MaxPool2D()(x)
 x = tf.keras.layers.Conv2D(filters=32, kernel_size=(3,3), activation='relu')(inputs) #just increasing the filters here to get more features
 x = tf.keras.layers.MaxPool2D()(x)
-x = tf.keras.layers.Conv2D(filters=64, kernel_size=(3,3), activation='relu')(inputs) #just increasing the filters here to get more features
+x = tf.keras.layers.Conv2D(filters=32, kernel_size=(3,3), activation='relu')(inputs) #just increasing the filters here to get more features
 x = tf.keras.layers.MaxPool2D()(x)
 x = tf.keras.layers.GlobalAveragePooling2D()(x) #could try GlobalMaxPooling2D instead
 x = tf.keras.layers.Dense(64, activation='relu')(x)
@@ -221,8 +224,30 @@ history = model.fit(
     ]
 )
 
-predicted_labels = np.squeeze(model.predict(test_images))
-true_labels = test_images.labels
+test_labels = test_images.labels
+
+plt.plot(history.history['loss'], label='loss (mean absolute error)')
+plt.plot(history.history['val_loss'], label='val_loss')
+#plt.ylim([0, 4])
+plt.xlabel('Epoch')
+plt.ylabel('Error [deg]')
+plt.legend()
+plt.grid(True)
+plt.show()
+
+
+""" makes predictions with the test dataset and plots them. Good predictions should lie on the line. """
+test_predictions = np.squeeze(model.predict(test_images))
+
+a = plt.axes(aspect='equal')
+plt.scatter(test_labels, test_predictions)
+plt.xlabel('True labels')
+plt.ylabel('Predicted labels')
+lims = [0, max(test_labels)]
+plt.xlim(lims)
+plt.ylim(lims)
+_ = plt.plot(lims, lims)
+plt.show()
 
 
 print("done")
