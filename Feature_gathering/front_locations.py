@@ -16,13 +16,13 @@ file example: Para_1-5ft_PHI_30_THETA_230
 max_step example: '16'
 max_uci example: '8'
 """
-def get_final_front_locations(path_to_folder, file, max_step, max_uci):
-    #path_to_folder = "C:\\Users\\u1056\\sfx\\simulation_results\\"
-    #max_s = get_max_step_and_max_UCIs()
-    front_locations = {}
-    filepath = path_to_folder + str(file) + "\\" + str(file) + "_Stp" + max_step + "_UCI_" + max_uci + "_original.frt"
-    front_locations = get_average_node_locations(filepath)
-    return front_locations
+# def get_final_front_locations(path_to_folder, file, max_step, max_uci):
+#     #path_to_folder = "C:\\Users\\u1056\\sfx\\simulation_results\\"
+#     #max_s = get_max_step_and_max_UCIs()
+#     front_locations = {}
+#     filepath = path_to_folder + str(file) + "\\" + str(file) + "_Stp" + max_step + "_UCI_" + max_uci + "_original.frt"
+#     front_locations = get_average_node_locations(filepath)
+#     return front_locations
 
 
 
@@ -82,7 +82,9 @@ def get_all_front_locations(path_to_simulations, simulation):
                     uci = int(file.split("Stp")[1].split("_")[2])
                     front_locations.append([step, uci, location["front 0"], location["front 1"]])
 
-    sorted_list = sorted(front_locations, key=lambda x: (x[0], x[1])) #sorts the list of front locations by step, then by uci... soooo nice  
+    sorted_list = sorted(front_locations, key=lambda x: (x[0], x[1])) #sorts the list of front locations by step, then by uci... soooo nice
+    # df = pd.DataFrame(sorted_list)
+    # df.columns = ["step", "uci", "front 0 location", "front 1 location"]
     return sorted_list
 
 
@@ -91,23 +93,64 @@ def get_euclidean_distance(pt_a, pt_b):
     return m.sqrt((pt_a[0] - pt_b[0])**2 + (pt_a[1] - pt_b[1])**2 + (pt_a[2] - pt_b[2])**2)
 
 
+""" gets approximate final front location for both fronts. cannot get exact due to the front locations resetting to the intiation site """
+def get_unique_front_locations(simulation_folder, simulation):
+    front_locations = get_all_front_locations(simulation_folder, simulation)
+    front_0 = np.empty(0)
+    front_1 = np.empty(0)
 
+    front_0 = np.array(front_locations[0][2])
+    front_1 = np.array(front_locations[0][3])
+    for location in front_locations:
+            front_0 = np.vstack([front_0, location[2]])
+            front_1 = np.vstack([front_1, location[3]])
+    
+    #getting the unique front locations in the order that they are propogated
+    indexes = np.unique(front_0, axis=0, return_index=True)[1]
+    unique_front_0 = np.array([front_0[index] for index in sorted(indexes)])
+    indexes = np.unique(front_1, axis=0, return_index=True)[1]
+    unique_front_1 = np.array([front_1[index] for index in sorted(indexes)])
+
+
+    #removing any huge jumps to different parts of the skull that are not supposed to be there
+    temp = unique_front_0[0]
+    i = 0
+    for loc in unique_front_0:
+        x = get_euclidean_distance(temp, loc)
+        print(x)
+        if(x > 6):
+            unique_front_0 = np.delete(unique_front_0, i, axis=0)
+            continue
+        temp = loc
+        i+=1
+    
+    temp = unique_front_1[0]
+    i = 0
+    for loc in unique_front_1:
+        x = get_euclidean_distance(temp, loc)
+        print(x)
+        if(x > 6):
+            unique_front_1 = np.delete(unique_front_1, i, axis=0)
+            continue
+        temp = loc
+        i+=1
+
+    return unique_front_0, unique_front_1
 
 """ gets the total crack length based on euclidean distance between each front location """
 def get_crack_len(simulation_folder, simulation):
-    prev_front_0 = get_initiation_cite(simulation_folder, simulation)
-    prev_front_1 = get_initiation_cite(simulation_folder, simulation)
-    front_locations = get_all_front_locations(simulation_folder, simulation)
-    crack_len_total = 0.0
+    f = open(simulation_folder + simulation + "\\" + simulation + "_history.log")
+    
+    #replaces "crack_len_line" with the line with crack lengths in the log file all the way until the 
+    # end of the log file to capture the final crack length line
+    crack_len_line = ""
+    for line in f.readlines():
+        if(line.startswith("INFO:root:crack_length :")):
+            crack_len_line = line
 
-    for locations in front_locations:
-        dist_frt_0 = get_euclidean_distance(prev_front_0, locations[2])
-        dist_frt_1 = get_euclidean_distance(prev_front_1, locations[3])
-        crack_len_total += (dist_frt_0 + dist_frt_1)
-        prev_front_0 = locations[2]
-        prev_front_1 = locations[3]
+    crack_len = float(crack_len_line.split(",")[-1].replace("]]\n", "").replace("INFO:root:crack_length :  [[", ""))
 
-    return crack_len_total
+    return crack_len
 
 
 

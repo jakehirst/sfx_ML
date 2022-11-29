@@ -1,5 +1,6 @@
 from front_locations import *
 import math as m
+import pandas as pd
 
 """ gets the total crack length based on euclidean distance between each front location """
 def get_distances_from_initiation(simulation_folder, simulation):
@@ -63,6 +64,58 @@ def haversine(lat1, lon1, lat2, lon2):
     c = 2 * m.asin(m.sqrt(a))
     return rad * c
 
+""" gets approximate final front location for both fronts. cannot get exact due to the front locations resetting to the intiation site """
+def get_final_front_locations(simulation_folder, simulation):
+    front_locations = get_all_front_locations(simulation_folder, simulation)
+    front_0 = np.empty(0)
+    front_1 = np.empty(0)
+
+    front_0 = np.array(front_locations[0][2])
+    front_1 = np.array(front_locations[0][3])
+    for location in front_locations:
+            front_0 = np.vstack([front_0, location[2]])
+            front_1 = np.vstack([front_1, location[3]])
+    
+    #getting the unique front locations in the order that they are propogated
+    indexes = np.unique(front_0, axis=0, return_index=True)[1]
+    unique_front_0 = np.array([front_0[index] for index in sorted(indexes)])
+    indexes = np.unique(front_1, axis=0, return_index=True)[1]
+    unique_front_1 = np.array([front_1[index] for index in sorted(indexes)])
+
+
+    #removing any huge jumps to different parts of the skull that are not supposed to be there
+    temp = unique_front_0[0]
+    i = 0
+    for loc in unique_front_0:
+        x = get_euclidean_distance(temp, loc)
+        #print(x)
+        if(x > 6):
+            unique_front_0 = np.delete(unique_front_0, i, axis=0)
+            continue
+        temp = loc
+        i+=1
+    
+    temp = unique_front_1[0]
+    i = 0
+    for loc in unique_front_1:
+        x = get_euclidean_distance(temp, loc)
+        #print(x)
+        if(x > 6):
+            unique_front_1 = np.delete(unique_front_1, i, axis=0)
+            continue
+        temp = loc
+        i+=1
+
+
+    # if(len(unique_front_0) > 1):
+    #     unique_front_0 = np.delete(unique_front_0, -1, axis=0)
+    # if(len(unique_front_1) > 1):
+    #     unique_front_1 = np.delete(unique_front_1, -1, axis=0)
+    #print(unique_front_0)
+    return unique_front_0[-1], unique_front_1[-1]
+
+
+
 
 """ gets the ratio of the distance between the initiation site and the end points of the fronts, over the
 distances of all of the front locations combined, assuming that the skull is a perfect sphere with radius of 1 so that
@@ -71,13 +124,18 @@ def get_linearity(simulation_folder, simulation):
     #print(simulation)
     d0, d1 = get_distances_from_initiation(simulation_folder, simulation)
     init_cite = get_initiation_cite(simulation_folder, simulation)
-    front_locations = get_all_front_locations(simulation_folder, simulation)
-    front_0_endpoint = front_locations[-1][2]
-    front_1_endpoint = front_locations[-1][3]
+    front_0_endpoint, front_1_endpoint = get_final_front_locations(simulation_folder, simulation)
     True_len0 = get_arc_len(init_cite, front_0_endpoint)
     True_len1 = get_arc_len(init_cite, front_1_endpoint)
 
     linearity = (True_len0 + True_len1) / (d0 + d1)
     return linearity
 
-
+# get_linearity('F:\\Jake\\good_simies\\', 'Para_1-5ft_PHI_0_THETA_0')
+# x = pd.read_csv("C:\\Users\\u1056\\sfx\\ML\\Feature_gathering\\OG_dataframe.csv")
+# print(x)
+# print(x.iloc[35])
+# print(x.iloc[18])
+# print(x.iloc[14])
+# print(x.iloc[11])
+# print(x.iloc[12])
