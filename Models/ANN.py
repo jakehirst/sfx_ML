@@ -97,7 +97,7 @@ def prepare_data_Kfold(df_filename, label_to_predict, epochs, numfolds=5, featur
     return args
 
 
-def run_Kfold_ANN(args):
+def run_Kfold_ANN(args, show=False):
     results = []
     for arg in args:
         results.append(make_ANN(*arg))
@@ -114,12 +114,13 @@ def run_Kfold_ANN(args):
         test_r2 = np.append(test_r2, result["Test R^2"])
         min_loss = np.append(min_loss, min(result["history"].history['loss']))
         min_val_loss = np.append(min_val_loss, min(result["history"].history['val_loss']))
-        if(len(loss) == 0):
-            loss = np.array([result["history"].history['loss']])
-            val_loss = np.array([result["history"].history['val_loss']])
-        else:
-            loss = np.vstack([loss, result["history"].history['loss']])
-            val_loss = np.vstack([val_loss, result["history"].history['val_loss']])
+        if(show == True):
+            if(len(loss) == 0):
+                loss = np.array([result["history"].history['loss']])
+                val_loss = np.array([result["history"].history['val_loss']])
+            else:
+                loss = np.vstack([loss, result["history"].history['loss']])
+                val_loss = np.vstack([val_loss, result["history"].history['val_loss']])
 
         # loss = np.append(loss, [result["history"].history['loss']])
         # val_loss = np.append(val_loss, [result["history"].history['val_loss']])
@@ -128,28 +129,32 @@ def run_Kfold_ANN(args):
     avg_test_r2 = np.sum(test_r2) / len(test_r2)
     avg_min_loss = np.sum(min_loss) / len(min_loss)
     avg_min_val_loss = np.sum(min_val_loss) /  len(min_val_loss)
-    #TODO: Not sure about the axis here
-    avg_loss = np.sum(loss, axis=0) / len(loss)
-    avg_val_loss = np.sum(val_loss, axis=0) / len(val_loss)
-
+    
     print("avg_train_r2 = " + str(avg_train_r2))
     print("avg_test_r2 = " + str(avg_test_r2))
     print("avg_min_loss = " + str(avg_min_loss))
     print("avg_min_val_loss = " + str(avg_min_val_loss))
 
-    plt.plot(avg_loss, label='avg loss (mean absolute error)')
-    plt.plot(avg_val_loss, label='avg validation loss')
-    #plt.ylim([0, 4])
-    plt.xlabel('Epoch')
-    plt.ylabel('Error')
-    plt.legend()
-    plt.grid(True)
-    plt.show()
-    print("done")
+
+    #TODO: Not sure about the axis here
+    if(show == True):
+        avg_loss = np.sum(loss, axis=0) / len(loss)
+        avg_val_loss = np.sum(val_loss, axis=0) / len(val_loss)
+
+
+        plt.plot(avg_loss, label='avg loss (mean absolute error)')
+        plt.plot(avg_val_loss, label='avg validation loss')
+        #plt.ylim([0, 4])
+        plt.xlabel('Epoch')
+        plt.ylabel('Error')
+        plt.legend()
+        plt.grid(True)
+        plt.show()
+        print("done")
 
 
 
-def make_ANN(train_features, train_labels, test_features, test_labels, epochs):
+def make_ANN(train_features, train_labels, test_features, test_labels, epochs, show=False):
     #quote from tensorflow:
     """One reason this is important is because the features are multiplied by the model weights. So, the scale of the outputs and the scale of the gradients are affected by the scale of the inputs.
     Although a model might converge without feature normalization, normalization makes training much more stable"""
@@ -183,13 +188,22 @@ def make_ANN(train_features, train_labels, test_features, test_labels, epochs):
     history = model.fit(tf.expand_dims(train_features, axis=-1), 
                                        train_labels, 
                                        epochs=epochs,
-                                       validation_split = 0.2)
+                                       validation_split = 0.2,  
+                                       callbacks=[
+                                            tf.keras.callbacks.EarlyStopping(
+                                                monitor='val_loss',
+                                                patience=30,
+                                                restore_best_weights=True
+                                            )
+                                        ]
+                                       )
 
     print("minimum MAE: ")
     print(min(history.history['loss']))
     print("minimum validation MAE: ")
     print(min(history.history['val_loss']))
-
+    
+    
     plt.plot(history.history['loss'], label='loss (mean absolute error)')
     plt.plot(history.history['val_loss'], label='val_loss')
     #plt.ylim([0, 4])
@@ -229,14 +243,20 @@ def make_ANN(train_features, train_labels, test_features, test_labels, epochs):
     print("Training R^2 = " + str(test_result.numpy()))
     return {"Training R^2": training_result.numpy(), "Test R^2": test_result.numpy(), "history": history}
 
-#args = prepare_data_Kfold("OG_dataframe.csv", "height", epochs=100)
-#run_Kfold_ANN(args)
-args = prepare_data_Kfold("OG_dataframe.csv", "height", epochs=100, features_to_drop=["front 0 x", "front 0 y", "front 0 z", "front 1 z", "linearity"])
+# args = prepare_data_Kfold("OG_dataframe.csv", "height", epochs=1000)
+# run_Kfold_ANN(args)
+# args = prepare_data_Kfold("OG_dataframe.csv", "height", epochs=1000, features_to_drop=["front 0 x", "front 0 y", "front 0 z", "front 1 z", "init y", "linearity"])
+# run_Kfold_ANN(args)
+args = prepare_data_Kfold("OG_dataframe.csv", "phi", epochs=1000)
 run_Kfold_ANN(args)
-args = prepare_data("OG_dataframe.csv", "height", epochs=100)
-make_ANN(*args)
+args = prepare_data_Kfold("OG_dataframe.csv", "phi", epochs=1000, features_to_drop=["front 1 x", "dist btw frts"])
+run_Kfold_ANN(args)
+args = prepare_data_Kfold("OG_dataframe.csv", "theta", epochs=1000)
+run_Kfold_ANN(args)
+args = prepare_data_Kfold("OG_dataframe.csv", "theta", epochs=1000, features_to_drop=["front 0 x", "init x"])
+run_Kfold_ANN(args)
 
-make_ANN("OG_dataframe_cartesian.csv", "height", epochs=100, features_to_drop=["front 0 x", "front 0 y", "front 0 z", "front 1 z", "linearity"])
+make_ANN("OG_dataframe_cartesian.csv", "height", epochs=100, features_to_drop=["front 0 x", "front 0 y", "front 0 z", "front 1 z", "init y", "linearity"])
 make_ANN("OG_dataframe.csv", "phi", epochs=120)
 make_ANN("OG_dataframe.csv", "phi", epochs=120, features_to_drop=["front 0 x", "front 0 y", "front 0 z", "dist btw frts"])
 make_ANN("OG_dataframe.csv", "theta", epochs=250)
