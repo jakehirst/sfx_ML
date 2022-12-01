@@ -117,7 +117,7 @@ def get_unique_front_locations(simulation_folder, simulation):
     i = 0
     for loc in unique_front_0:
         x = get_euclidean_distance(temp, loc)
-        print(x)
+        #print(x)
         if(x > 6):
             unique_front_0 = np.delete(unique_front_0, i, axis=0)
             continue
@@ -128,7 +128,7 @@ def get_unique_front_locations(simulation_folder, simulation):
     i = 0
     for loc in unique_front_1:
         x = get_euclidean_distance(temp, loc)
-        print(x)
+        #print(x)
         if(x > 6):
             unique_front_1 = np.delete(unique_front_1, i, axis=0)
             continue

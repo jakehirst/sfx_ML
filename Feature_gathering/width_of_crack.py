@@ -96,14 +96,14 @@ def get_min_distances(main, mate):
             x1 = float(node[1]); y1 = float(node[2]); z1 = float(node[3])
             x2 = float(other_node[1]); y2 = float(other_node[2]); z2 = float(other_node[3])
             distance = m.sqrt((x2-x1)**2 + (y2 - y1)**2 + (z2 - z1)**2)
-            if(node[0] == '305737'):
-                print(node)
-                print(other_node)
-                print("\n")
+            # if(node[0] == '305737'):
+                # print(node)
+                # print(other_node)
+                # print("\n")
             if(min == []):
                 min = [node, other_node, distance]
             elif(min[2] > distance):
-                print(distance)
+                # print(distance)
                 min = [node, other_node, distance]
         mins.append(min)
     return mins
@@ -118,4 +118,4 @@ def mean_crack_width(folder_path, key, max_step, max_uci):
     print("not implemented yet")
 
 
-max_crack_width('F:\\Jake\\good_simies\\','Para_1ft_PHI_50_THETA_290', '100', '0')
+#max_crack_width('F:\\Jake\\good_simies\\','Para_1ft_PHI_50_THETA_290', '100', '0')

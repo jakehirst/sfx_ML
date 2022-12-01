@@ -5,6 +5,7 @@ from pathlib import Path
 import os.path
 from sklearn.model_selection import train_test_split
 import tensorflow as tf
+import tensorflow_addons as tfa
 from sklearn.metrics import r2_score
 import numpy as np
 import matplotlib.pyplot as plt
@@ -51,13 +52,13 @@ def get_images(pathname):
                     if file.find("mesh")==-1:
                         image_name_list.append (os.path.join(root, file))
 
-#Select which folders from which to obtain images
-get_images('C:\\Users\\u1056\\sfx\\images_sfx\\\Original\\OG')
-get_images('C:\\Users\\u1056\\sfx\\images_sfx\\\Original\\Flipping')
-get_images('C:\\Users\\u1056\\sfx\\images_sfx\\\Original\\Rotation')
-get_images('C:\\Users\\u1056\\sfx\\images_sfx\\\Original\\Color')
-get_images('C:\\Users\\u1056\\sfx\\images_sfx\\\Original\\Solarize')
-get_images('C:\\Users\\u1056\\sfx\\images_sfx\\\Original\\Posterize')
+#Select which folders from which to obtain images 
+get_images('C:\\Users\\u1056\\sfx\\images_sfx\\\With_Width_only_parietal\\OG')
+get_images('C:\\Users\\u1056\\sfx\\images_sfx\\\With_Width_only_parietal\\Flipping')
+get_images('C:\\Users\\u1056\\sfx\\images_sfx\\\With_Width_only_parietal\\Rotation')
+# get_images('C:\\Users\\u1056\\sfx\\images_sfx\\\Original\\Color')
+get_images('C:\\Users\\u1056\\sfx\\images_sfx\\\With_Width_only_parietal\\Solarize')
+get_images('C:\\Users\\u1056\\sfx\\images_sfx\\\With_Width_only_parietal\\Posterize')
 
 #finds the max uci and step for each fall parameter image folder
 max_steps_and_UCIs = dict()
@@ -125,11 +126,11 @@ print("number of thetas = " + str(len(theta_list)))
 
 #TODO: do this for phi and theta later
 #shuffles the dataset and puts it into a dataframe
-# df = pd.concat([image_path_list, height_list], axis=1).sample(frac=1.0, random_state=1).reset_index(drop=True)
-# df.columns = ["Filepath", "height"]
+df = pd.concat([image_path_list, height_list], axis=1).sample(frac=1.0, random_state=1).reset_index(drop=True)
+df.columns = ["Filepath", "height"]
 
-df = pd.concat([image_path_list, phi_list], axis=1).sample(frac=1.0, random_state=1).reset_index(drop=True)
-df.columns = ["Filepath", "phi"]
+# df = pd.concat([image_path_list, phi_list], axis=1).sample(frac=1.0, random_state=1).reset_index(drop=True)
+# df.columns = ["Filepath", "phi"]
 
 # df = pd.concat([image_path_list, theta_list], axis=1).sample(frac=1.0, random_state=1).reset_index(drop=True)
 # df.columns = ["Filepath", "theta"]
@@ -151,11 +152,11 @@ test_generator = tf.keras.preprocessing.image.ImageDataGenerator(
 train_images = train_generator.flow_from_dataframe(
     dataframe=train_df,
     x_col = 'Filepath',
-    y_col = 'phi',
+    y_col = 'height',
     #target_size=(120,120),  #can reduce the images to a certain size to reduce training time. 120x120 for example here
-    color_mode='grayscale',
+    color_mode='rgb',
     class_mode = 'raw', #keeps the classes of our labels the same after flowing
-    batch_size=1, #can increase this to up to like 10 or so for how much data we have
+    batch_size=5, #can increase this to up to like 10 or so for how much data we have
     shuffle=True,
     seed=42,
     subset='training'
@@ -164,11 +165,11 @@ train_images = train_generator.flow_from_dataframe(
 val_images = train_generator.flow_from_dataframe(
     dataframe=train_df,
     x_col = 'Filepath',
-    y_col = 'phi',
+    y_col = 'height',
     #target_size=(120,120),  #can reduce the images to a certain size to reduce training time. 120x120 for example here
-    color_mode='grayscale',
+    color_mode='rgb',
     class_mode = 'raw', #keeps the classes of our labels the same after flowing
-    batch_size=1, #can increase this to up to like 10 or so for how much data we have
+    batch_size=5, #can increase this to up to like 10 or so for how much data we have
     shuffle=True,
     seed=42,
     subset='validation'
@@ -177,27 +178,27 @@ val_images = train_generator.flow_from_dataframe(
 test_images = test_generator.flow_from_dataframe(
     dataframe=test_df,
     x_col = 'Filepath',
-    y_col = 'phi',
+    y_col = 'height',
     #target_size=(120,120),  #can reduce the images to a certain size to reduce training time. 120x120 for example here
-    color_mode='grayscale',
+    color_mode='rgb',
     class_mode = 'raw', #keeps the classes of our labels the same after flowing
-    batch_size=1, #can increase this to up to like 10 or so for how much data we have
+    batch_size=5, #can increase this to up to like 10 or so for how much data we have
     shuffle=False
 )
 
 
 
 """ start training """
-inputs = tf.keras.Input(shape=(802, 642, 1)) #not sure if the shape is right here. i got (256, 256, 1) by looking at train_images.image_shape
+inputs = tf.keras.Input(shape=input_shape) #not sure if the shape is right here. i got (256, 256, 1) by looking at train_images.image_shape
                                              #trying (642, 802, 3) by looking at img_arr_list[0].shape
                                              #tryig  (256, 256, 3) by looking at train_images[0][0].shape
-x = tf.keras.layers.Conv2D(filters=16, kernel_size=(3,3), activation='relu')(inputs)
+x = tf.keras.layers.Conv2D(filters=16, kernel_size=(1,1), activation='relu')(inputs)
 x = tf.keras.layers.MaxPool2D()(x) #takes the max of each window to reduce the size of the image... dont know if i need this...
-x = tf.keras.layers.Conv2D(filters=16, kernel_size=(3,3), activation='relu')(inputs) #just increasing the filters here to get more features
+x = tf.keras.layers.Conv2D(filters=16, kernel_size=(1,1), activation='relu')(inputs) #just increasing the filters here to get more features
 x = tf.keras.layers.MaxPool2D()(x)
-x = tf.keras.layers.Conv2D(filters=32, kernel_size=(3,3), activation='relu')(inputs) #just increasing the filters here to get more features
+x = tf.keras.layers.Conv2D(filters=32, kernel_size=(1,1), activation='relu')(inputs) #just increasing the filters here to get more features
 x = tf.keras.layers.MaxPool2D()(x)
-x = tf.keras.layers.Conv2D(filters=32, kernel_size=(3,3), activation='relu')(inputs) #just increasing the filters here to get more features
+x = tf.keras.layers.Conv2D(filters=32, kernel_size=(1,1), activation='relu')(inputs) #just increasing the filters here to get more features
 x = tf.keras.layers.MaxPool2D()(x)
 x = tf.keras.layers.GlobalAveragePooling2D()(x) #could try GlobalMaxPooling2D instead
 x = tf.keras.layers.Dense(64, activation='relu')(x)
@@ -225,6 +226,7 @@ history = model.fit(
 )
 
 test_labels = test_images.labels
+train_labels = train_images.labels
 
 plt.plot(history.history['loss'], label='loss (mean absolute error)')
 plt.plot(history.history['val_loss'], label='val_loss')
@@ -249,8 +251,20 @@ plt.ylim(lims)
 _ = plt.plot(lims, lims)
 plt.show()
 
+""" gets r^2 value of the test dataset with the predictions made from above ^ """
+metric = tfa.metrics.r_square.RSquare()
+metric.update_state(test_labels, test_predictions)
+training_result = metric.result()
+print("Test R^2 = " + str(training_result.numpy()))
 
-print("done")
+""" gets r^2 value of the training dataset """
+training_predictions = model.predict(train_images).flatten()
+metric = tfa.metrics.r_square.RSquare()
+metric.update_state(train_labels, training_predictions)
+test_result = metric.result()
+print("Training R^2 = " + str(test_result.numpy()))
+#return {"Training R^2": training_result.numpy(), "Test R^2": test_result.numpy(), "history": history}
+
 
 
 

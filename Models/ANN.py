@@ -5,13 +5,13 @@ sys.path.append("C:\\Users\\u1056\\sfx\\ML")
 sys.path.append("C:\\Users\\u1056\\sfx\\ML\\Feature_gathering")
 #from Feature_gathering.features_to_df import create_df
 import pandas as pd
-import seaborn as sns
+# import seaborn as sns
 import numpy as np
 import matplotlib.pyplot as plt
 import tensorflow as tf
 import tensorflow_addons as tfa
-import keras
-from keras import layers
+# import keras
+# from keras import layers
 import math as m
 #import tensorflow_probability as tfp
 
@@ -48,9 +48,6 @@ def prepare_data(df_filename, label_to_predict, epochs, features_to_drop=None):
     return [train_features, train_labels, test_features, test_labels, epochs]
 
 
-
-
-
 def prepare_data_Kfold(df_filename, label_to_predict, epochs, numfolds=5, features_to_drop=None):
     df = pd.read_csv("C:\\Users\\u1056\\sfx\\ML\\Feature_gathering\\" + df_filename, index_col = [0])
 
@@ -80,7 +77,7 @@ def prepare_data_Kfold(df_filename, label_to_predict, epochs, numfolds=5, featur
             fold = df.iloc[(i*examples_per_fold):((i+1) * examples_per_fold)]
             folds.append(fold)
 
-    """ putting all fold combinations into a list to run the machine learning model with """
+    """ putting all fold combinations into a list to run the machin e learning model with """
     args = []
     for fold in folds:
         test_dataset = fold
@@ -97,7 +94,7 @@ def prepare_data_Kfold(df_filename, label_to_predict, epochs, numfolds=5, featur
     return args
 
 
-def run_Kfold_ANN(args, show=False):
+def run_Kfold_ANN(args, Full_df, activation='relu', show=False):
     results = []
     for arg in args:
         results.append(make_ANN(*arg))
@@ -108,12 +105,14 @@ def run_Kfold_ANN(args, show=False):
     min_val_loss = np.empty(0)
     loss = np.empty(0)
     val_loss = np.empty(0)
+    models = []
 
     for result in results:
         train_r2 = np.append(train_r2, result["Training R^2"])
         test_r2 = np.append(test_r2, result["Test R^2"])
         min_loss = np.append(min_loss, min(result["history"].history['loss']))
         min_val_loss = np.append(min_val_loss, min(result["history"].history['val_loss']))
+        models.append(result["model"])
         if(show == True):
             if(len(loss) == 0):
                 loss = np.array([result["history"].history['loss']])
@@ -125,6 +124,8 @@ def run_Kfold_ANN(args, show=False):
         # loss = np.append(loss, [result["history"].history['loss']])
         # val_loss = np.append(val_loss, [result["history"].history['val_loss']])
     
+
+
     avg_train_r2 = np.sum(train_r2) / len(train_r2)
     avg_test_r2 = np.sum(test_r2) / len(test_r2)
     avg_min_loss = np.sum(min_loss) / len(min_loss)
@@ -153,8 +154,7 @@ def run_Kfold_ANN(args, show=False):
         print("done")
 
 
-
-def make_ANN(train_features, train_labels, test_features, test_labels, epochs, show=False):
+def make_ANN(train_features, train_labels, test_features, test_labels, epochs, activation='relu', show=False):
     #quote from tensorflow:
     """One reason this is important is because the features are multiplied by the model weights. So, the scale of the outputs and the scale of the gradients are affected by the scale of the inputs.
     Although a model might converge without feature normalization, normalization makes training much more stable"""
@@ -174,11 +174,11 @@ def make_ANN(train_features, train_labels, test_features, test_labels, epochs, s
     numfeatures = len(train_features.columns)
 
     model = tf.keras.Sequential([tf.keras.layers.InputLayer(input_shape=numfeatures),
-                                 tf.keras.layers.Dense(16, activation = tf.keras.activations.relu),
-                                 tf.keras.layers.Dense(16, activation = tf.keras.activations.relu),
-                                 tf.keras.layers.Dense(32, activation = tf.keras.activations.relu),
-                                 tf.keras.layers.Dense(32, activation = tf.keras.activations.relu),
-                                 tf.keras.layers.Dense(32, activation = tf.keras.activations.relu),
+                                 tf.keras.layers.Dense(16, activation = activation),
+                                 tf.keras.layers.Dense(16, activation = activation),
+                                 tf.keras.layers.Dense(32, activation = activation),
+                                 tf.keras.layers.Dense(32, activation = activation),
+                                 tf.keras.layers.Dense(32, activation = activation),
                                  tf.keras.layers.Dense(1)])
     
     model.compile(
@@ -192,7 +192,7 @@ def make_ANN(train_features, train_labels, test_features, test_labels, epochs, s
                                        callbacks=[
                                             tf.keras.callbacks.EarlyStopping(
                                                 monitor='val_loss',
-                                                patience=30,
+                                                patience=50,
                                                 restore_best_weights=True
                                             )
                                         ]
@@ -241,24 +241,39 @@ def make_ANN(train_features, train_labels, test_features, test_labels, epochs, s
     metric.update_state(train_labels, training_predictions)
     test_result = metric.result()
     print("Training R^2 = " + str(test_result.numpy()))
-    return {"Training R^2": training_result.numpy(), "Test R^2": test_result.numpy(), "history": history}
+    return {"Training R^2": training_result.numpy(), "Test R^2": test_result.numpy(), "history": history, "model": model}
+
+
+def Prepare_Full_Df(csv_name, label_to_predict):
+    df = pd.read_csv("C:\\Users\\u1056\\sfx\\ML\\Feature_gathering\\" + csv_name, index_col = [0])
+    """ drops all of the labesl that are not the one we are trying to predict """
+    labels = ["height", "phi", "theta", "x", "y", "z"]
+    for label in labels:
+        if((not label == label_to_predict) and df.columns.__contains__(label)):
+            df = df.drop(label, axis=1)
+    return df
 
 # args = prepare_data_Kfold("OG_dataframe.csv", "height", epochs=1000)
-# run_Kfold_ANN(args)
+# Full_df = Prepare_Full_Df("OG_dataframe.csv", "height")
+# run_Kfold_ANN(args, Full_df, activation = "sigmoid")
 # args = prepare_data_Kfold("OG_dataframe.csv", "height", epochs=1000, features_to_drop=["front 0 x", "front 0 y", "front 0 z", "front 1 z", "init y", "linearity"])
-# run_Kfold_ANN(args)
-args = prepare_data_Kfold("OG_dataframe.csv", "phi", epochs=1000)
-run_Kfold_ANN(args)
-args = prepare_data_Kfold("OG_dataframe.csv", "phi", epochs=1000, features_to_drop=["front 1 x", "dist btw frts"])
-run_Kfold_ANN(args)
-args = prepare_data_Kfold("OG_dataframe.csv", "theta", epochs=1000)
-run_Kfold_ANN(args)
-args = prepare_data_Kfold("OG_dataframe.csv", "theta", epochs=1000, features_to_drop=["front 0 x", "init x"])
-run_Kfold_ANN(args)
+# run_Kfold_ANN(args, Full_df, activation = "sigmoid")
 
-make_ANN("OG_dataframe_cartesian.csv", "height", epochs=100, features_to_drop=["front 0 x", "front 0 y", "front 0 z", "front 1 z", "init y", "linearity"])
-make_ANN("OG_dataframe.csv", "phi", epochs=120)
-make_ANN("OG_dataframe.csv", "phi", epochs=120, features_to_drop=["front 0 x", "front 0 y", "front 0 z", "dist btw frts"])
-make_ANN("OG_dataframe.csv", "theta", epochs=250)
-make_ANN("OG_dataframe.csv", "theta", epochs=250, features_to_drop=["front 0 y", "front 1 x", "init x", "crack len"])
+Full_df = Prepare_Full_Df("OG_dataframe.csv", "phi")
+args = prepare_data_Kfold("OG_dataframe.csv", "phi", epochs=1000)
+run_Kfold_ANN(args, Full_df, "sigmoid")
+args = prepare_data_Kfold("OG_dataframe.csv", "phi", epochs=1000, features_to_drop=["front 1 x", "dist btw frts"])
+run_Kfold_ANN(args, Full_df, "sigmoid")
+
+# Full_df = Prepare_Full_Df("OG_dataframe.csv", "theta")
+# args = prepare_data_Kfold("OG_dataframe.csv", "theta", epochs=1000)
+# run_Kfold_ANN(args, Full_df, activation="sigmoid")
+# args = prepare_data_Kfold("OG_dataframe.csv", "theta", epochs=1000, features_to_drop=["front 0 x", "init x"])
+# run_Kfold_ANN(args, Full_df, activation="sigmoid")
+
+# make_ANN("OG_dataframe_cartesian.csv", "height", epochs=100, features_to_drop=["front 0 x", "front 0 y", "front 0 z", "front 1 z", "init y", "linearity"])
+# make_ANN("OG_dataframe.csv", "phi", epochs=120)
+# make_ANN("OG_dataframe.csv", "phi", epochs=120, features_to_drop=["front 0 x", "front 0 y", "front 0 z", "dist btw frts"])
+# make_ANN("OG_dataframe.csv", "theta", epochs=250)
+# make_ANN("OG_dataframe.csv", "theta", epochs=250, features_to_drop=["front 0 y", "front 1 x", "init x", "crack len"])
 
