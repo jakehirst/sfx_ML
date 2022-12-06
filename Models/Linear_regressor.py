@@ -30,6 +30,7 @@ def make_linear_model(df_filename, label_to_predict, epochs, features_to_drop=No
     if(not features_to_drop == None):
         for feature in features_to_drop:
             df = df.drop(feature, axis=1)
+        print(df)
 
     """ sampling the dataset randomly """
     train_dataset = df.sample(frac=0.8, random_state=0)
@@ -129,10 +130,13 @@ def make_linear_model(df_filename, label_to_predict, epochs, features_to_drop=No
     print("Training R^2 = " + str(result.numpy()))
 
 # make_linear_model("OG_dataframe_cartesian.csv", "height", epochs=100)
+# make_linear_model("OG_dataframe_cartesian.csv", "height", epochs=100, features_to_drop=["front 0 x", "front 0 y", "front 0 z", "front 1 z", "linearity"])
 # make_linear_model("OG_dataframe_cartesian.csv", "x", epochs=20)
 # make_linear_model("OG_dataframe_cartesian.csv", "y", epochs=50)
 # make_linear_model("OG_dataframe_cartesian.csv", "z", epochs=50)
 # make_linear_model("OG_dataframe.csv", "phi", epochs=1000)
+# make_linear_model("OG_dataframe.csv", "phi", epochs=1000, features_to_drop=["front 0 x", "front 0 y", "front 0 z", "dist btw frts"])
 # make_linear_model("OG_dataframe.csv", "theta", epochs=1500)
+make_linear_model("OG_dataframe.csv", "theta", epochs=1500, features_to_drop=["front 0 y", "front 1 x", "init x", "crack len"])
 
 

@@ -49,12 +49,12 @@ def get_images(pathname):
                         image_name_list.append (os.path.join(root, file))
 
 #Select which folders from which to obtain images
-get_images('C:\\Users\\u1056\\sfx\\images_sfx\\\Original\\OG')
-get_images('C:\\Users\\u1056\\sfx\\images_sfx\\\Original\\Flipping')
-get_images('C:\\Users\\u1056\\sfx\\images_sfx\\\Original\\Rotation')
-get_images('C:\\Users\\u1056\\sfx\\images_sfx\\\Original\\Color')
-get_images('C:\\Users\\u1056\\sfx\\images_sfx\\\Original\\Solarize')
-get_images('C:\\Users\\u1056\\sfx\\images_sfx\\\Original\\Posterize')
+get_images('C:\\Users\\u1056\\sfx\\images_sfx\\\With_Width\\OG')
+# get_images('C:\\Users\\u1056\\sfx\\images_sfx\\\Original\\Flipping')
+# get_images('C:\\Users\\u1056\\sfx\\images_sfx\\\Original\\Rotation')
+# get_images('C:\\Users\\u1056\\sfx\\images_sfx\\\Original\\Color')
+# get_images('C:\\Users\\u1056\\sfx\\images_sfx\\\Original\\Solarize')
+# get_images('C:\\Users\\u1056\\sfx\\images_sfx\\\Original\\Posterize')
 
 #finds the max uci and step for each fall parameter image folder
 max_steps_and_UCIs = dict()
@@ -156,7 +156,7 @@ for train, test in kfold.split(inputs, targets):
     # Define the model architecture
     cnn4 = Sequential([
     layers.Conv2D(filters=filter1, kernel_size=kernel_size, activation='relu',padding='same',input_shape=input_shape),
-    layers.Conv2D(filters=filter1, kernel_size=kernel_size, activation='relu',padding='same'),
+    layers.Conv2D(filters=filter1, kernel_size=kernel_size, actabaqusivation='relu',padding='same'),
     layers.MaxPooling2D(pool_size=pool_size,strides=strides),
     layers.Conv2D(filters=filter2, kernel_size=kernel_size, activation='relu'),
     layers.Conv2D(filters=filter2, kernel_size=kernel_size, activation='relu'),
