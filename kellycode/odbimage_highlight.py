@@ -56,12 +56,13 @@ for filepath in file_name_list:
     #odb instead of cae
     myOdb = visualization.openOdb(path = filepath)
     session.viewports['Viewport: 1'].setValues(displayedObject=myOdb)
-    session.viewports['Viewport: 1'].odbDisplay.display.setValues(plotState=( CONTOURS_ON_DEF, ))
-    
+    #session.viewports['Viewport: 1'].odbDisplay.display.setValues(plotState=( CONTOURS_ON_DEF, ))
+    session.viewports['Viewport: 1'].odbDisplay.display.setValues(plotState=(
+        DEFORMED, ))
     #set contour values
-    session.viewports['Viewport: 1'].odbDisplay.contourOptions.setValues(numIntervals=10, 
-    maxAutoCompute=OFF, maxValue=0.10, 
-    minAutoCompute=OFF, minValue=0.0,)
+    # session.viewports['Viewport: 1'].odbDisplay.contourOptions.setValues(numIntervals=10, 
+    # maxAutoCompute=OFF, maxValue=0.10, 
+    # minAutoCompute=OFF, minValue=0.0,)
 
     session.viewports['Viewport: 1'].odbDisplay.commonOptions.setValues(
         visibleEdges=FREE)
@@ -69,7 +70,7 @@ for filepath in file_name_list:
     leaf = dgo.LeafFromOdbElementMaterials(elementMaterials=("PLATE", ))
     session.viewports['Viewport: 1'].odbDisplay.displayGroup.remove(leaf=leaf)
 
-        # remove Brain
+        # remove Brain 
     leaf = dgo.LeafFromOdbElementMaterials(elementMaterials=("BR#BRAIN", ))
     session.viewports['Viewport: 1'].odbDisplay.displayGroup.remove(leaf=leaf)
 
@@ -93,8 +94,7 @@ for filepath in file_name_list:
     # leaf = dgo.LeafFromNodeSets(nodeSets=("MAIN_SIDE_A", ))
     # session.viewports['Viewport: 1'].odbDisplay.displayGroup.setByRGB((1,0,0))
 
-    
-    
+
 
     #Make background white
     session.graphicsOptions.setValues(backgroundStyle=SOLID, 
@@ -106,6 +106,8 @@ for filepath in file_name_list:
         meshVisibleEdges=FREE)
     session.viewports['Viewport: 1'].assemblyDisplay.geometryOptions.setValues(
         datumPoints=OFF, datumAxes=OFF, datumPlanes=OFF, datumCoordSystems=OFF)
+
+    #adjusting the view of the skull
     session.viewports['Viewport: 1'].view.fitView()
     session.viewports['Viewport: 1'].view.setValues(nearPlane=404.993, 
         farPlane=735.403, width=518.806, height=179.784, cameraPosition=(289.861, 
@@ -117,152 +119,151 @@ for filepath in file_name_list:
     session.viewports['Viewport: 1'].view.setValues(nearPlane=361.481, 
         farPlane=630.024, width=184.351, height=88.9544, viewOffsetX=0, 
         viewOffsetY=0)
-
     
-    """ start of highlighting code """
-    session.linkedViewportCommands.setValues(_highlightLinkedViewports=True)
+    #start of new highlighting code
     session.viewports['Viewport: 1'].enableMultipleColors()
     session.viewports['Viewport: 1'].setColor(initialColor='#BDBDBD')
     leaf = dgo.LeafFromElementSets(elementSets=('PART-1-1._MATE_CRACK_0_S4'))
     session.viewports['Viewport: 1'].setColor(leaf=leaf, 
-        edgeColorWireHide='#FF0000', edgeColorFillShade='#FF0000', 
-        fillColor='#FF0000' )
+        edgeColorWireHide='#FF0016', edgeColorFillShade='#FF0016', 
+        fillColor='#FF0016' )
     leaf = dgo.LeafFromElementSets(elementSets=('PART-1-1._MATE_CRACK_0_S3'))
     session.viewports['Viewport: 1'].setColor(leaf=leaf, 
-        edgeColorWireHide='#FF0000', edgeColorFillShade='#FF0000', 
-        fillColor='#FF0000' )
+        edgeColorWireHide='#FF0016', edgeColorFillShade='#FF0016', 
+        fillColor='#FF0016' )
     leaf = dgo.LeafFromElementSets(elementSets=('PART-1-1._MATE_CRACK_0_S2'))
     session.viewports['Viewport: 1'].setColor(leaf=leaf, 
-        edgeColorWireHide='#FF0000', edgeColorFillShade='#FF0000', 
-        fillColor='#FF0000' )
+        edgeColorWireHide='#FF0016', edgeColorFillShade='#FF0016', 
+        fillColor='#FF0016' )
     leaf = dgo.LeafFromElementSets(elementSets=('PART-1-1._MATE_CRACK_0_S1'))
     session.viewports['Viewport: 1'].setColor(leaf=leaf, 
-        edgeColorWireHide='#FF0000', edgeColorFillShade='#FF0000', 
-        fillColor='#FF0000' )
+        edgeColorWireHide='#FF0016', edgeColorFillShade='#FF0016', 
+        fillColor='#FF0016' )
     leaf = dgo.LeafFromElementSets(elementSets=('PART-1-1._MAIN_CRACK_0_S4'))
     session.viewports['Viewport: 1'].setColor(leaf=leaf, 
-        edgeColorWireHide='#FF0000', edgeColorFillShade='#FF0000', 
-        fillColor='#FF0000' )
+        edgeColorWireHide='#FF0016', edgeColorFillShade='#FF0016', 
+        fillColor='#FF0016' )
     leaf = dgo.LeafFromElementSets(elementSets=('PART-1-1._MAIN_CRACK_0_S3'))
     session.viewports['Viewport: 1'].setColor(leaf=leaf, 
-        edgeColorWireHide='#FF0000', edgeColorFillShade='#FF0000', 
-        fillColor='#FF0000' )
+        edgeColorWireHide='#FF0016', edgeColorFillShade='#FF0016', 
+        fillColor='#FF0016' )
     leaf = dgo.LeafFromElementSets(elementSets=('PART-1-1._MAIN_CRACK_0_S2'))
     session.viewports['Viewport: 1'].setColor(leaf=leaf, 
-        edgeColorWireHide='#FF0000', edgeColorFillShade='#FF0000', 
-        fillColor='#FF0000' )
+        edgeColorWireHide='#FF0016', edgeColorFillShade='#FF0016', 
+        fillColor='#FF0016' )
     leaf = dgo.LeafFromElementSets(elementSets=('PART-1-1._MAIN_CRACK_0_S1'))
     session.viewports['Viewport: 1'].setColor(leaf=leaf, 
-        edgeColorWireHide='#FF0000', edgeColorFillShade='#FF0000', 
-        fillColor='#FF0000' )
+        edgeColorWireHide='#FF0016', edgeColorFillShade='#FF0016', 
+        fillColor='#FF0016' )
     leaf = dgo.LeafFromElementSets(elementSets=('_CRACK_MATE_SIDE_A_S4'))
     session.viewports['Viewport: 1'].setColor(leaf=leaf, 
-        edgeColorWireHide='#FF0000', edgeColorFillShade='#FF0000', 
-        fillColor='#FF0000' )
+        edgeColorWireHide='#FF0016', edgeColorFillShade='#FF0016', 
+        fillColor='#FF0016' )
     leaf = dgo.LeafFromElementSets(elementSets=('_CRACK_MATE_SIDE_A_S3'))
     session.viewports['Viewport: 1'].setColor(leaf=leaf, 
-        edgeColorWireHide='#FF0000', edgeColorFillShade='#FF0000', 
-        fillColor='#FF0000' )
+        edgeColorWireHide='#FF0016', edgeColorFillShade='#FF0016', 
+        fillColor='#FF0016' )
     leaf = dgo.LeafFromElementSets(elementSets=('_CRACK_MATE_SIDE_A_S2'))
     session.viewports['Viewport: 1'].setColor(leaf=leaf, 
-        edgeColorWireHide='#FF0000', edgeColorFillShade='#FF0000', 
-        fillColor='#FF0000' )
+        edgeColorWireHide='#FF0016', edgeColorFillShade='#FF0016', 
+        fillColor='#FF0016' )
     leaf = dgo.LeafFromElementSets(elementSets=('_CRACK_MATE_SIDE_A_S1'))
     session.viewports['Viewport: 1'].setColor(leaf=leaf, 
-        edgeColorWireHide='#FF0000', edgeColorFillShade='#FF0000', 
-        fillColor='#FF0000' )
+        edgeColorWireHide='#FF0016', edgeColorFillShade='#FF0016', 
+        fillColor='#FF0016' )
     leaf = dgo.LeafFromElementSets(elementSets=('_CRACK_MAIN_SIDE_A_S4'))
     session.viewports['Viewport: 1'].setColor(leaf=leaf, 
-        edgeColorWireHide='#FF0000', edgeColorFillShade='#FF0000', 
-        fillColor='#FF0000' )
+        edgeColorWireHide='#FF0016', edgeColorFillShade='#FF0016', 
+        fillColor='#FF0016' )
     leaf = dgo.LeafFromElementSets(elementSets=('_CRACK_MAIN_SIDE_A_S3'))
     session.viewports['Viewport: 1'].setColor(leaf=leaf, 
-        edgeColorWireHide='#FF0000', edgeColorFillShade='#FF0000', 
-        fillColor='#FF0000' )
+        edgeColorWireHide='#FF0016', edgeColorFillShade='#FF0016', 
+        fillColor='#FF0016' )
     leaf = dgo.LeafFromElementSets(elementSets=('_CRACK_MAIN_SIDE_A_S2'))
     session.viewports['Viewport: 1'].setColor(leaf=leaf, 
-        edgeColorWireHide='#FF0000', edgeColorFillShade='#FF0000', 
-        fillColor='#FF0000' )
+        edgeColorWireHide='#FF0016', edgeColorFillShade='#FF0016', 
+        fillColor='#FF0016' )
     leaf = dgo.LeafFromElementSets(elementSets=('_CRACK_MAIN_SIDE_A_S1'))
     session.viewports['Viewport: 1'].setColor(leaf=leaf, 
-        edgeColorWireHide='#FF0000', edgeColorFillShade='#FF0000', 
-        fillColor='#FF0000' )
+        edgeColorWireHide='#FF0016', edgeColorFillShade='#FF0016', 
+        fillColor='#FF0016' )
     session.viewports['Viewport: 1'].disableMultipleColors()
     session.viewports['Viewport: 1'].enableMultipleColors()
     session.viewports['Viewport: 1'].setColor(initialColor='#BDBDBD')
     leaf = dgo.LeafFromElementSets(elementSets=('PART-1-1._MATE_CRACK_0_S4'))
     session.viewports['Viewport: 1'].setColor(leaf=leaf, 
-        edgeColorWireHide='#FF0000', edgeColorFillShade='#FF0000', 
-        fillColor='#FF0000' )
+        edgeColorWireHide='#FF0016', edgeColorFillShade='#FF0016', 
+        fillColor='#FF0016' )
     leaf = dgo.LeafFromElementSets(elementSets=('PART-1-1._MATE_CRACK_0_S3'))
     session.viewports['Viewport: 1'].setColor(leaf=leaf, 
-        edgeColorWireHide='#FF0000', edgeColorFillShade='#FF0000', 
-        fillColor='#FF0000' )
+        edgeColorWireHide='#FF0016', edgeColorFillShade='#FF0016', 
+        fillColor='#FF0016' )
     leaf = dgo.LeafFromElementSets(elementSets=('PART-1-1._MATE_CRACK_0_S2'))
     session.viewports['Viewport: 1'].setColor(leaf=leaf, 
-        edgeColorWireHide='#FF0000', edgeColorFillShade='#FF0000', 
-        fillColor='#FF0000' )
+        edgeColorWireHide='#FF0016', edgeColorFillShade='#FF0016', 
+        fillColor='#FF0016' )
     leaf = dgo.LeafFromElementSets(elementSets=('PART-1-1._MATE_CRACK_0_S1'))
     session.viewports['Viewport: 1'].setColor(leaf=leaf, 
-        edgeColorWireHide='#FF0000', edgeColorFillShade='#FF0000', 
-        fillColor='#FF0000' )
+        edgeColorWireHide='#FF0016', edgeColorFillShade='#FF0016', 
+        fillColor='#FF0016' )
     leaf = dgo.LeafFromElementSets(elementSets=('PART-1-1._MAIN_CRACK_0_S4'))
     session.viewports['Viewport: 1'].setColor(leaf=leaf, 
-        edgeColorWireHide='#FF0000', edgeColorFillShade='#FF0000', 
-        fillColor='#FF0000' )
+        edgeColorWireHide='#FF0016', edgeColorFillShade='#FF0016', 
+        fillColor='#FF0016' )
     leaf = dgo.LeafFromElementSets(elementSets=('PART-1-1._MAIN_CRACK_0_S3'))
     session.viewports['Viewport: 1'].setColor(leaf=leaf, 
-        edgeColorWireHide='#FF0000', edgeColorFillShade='#FF0000', 
-        fillColor='#FF0000' )
+        edgeColorWireHide='#FF0016', edgeColorFillShade='#FF0016', 
+        fillColor='#FF0016' )
     leaf = dgo.LeafFromElementSets(elementSets=('PART-1-1._MAIN_CRACK_0_S2'))
     session.viewports['Viewport: 1'].setColor(leaf=leaf, 
-        edgeColorWireHide='#FF0000', edgeColorFillShade='#FF0000', 
-        fillColor='#FF0000' )
+        edgeColorWireHide='#FF0016', edgeColorFillShade='#FF0016', 
+        fillColor='#FF0016' )
     leaf = dgo.LeafFromElementSets(elementSets=('PART-1-1._MAIN_CRACK_0_S1'))
     session.viewports['Viewport: 1'].setColor(leaf=leaf, 
-        edgeColorWireHide='#FF0000', edgeColorFillShade='#FF0000', 
-        fillColor='#FF0000' )
+        edgeColorWireHide='#FF0016', edgeColorFillShade='#FF0016', 
+        fillColor='#FF0016' )
     leaf = dgo.LeafFromElementSets(elementSets=('_CRACK_MATE_SIDE_A_S4'))
     session.viewports['Viewport: 1'].setColor(leaf=leaf, 
-        edgeColorWireHide='#FF0000', edgeColorFillShade='#FF0000', 
-        fillColor='#FF0000' )
+        edgeColorWireHide='#FF0016', edgeColorFillShade='#FF0016', 
+        fillColor='#FF0016' )
     leaf = dgo.LeafFromElementSets(elementSets=('_CRACK_MATE_SIDE_A_S3'))
     session.viewports['Viewport: 1'].setColor(leaf=leaf, 
-        edgeColorWireHide='#FF0000', edgeColorFillShade='#FF0000', 
-        fillColor='#FF0000' )
+        edgeColorWireHide='#FF0016', edgeColorFillShade='#FF0016', 
+        fillColor='#FF0016' )
     leaf = dgo.LeafFromElementSets(elementSets=('_CRACK_MATE_SIDE_A_S2'))
     session.viewports['Viewport: 1'].setColor(leaf=leaf, 
-        edgeColorWireHide='#FF0000', edgeColorFillShade='#FF0000', 
-        fillColor='#FF0000' )
+        edgeColorWireHide='#FF0016', edgeColorFillShade='#FF0016', 
+        fillColor='#FF0016' )
     leaf = dgo.LeafFromElementSets(elementSets=('_CRACK_MATE_SIDE_A_S1'))
     session.viewports['Viewport: 1'].setColor(leaf=leaf, 
-        edgeColorWireHide='#FF0000', edgeColorFillShade='#FF0000', 
-        fillColor='#FF0000' )
+        edgeColorWireHide='#FF0016', edgeColorFillShade='#FF0016', 
+        fillColor='#FF0016' )
     leaf = dgo.LeafFromElementSets(elementSets=('_CRACK_MAIN_SIDE_A_S4'))
     session.viewports['Viewport: 1'].setColor(leaf=leaf, 
-        edgeColorWireHide='#FF0000', edgeColorFillShade='#FF0000', 
-        fillColor='#FF0000' )
+        edgeColorWireHide='#FF0016', edgeColorFillShade='#FF0016', 
+        fillColor='#FF0016' )
     leaf = dgo.LeafFromElementSets(elementSets=('_CRACK_MAIN_SIDE_A_S3'))
     session.viewports['Viewport: 1'].setColor(leaf=leaf, 
-        edgeColorWireHide='#FF0000', edgeColorFillShade='#FF0000', 
-        fillColor='#FF0000' )
+        edgeColorWireHide='#FF0016', edgeColorFillShade='#FF0016', 
+        fillColor='#FF0016' )
     leaf = dgo.LeafFromElementSets(elementSets=('_CRACK_MAIN_SIDE_A_S2'))
     session.viewports['Viewport: 1'].setColor(leaf=leaf, 
-        edgeColorWireHide='#FF0000', edgeColorFillShade='#FF0000', 
-        fillColor='#FF0000' )
+        edgeColorWireHide='#FF0016', edgeColorFillShade='#FF0016', 
+        fillColor='#FF0016' )
     leaf = dgo.LeafFromElementSets(elementSets=('_CRACK_MAIN_SIDE_A_S1'))
     session.viewports['Viewport: 1'].setColor(leaf=leaf, 
-        edgeColorWireHide='#FF0000', edgeColorFillShade='#FF0000', 
-        fillColor='#FF0000' )
+        edgeColorWireHide='#FF0016', edgeColorFillShade='#FF0016', 
+        fillColor='#FF0016' )
     session.viewports['Viewport: 1'].disableMultipleColors()
 
+    #end of new highlighting code
 
-    """ end of highlighting code """
     
     image_name = model_name + '.png'
     destination_dir = destination_file+new_dir
     if not os.path.exists(destination_dir):
         os.mkdir(destination_dir)
+    #session.printOptions.setValues(vpDecorations=OFF)
     session.printOptions.setValues(reduceColors=False)
     session.printToFile(fileName=destination_dir+'/'+image_name, format=PNG, canvasObjects=(
         session.viewports['Viewport: 1'], ))
