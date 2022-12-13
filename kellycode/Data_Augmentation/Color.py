@@ -38,9 +38,7 @@ def color_image_and_save(image_name, pathname1, pathname2):
     # img.save(new_img)
     return [img, new_img]
 
-if __name__ == "__main__":
-    pathname1 = 'C:\\Users\\u1056\\sfx\\images_sfx\\With_Width_only_parietal\\OG'
-    pathname2 = 'C:\\Users\\u1056\\sfx\\images_sfx\\With_Width_only_parietal\\' 
+def Color(pathname1, pathname2):
     image_name_list = []
     for root, dirs, files in os.walk(pathname1):
         # select file name

@@ -128,7 +128,7 @@ def prepare_data(parent_folder_name, augmentation_list):
     return [image_path_list, height_list, phi_list, theta_list, input_shape, img_arr_list]
 
 
-def make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=1000, optimizer="adam", activation="relu", kernel_size=(5,5)):
+def make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=1000, optimizer="adam", activation="relu", kernel_size=(5,5), plot = True):
     #TODO: do this for phi and theta later
     #shuffles the dataset and puts it into a dataframe
     if(label_to_predict == "height"):
@@ -193,34 +193,59 @@ def make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=1000,
         shuffle=False
     )
 
+    #TODO check out examples in this stack overflow article:
+    #https://stackoverflow.com/questions/45528285/cnn-image-recognition-with-regression-output-on-tensorflow
 
-
-    """ start training """
-    inputs = tf.keras.Input(shape=args[4]) #not sure if the shape is right here. i got (256, 256, 1) by looking at train_images.image_shape
-                                                #trying (642, 802, 3) by looking at img_arr_list[0].shape
-                                                #tryig  (256, 256, 3) by looking at train_images[0][0].shape
-    #TODO: layers study
-    x = tf.keras.layers.Conv2D(filters=16, kernel_size=kernel_size, activation='relu')(inputs)
-    x = tf.keras.layers.MaxPool2D()(x) #takes the max of each window to reduce the size of the image... dont know if i need this...
-    x = tf.keras.layers.Conv2D(filters=32, kernel_size=kernel_size, activation='relu')(inputs)
-    x = tf.keras.layers.MaxPool2D()(x)
-    # x = tf.keras.layers.Conv2D(filters=64, kernel_size=(5,5), activation='relu')(inputs)
+    # """ start training """
+    # inputs = tf.keras.Input(shape=args[4]) #not sure if the shape is right here. i got (256, 256, 1) by looking at train_images.image_shape
+    #                                             #trying (642, 802, 3) by looking at img_arr_list[0].shape
+    #                                             #tryig  (256, 256, 3) by looking at train_images[0][0].shape
+    # #TODO: layers study
+    # x = tf.keras.layers.Conv2D(filters=16, kernel_size=kernel_size, activation='relu')(inputs)
+    # x = tf.keras.layers.Conv2D(filters=16, kernel_size=kernel_size, activation='relu')(inputs)
+    # x = tf.keras.layers.MaxPool2D()(x) #takes the max of each window to reduce the size of the image... dont know if i need this...
+    # x = tf.keras.layers.Conv2D(filters=32, kernel_size=kernel_size, activation='relu')(inputs)
+    # x = tf.keras.layers.Conv2D(filters=32, kernel_size=kernel_size, activation='relu')(inputs)
     # x = tf.keras.layers.MaxPool2D()(x)
-    # x = tf.keras.layers.Conv2D(filters=128, kernel_size=(5,5), activation='relu')(inputs)
+    # x = tf.keras.layers.Conv2D(filters=64, kernel_size=kernel_size, activation='relu')(inputs)
+    # x = tf.keras.layers.MaxPool2D()(x)
+    # x = tf.keras.layers.Conv2D(filters=128, kernel_size=kernel_size, activation='relu')(inputs)
+    # x = tf.keras.layers.MaxPool2D()(x)
+    # x = tf.keras.layers.Conv2D(filters=256, kernel_size=kernel_size, activation='relu')(inputs)
+    # x = tf.keras.layers.MaxPool2D()(x)
+    # x = tf.keras.layers.Conv2D(filters=512, kernel_size=kernel_size, activation='relu')(inputs)
     # x = tf.keras.layers.MaxPool2D()(x)
 
-    x = tf.keras.layers.GlobalAveragePooling2D()(x) #could try GlobalMaxPooling2D instead
-    x = tf.keras.layers.Flatten()(x)
-    x = tf.keras.layers.Dense(64, activation='relu')(x) #TODO: figure out why these are here
-    #x = tf.keras.layers.Dense(64, activation='relu')(x) #TODO: figure out why these are here
-    outputs = tf.keras.layers.Dense(1, activation='linear')(x)
-    model = tf.keras.Model(inputs=inputs, outputs=outputs)
+    # x = tf.keras.layers.GlobalAveragePooling2D()(x) #could try GlobalMaxPooling2D instead
+    # x = tf.keras.layers.Flatten()(x)
+    # x = tf.keras.layers.Dense(64, activation='relu')(x) #TODO: figure out why these are here
+    # #x = tf.keras.layers.Dense(64, activation='relu')(x) #TODO: figure out why these are here
+    # outputs = tf.keras.layers.Dense(1, activation='linear')(x)
+    # model = tf.keras.Model(inputs=inputs, outputs=outputs)
 
-
+    #https://datascience.stackexchange.com/questions/106600/how-to-perform-regression-on-image-data-using-tensorflow
+    model = tf.keras.Sequential([
+    tf.keras.layers.Conv2D(3, 3, activation='relu'),
+    tf.keras.layers.Conv2D(3, 3, activation='relu'),
+    tf.keras.layers.MaxPooling2D(2),
+    tf.keras.layers.Conv2D(3, 3, activation='relu'),
+    tf.keras.layers.Conv2D(3, 3, activation='relu'),
+    tf.keras.layers.Dropout(0.1), #TODO: study dropout rates and frequency of dropouts. Dropouts are supposed to reduce overfitting. generally increase dropout rate in the later layers, and reduce for initial layers
+    tf.keras.layers.MaxPooling2D(2),
+    tf.keras.layers.Conv2D(3, 3, activation='relu'),
+    tf.keras.layers.Conv2D(3, 3, activation='relu'),
+    tf.keras.layers.Flatten(),
+    tf.keras.layers.Dense(units=1024, activation='relu'),
+    tf.keras.layers.Dense(units=512, activation='relu'),
+    tf.keras.layers.Dense(units=256, activation='relu'),
+    tf.keras.layers.Dense(units=64, activation='relu'),
+    tf.keras.layers.Dense(units=1)
+    ])
+    #https://datascience.stackexchange.com/questions/106600/how-to-perform-regression-on-image-data-using-tensorflow
 
     model.compile(
         optimizer=tf.keras.optimizers.Adam(),
-        loss='mae'
+        loss='mae' #could change back to mae
     )
 
 
@@ -235,34 +260,18 @@ def make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=1000,
                 patience=patience,
                 restore_best_weights=True
             )
-        ]
+        ],
+        verbose=1
     )
+
 
     test_labels = test_images.labels
     train_labels = train_images.labels
 
-    # plt.plot(history.history['loss'], label='loss (mean absolute error)')
-    # plt.plot(history.history['val_loss'], label='val_loss')
-    # #plt.ylim([0, 4])
-    # plt.xlabel('Epoch')
-    # plt.ylabel('Error [deg]')
-    # plt.legend()
-    # plt.grid(True)
-    # plt.show()
-
-
     # """ makes predictions with the test dataset and plots them. Good predictions should lie on the line. """
     test_predictions = np.squeeze(model.predict(test_images))
-
-    # a = plt.axes(aspect='equal')
-    # plt.scatter(test_labels, test_predictions)
-    # plt.xlabel('True labels')
-    # plt.ylabel('Predicted labels')
-    # lims = [0, max(test_labels)]
-    # plt.xlim(lims)
-    # plt.ylim(lims)
-    # _ = plt.plot(lims, lims)
-    # plt.show()
+    if(plot == True):
+        plot_stuff(test_images, train_images, history, test_predictions)
 
     """ gets r^2 value of the test dataset with the predictions made from above ^ """
     metric = tfa.metrics.r_square.RSquare()
@@ -282,19 +291,54 @@ def make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=1000,
     return [history, model, training_result.numpy(), test_result.numpy()]
 
 
-label_to_predict = "phi"
-parent_folder_name = "With_Width_only_parietal"
-augmentations = ["OG", "Posterize", "Color", "Flipping", "Rotation", "Solarize"]
 
-results = {}
-for i in range(1, len(augmentations)):
-    augmentation_list = [augmentations[0], augmentations[i]]
-    args = prepare_data(parent_folder_name, augmentation_list)
-    result = make_CNN(args, label_to_predict, batch_size=5, patience=20, max_epochs=100, optimizer="Nadam", activation="relu", kernel_size=(10,10))
-    results[augmentations[i]] = [min(result[0].history['val_loss']), min(result[0].history['loss']), result[2], result[3]]
 
-print(results)
-print("done")
+def plot_stuff(test_images, train_images, history, test_predictions):
+    test_labels = test_images.labels
+    train_labels = train_images.labels
+
+    plt.plot(history.history['loss'], label='loss (mean absolute error)')
+    plt.plot(history.history['val_loss'], label='val_loss')
+    #plt.ylim([0, 4])
+    plt.xlabel('Epoch')
+    plt.ylabel('Error [deg]')
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+
+    a = plt.axes(aspect='equal')
+    plt.scatter(test_labels, test_predictions)
+    plt.xlabel('True labels')
+    plt.ylabel('Predicted labels')
+    lims = [0, max(test_labels)]
+    plt.xlim(lims)
+    plt.ylim(lims)
+    _ = plt.plot(lims, lims)
+    plt.show()
+
+
+
+label_to_predict = "theta"
+parent_folder_name = "With_Width"
+# parent_folder_name = "Highlighted_only_Parietal"
+augmentation_list = ["OG", "Posterize", "Color", "Flipping", "Rotation", "Solarize"]
+args = prepare_data(parent_folder_name, augmentation_list)
+result = make_CNN(args, label_to_predict, batch_size=5, patience=50, max_epochs=500, optimizer="Nadam", activation="relu", kernel_size=(3,3)) #smaller kernel size leads to better results usually.
+print(result)
+
+# label_to_predict = "phi"
+# parent_folder_name = "With_Width_only_parietal"
+# augmentations = ["OG", "Posterize", "Color", "Flipping", "Rotation", "Solarize"]
+
+# results = {}
+# for i in range(1, len(augmentations)):
+#     augmentation_list = [augmentations[0], augmentations[i]]
+#     args = prepare_data(parent_folder_name, augmentation_list)
+#     result = make_CNN(args, label_to_predict, batch_size=5, patience=20, max_epochs=100, optimizer="Nadam", activation="relu", kernel_size=(10,10))
+#     results[augmentations[i]] = [min(result[0].history['val_loss']), min(result[0].history['loss']), result[2], result[3]]
+
+# print(results)
+# print("done")
 
 
 

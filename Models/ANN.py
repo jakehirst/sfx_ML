@@ -255,21 +255,21 @@ def Prepare_Full_Df(csv_name, label_to_predict):
 
 # args = prepare_data_Kfold("OG_dataframe.csv", "height", epochs=1000)
 # Full_df = Prepare_Full_Df("OG_dataframe.csv", "height")
-# run_Kfold_ANN(args, Full_df, activation = "sigmoid")
+# run_Kfold_ANN(args, Full_df, activation = "relu")
 # args = prepare_data_Kfold("OG_dataframe.csv", "height", epochs=1000, features_to_drop=["front 0 x", "front 0 y", "front 0 z", "front 1 z", "init y", "linearity"])
-# run_Kfold_ANN(args, Full_df, activation = "sigmoid")
+# run_Kfold_ANN(args, Full_df, activation = "relu")
 
-Full_df = Prepare_Full_Df("OG_dataframe.csv", "phi")
-args = prepare_data_Kfold("OG_dataframe.csv", "phi", epochs=1000)
-run_Kfold_ANN(args, Full_df, "sigmoid")
-args = prepare_data_Kfold("OG_dataframe.csv", "phi", epochs=1000, features_to_drop=["front 1 x", "dist btw frts"])
-run_Kfold_ANN(args, Full_df, "sigmoid")
-
+# Full_df = Prepare_Full_Df("OG_dataframe.csv", "phi")
+# args = prepare_data_Kfold("OG_dataframe.csv", "phi", epochs=1000)
+# run_Kfold_ANN(args, Full_df, "relu")
+# args = prepare_data_Kfold("OG_dataframe.csv", "phi", epochs=1000, features_to_drop=["front 1 x", "dist btw frts", "crack len"])
+# run_Kfold_ANN(args, Full_df, "relu")
+ 
 # Full_df = Prepare_Full_Df("OG_dataframe.csv", "theta")
 # args = prepare_data_Kfold("OG_dataframe.csv", "theta", epochs=1000)
-# run_Kfold_ANN(args, Full_df, activation="sigmoid")
+# run_Kfold_ANN(args, Full_df, activation="relu")
 # args = prepare_data_Kfold("OG_dataframe.csv", "theta", epochs=1000, features_to_drop=["front 0 x", "init x"])
-# run_Kfold_ANN(args, Full_df, activation="sigmoid")
+# run_Kfold_ANN(args, Full_df, activation="relu")
 
 # make_ANN("OG_dataframe_cartesian.csv", "height", epochs=100, features_to_drop=["front 0 x", "front 0 y", "front 0 z", "front 1 z", "init y", "linearity"])
 # make_ANN("OG_dataframe.csv", "phi", epochs=120)
