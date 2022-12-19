@@ -1,5 +1,4 @@
 from Posterize import *
-from Color import *
 from Rotation import *
 from verticalflip import *
 from horizontal_and_verticalflip import *
@@ -35,6 +34,5 @@ horizontal_and_verticalflip(pathname1, pathname2)
 rotate(pathname1, pathname2)
 posterize(pathname1, pathname2)
 solarize(pathname1, pathname2)
-Color(pathname1, pathname2)
 
 

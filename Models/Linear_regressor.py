@@ -33,7 +33,7 @@ def make_linear_model(df_filename, label_to_predict, epochs, features_to_drop=No
         print(df)
 
     """ sampling the dataset randomly """
-    train_dataset = df.sample(frac=0.8, random_state=0)
+    train_dataset = df.sample(frac=0.8, random_state=1)
     test_dataset = df.drop(train_dataset.index)
     columns = df.columns
     #sns.pairplot(train_dataset[columns], diag_kind='kde') #doesnt work...
@@ -86,35 +86,13 @@ def make_linear_model(df_filename, label_to_predict, epochs, features_to_drop=No
         # Calculate validation results on 20% of the training data.
         validation_split = 0.2)
 
+    """ makes predictions with the test dataset and plots them. Good predictions should lie on the line. """
+    test_predictions = linear_model.predict(test_features).flatten()
+
     print("minimum MAE: ")
     print(min(history.history['loss']))
     print("minimum validation MAE: ")
     print(min(history.history['val_loss']))
-
-    plt.plot(history.history['loss'], label='loss (mean absolute error)')
-    plt.plot(history.history['val_loss'], label='val_loss')
-    #plt.ylim([0, 4])
-    plt.xlabel('Epoch')
-    plt.ylabel('Error [deg]')
-    plt.legend()
-    plt.grid(True)
-    plt.show()
-
-
-    """ makes predictions with the test dataset and plots them. Good predictions should lie on the line. """
-    test_predictions = linear_model.predict(test_features).flatten()
-
-    a = plt.axes(aspect='equal')
-    plt.scatter(test_labels, test_predictions)
-    plt.xlabel('True labels')
-    plt.ylabel('Predicted labels')
-    lims = [0, max(test_labels)]
-    plt.xlim(lims)
-    plt.ylim(lims)
-    _ = plt.plot(lims, lims)
-    plt.show()
-
-
     """ gets r^2 value of the test dataset with the predictions made from above ^ """
     metric = tfa.metrics.r_square.RSquare()
     metric.update_state(test_labels, test_predictions)
@@ -129,12 +107,38 @@ def make_linear_model(df_filename, label_to_predict, epochs, features_to_drop=No
     result = metric.result()
     print("Training R^2 = " + str(result.numpy()))
 
-# make_linear_model("OG_dataframe_cartesian.csv", "height", epochs=100)
+    plt.plot(history.history['loss'], label='loss (mean absolute error)')
+    plt.plot(history.history['val_loss'], label='val_loss')
+    #plt.ylim([0, 4])
+    plt.xlabel('Epoch')
+    plt.ylabel('loss')
+    plt.title(label_to_predict)
+    plt.legend()
+    plt.grid(True)
+    plt.show()
+
+
+
+    a = plt.axes(aspect='equal')
+    plt.scatter(test_labels, test_predictions)
+    plt.xlabel('True labels')
+    plt.ylabel('Predicted labels')
+    plt.title(label_to_predict)
+    lims = [0, max(test_labels)]
+    plt.xlim(lims)
+    plt.ylim(lims)
+    _ = plt.plot(lims, lims)
+    plt.show()
+
+
+
+
+make_linear_model("OG_dataframe_cartesian.csv", "height", epochs=100)
 # make_linear_model("OG_dataframe_cartesian.csv", "height", epochs=100, features_to_drop=["front 0 x", "front 0 y", "front 0 z", "front 1 z", "linearity"])
 # make_linear_model("OG_dataframe_cartesian.csv", "x", epochs=20)
 # make_linear_model("OG_dataframe_cartesian.csv", "y", epochs=50)
 # make_linear_model("OG_dataframe_cartesian.csv", "z", epochs=50)
-# make_linear_model("OG_dataframe.csv", "phi", epochs=1000)
+make_linear_model("OG_dataframe.csv", "phi", epochs=1000)
 # make_linear_model("OG_dataframe.csv", "phi", epochs=1000, features_to_drop=["front 0 x", "front 0 y", "front 0 z", "dist btw frts"])
 # make_linear_model("OG_dataframe.csv", "theta", epochs=1500)
 make_linear_model("OG_dataframe.csv", "theta", epochs=1500, features_to_drop=["front 0 y", "front 1 x", "init x", "crack len"])

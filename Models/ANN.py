@@ -208,7 +208,8 @@ def make_ANN(train_features, train_labels, test_features, test_labels, epochs, a
     plt.plot(history.history['val_loss'], label='val_loss')
     #plt.ylim([0, 4])
     plt.xlabel('Epoch')
-    plt.ylabel('Error [deg]')
+    plt.ylabel('loss')
+    plt.title("theta")
     plt.legend()
     plt.grid(True)
     plt.show()
@@ -221,6 +222,7 @@ def make_ANN(train_features, train_labels, test_features, test_labels, epochs, a
     plt.scatter(test_labels, test_predictions)
     plt.xlabel('True labels')
     plt.ylabel('Predicted labels')
+    plt.title("theta")
     lims = [0, max(test_labels)]
     plt.xlim(lims)
     plt.ylim(lims)
@@ -232,7 +234,7 @@ def make_ANN(train_features, train_labels, test_features, test_labels, epochs, a
     metric = tfa.metrics.r_square.RSquare()
     metric.update_state(test_labels, test_predictions)
     training_result = metric.result()
-    print("Test R^2 = " + str(training_result.numpy()))
+    print("Training R^2 = " + str(training_result.numpy()))
 
 
     """ gets r^2 value of the training dataset """
@@ -240,7 +242,7 @@ def make_ANN(train_features, train_labels, test_features, test_labels, epochs, a
     metric = tfa.metrics.r_square.RSquare()
     metric.update_state(train_labels, training_predictions)
     test_result = metric.result()
-    print("Training R^2 = " + str(test_result.numpy()))
+    print("Test R^2 = " + str(test_result.numpy()))
     return {"Training R^2": training_result.numpy(), "Test R^2": test_result.numpy(), "history": history, "model": model}
 
 
@@ -262,12 +264,12 @@ def Prepare_Full_Df(csv_name, label_to_predict):
 # Full_df = Prepare_Full_Df("OG_dataframe.csv", "phi")
 # args = prepare_data_Kfold("OG_dataframe.csv", "phi", epochs=1000)
 # run_Kfold_ANN(args, Full_df, "relu")
-# args = prepare_data_Kfold("OG_dataframe.csv", "phi", epochs=1000, features_to_drop=["front 1 x", "dist btw frts", "crack len"])
-# run_Kfold_ANN(args, Full_df, "relu")
+# # args = prepare_data_Kfold("OG_dataframe.csv", "phi", epochs=1000, features_to_drop=["front 1 x", "dist btw frts", "crack len"])
+# # run_Kfold_ANN(args, Full_df, "relu")
  
-# Full_df = Prepare_Full_Df("OG_dataframe.csv", "theta")
-# args = prepare_data_Kfold("OG_dataframe.csv", "theta", epochs=1000)
-# run_Kfold_ANN(args, Full_df, activation="relu")
+Full_df = Prepare_Full_Df("OG_dataframe.csv", "theta")
+args = prepare_data_Kfold("OG_dataframe.csv", "theta", epochs=1000)
+run_Kfold_ANN(args, Full_df, activation="relu")
 # args = prepare_data_Kfold("OG_dataframe.csv", "theta", epochs=1000, features_to_drop=["front 0 x", "init x"])
 # run_Kfold_ANN(args, Full_df, activation="relu")
 
