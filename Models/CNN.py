@@ -33,20 +33,23 @@ def get_images(pathname, image_name_list):
 
 def prepare_data(parent_folder_name, augmentation_list):
     image_name_list = []
-    for folder in augmentation_list:
-        image_name_list = get_images('C:\\Users\\u1056\\sfx\\images_sfx\\' + parent_folder_name + "\\" + folder, image_name_list)
+    image_name_list = get_images('C:\\Users\\u1056\\sfx\\images_sfx\\' + parent_folder_name + "\\" + "OG", image_name_list)
+    # for folder in augmentation_list:
+    #     image_name_list = get_images('C:\\Users\\u1056\\sfx\\images_sfx\\' + parent_folder_name + "\\" + folder, image_name_list)
 
     #finds the max uci and step for each fall parameter image folder
     max_steps_and_UCIs = dict()
     for image_path in image_name_list:
         #if(image_path.endswith("Dynamic.png") or image_path.split("_")[-2] == "Dynamic"):
         if(image_path.endswith("Dynamic.png")):
+            # if(image_path.__contains__("Para_2ft_PHI_30_THETA_135")):
+            #     print(image_path)
             image_name = image_path.split("\\")[-1]
             folder_name = image_path.split("\\")[-2]
             UCI = int(image_name.split("_")[2])
             step = int(image_name.split("_")[0].split("p")[1])
             if(not (folder_name in max_steps_and_UCIs.keys())):
-                max_steps_and_UCIs[folder_name] = [0, 0]
+                max_steps_and_UCIs[folder_name] = [step, UCI]
             else:
                 if(step > max_steps_and_UCIs[folder_name][0]):
                     max_steps_and_UCIs[folder_name] = [step, UCI]
@@ -105,6 +108,31 @@ def prepare_data(parent_folder_name, augmentation_list):
     return [image_path_list, height_list, phi_list, theta_list, input_shape, img_arr_list]
 
 
+
+def add_augmentations(df, augmentation_list):
+    image_name_list = []
+    new_df = df
+    augmentation_list.remove("OG")
+    for folder in augmentation_list:
+        for row in df.iterrows():
+            OG_picture_step_UCI = row[1]["Filepath"].split("\\")[-1].split(".")[0]
+            parameters = row[1]["Filepath"].split("\\")[-2]
+            label = row[1][df.columns[1]]
+
+            pathname = 'C:\\Users\\u1056\\sfx\\images_sfx\\' + parent_folder_name + "\\" + folder
+            for root, dirs, files in os.walk(pathname):
+            # select file name
+                for file in files:
+                    # check the extension of files
+                    if file.endswith('.png'):
+                        if file.find("mesh")==-1:
+                            if((OG_picture_step_UCI in file) and (parameters in root)):
+                                path = os.path.join(root, file)
+                                new_df = new_df.append({'Filepath':str(path), df.columns[1]:label}, ignore_index=True) #DONT use pd.concat here... it changes the type of things in the dataframe
+
+    return new_df
+
+
 def remove_augmentations(images):
     indexes_to_delete = []
     for i in range(images.n):
@@ -112,10 +140,11 @@ def remove_augmentations(images):
             indexes_to_delete.append(i)
     
     images.filenames = np.delete(images.filenames, indexes_to_delete)
-    images.filepaths = np.delete(images.filepaths, indexes_to_delete)
+    images.filepaths = (np.delete(np.array(images.filepaths), indexes_to_delete)).tolist()
     images.labels = np.delete(images.labels, indexes_to_delete)
-    images._filepaths = np.delete(images._filepaths, indexes_to_delete)
+    images._filepaths = (np.delete(np.array(images._filepaths), indexes_to_delete)).tolist()
     images._targets = np.delete(images._targets, indexes_to_delete)
+
 
     return images
 
@@ -158,12 +187,24 @@ def make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=1000,
 
         train_generator = tf.keras.preprocessing.image.ImageDataGenerator(
             rescale = 1./255, #all pixel values set between 0 and 1 instead of 0 and 255.
-            validation_split=0.2 #creating a validation split in our training generator
+            #validation_split=0.2 #creating a validation split in our training generator
+        )
+
+        val_generator = tf.keras.preprocessing.image.ImageDataGenerator(
+            rescale = 1./255,
         )
 
         test_generator = tf.keras.preprocessing.image.ImageDataGenerator(
             rescale = 1./255, #all pixel values set between 0 and 1 instead of 0 and 255.
         )
+
+        #creating a validation set
+        val_df = train_df.sample(frac=0.2)
+        #removing the validation set from the training set
+        train_df = train_df.drop(val_df.index)
+        #adding data augmentation to training dataset
+        train_df = add_augmentations(train_df, augmentation_list)
+
 
         #flow the images through the generators
         train_images = train_generator.flow_from_dataframe(
@@ -176,11 +217,10 @@ def make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=1000,
             batch_size=batch_size, #can increase this to up to like 10 or so for how much data we have
             shuffle=True,
             seed=42,
-            subset='training'
         )
 
-        val_images = train_generator.flow_from_dataframe(
-            dataframe=train_df,
+        val_images = val_generator.flow_from_dataframe(
+            dataframe=val_df,
             x_col = 'Filepath',
             y_col = label_to_predict,
             target_size=args[4][:2], #can reduce the images to a certain size to reduce training time. 120x120 for example here
@@ -189,7 +229,6 @@ def make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=1000,
             batch_size=batch_size, #can increase this to up to like 10 or so for how much data we have
             shuffle=True,
             seed=42,
-            subset='validation'
         )
 
         test_images = test_generator.flow_from_dataframe(
@@ -202,9 +241,6 @@ def make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=1000,
             batch_size=batch_size, #can increase this to up to like 10 or so for how much data we have
             shuffle=False
         )
-
-        test_images = remove_augmentations(test_images)
-        val_images = remove_augmentations(val_images)
 
         #TODO check out examples in this stack overflow article:
         #https://stackoverflow.com/questions/45528285/cnn-image-recognition-with-regression-output-on-tensorflow
@@ -333,7 +369,7 @@ def plot_stuff(test_images, train_images, history, trainr2, testr2, test_predict
     plt.legend()
     plt.grid(True)
     fig.text(.5, .007, "Best loss = " + str(round(min(history.history['loss'])*10000)/10000) + " Best val_loss = " + str(round(min(history.history['val_loss'])*10000)/10000) + " train r^2 = " + str(round(trainr2*10000)/10000) + " test r^2 = " + str(round(testr2*10000)/10000),fontsize = 7, ha='center')
-    fig_name = "C:\\Users\\u1056\\sfx\\Result_plots_Dropout_model_limited_augmentations\\" + label_to_predict + "_loss_vs_epochs_" + date_and_time + ".png"
+    fig_name = "C:\\Users\\u1056\\sfx\\Result_plots_after_fixing_augmentation\\" + label_to_predict + "_loss_vs_epochs_" + date_and_time + ".png"
     #plt.savefig(fig_name)
     plt.show()
 
@@ -348,7 +384,7 @@ def plot_stuff(test_images, train_images, history, trainr2, testr2, test_predict
     plt.ylim(lims)
     _ = plt.plot(lims, lims) 
     fig.text(.5, .007, "Best loss = " + str(round(min(history.history['loss'])*10000)/10000) + " Best val_loss = " + str(round(min(history.history['val_loss'])*10000)/10000) + " train r^2 = " + str(round(trainr2*10000)/10000) + " test r^2 = " + str(round(testr2*10000)/10000), fontsize = 8, ha='center')
-    fig_name = "C:\\Users\\u1056\\sfx\\Result_plots_Dropout_model_limited_augmentations\\" + label_to_predict + "_predictions_vs_true_" + date_and_time + ".png"
+    fig_name = "C:\\Users\\u1056\\sfx\\Result_plots_after_fixing_augmentation\\" + label_to_predict + "_predictions_vs_true_" + date_and_time + ".png"
     #plt.savefig(fig_name)
     plt.show()
 
