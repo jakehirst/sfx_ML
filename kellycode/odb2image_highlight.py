@@ -1,17 +1,13 @@
 import sys
 import os
-from visualization import *
+import time
+
 #Input = sys.argv[-1]
-
-#The path to the simulation results folder to get images from. e.g. Para_2-56ft_PHI_23_THETA_-10
-origin_file = "F:\\Jake\\good_simies" #"C:\\Users\\Bjorn\\Desktop\\sfx\\sfx_matrix"
+# origin_file = "C:\\Users\\u1056\\sfx\\good_simies"
+origin_file = "F:\\Jake\\good_simies"
 wireframe = False
-
-#The path to the folder to store the images at
-#destination_file = "F:\\Jake\\test_images" #"C:\\Users\\Bjorn\\Desktop\\sfx\\sfx_matrix\\matrix_images"
-#destination_file = "C:\\Users\\u1056\\sfx\\images_sfx\\With_Width_only_parietal\\OG"
-destination_file = "C:\\Users\\u1056\\sfx\\images_sfx\\test_highlighting"
-
+destination_file = "C:\\Users\\u1056\\sfx\\images_sfx\\Highlighted\\OG"
+# destination_file = "F:\\Jake\\brian_simies\\pics"
 file_type = '.odb'
 file_name_list = []
 dir_list = []
@@ -24,7 +20,6 @@ for root, dirs, files in os.walk(origin_file):
 
 from abaqus import *
 from abaqusConstants import *
-
 session.Viewport(name='Viewport: 1', origin=(0.0, 0.0), width=150.215621948242, 
     height=105.874992370605)
 session.viewports['Viewport: 1'].makeCurrent()
@@ -52,49 +47,37 @@ for filepath in file_name_list:
         optimizationTasks=OFF, geometricRestrictions=OFF, stopConditions=OFF)
     a = mdb.models[model_name].rootAssembly
     session.viewports['Viewport: 1'].setValues(displayedObject=a)
+    
+    #Remove plate
+    a = mdb.models[model_name].rootAssembly
+    if filepath.find("Dynamic")==-1:
+        e1 = a.instances['PL-1'].elements
+        elements1 = e1.getSequenceFromMask(mask=('[#ffffffff #1ffff ]', ), )
+        leaf = dgm.LeafFromMeshElementLabels(elementSeq=elements1)
+        session.viewports['Viewport: 1'].assemblyDisplay.displayGroup.remove(leaf=leaf)
+    else:
+        set1 = mdb.models[model_name].rootAssembly.sets['PL-1_ALL_ELEMENTS']
+        leaf = dgm.LeafFromSets(sets=(set1, ))
+        session.viewports['Viewport: 1'].assemblyDisplay.displayGroup.remove(leaf=leaf)
+        
+        #Make gray
+        session.viewports['Viewport: 1'].enableMultipleColors()
+        session.viewports['Viewport: 1'].setColor(initialColor='#BDBDBD')
+        cmap=session.viewports['Viewport: 1'].colorMappings['Part']
+        session.viewports['Viewport: 1'].setColor(colorMapping=cmap)
+        session.viewports['Viewport: 1'].disableMultipleColors()
+        session.viewports['Viewport: 1'].enableMultipleColors()
+        session.viewports['Viewport: 1'].setColor(initialColor='#BDBDBD')
+        cmap = session.viewports['Viewport: 1'].colorMappings['Part']
+        cmap.updateOverrides(overrides={'PART-1-1':(True, '#CCCCCC', 'Default', 
+            '#CCCCCC')})
+        session.viewports['Viewport: 1'].setColor(colorMapping=cmap)
+        session.viewports['Viewport: 1'].disableMultipleColors()
 
-    #odb instead of cae
-    myOdb = visualization.openOdb(path = filepath)
-    session.viewports['Viewport: 1'].setValues(displayedObject=myOdb)
-    #session.viewports['Viewport: 1'].odbDisplay.display.setValues(plotState=( CONTOURS_ON_DEF, ))
-    session.viewports['Viewport: 1'].odbDisplay.display.setValues(plotState=(
-        DEFORMED, ))
-    #set contour values
-    # session.viewports['Viewport: 1'].odbDisplay.contourOptions.setValues(numIntervals=10, 
-    # maxAutoCompute=OFF, maxValue=0.10, 
-    # minAutoCompute=OFF, minValue=0.0,)
-
-    session.viewports['Viewport: 1'].odbDisplay.commonOptions.setValues(
-        visibleEdges=FREE)
-    # remove plate
-    leaf = dgo.LeafFromOdbElementMaterials(elementMaterials=("PLATE", ))
-    session.viewports['Viewport: 1'].odbDisplay.displayGroup.remove(leaf=leaf)
-
-        # remove Brain 
-    leaf = dgo.LeafFromOdbElementMaterials(elementMaterials=("BR#BRAIN", ))
-    session.viewports['Viewport: 1'].odbDisplay.displayGroup.remove(leaf=leaf)
-
-        # remove Occipital
-    leaf = dgo.LeafFromOdbElementMaterials(elementMaterials=("SK-NORPA#OCCIPITAL", ))
-    session.viewports['Viewport: 1'].odbDisplay.displayGroup.remove(leaf=leaf)
-
-        # remove Parietal
-    leaf = dgo.LeafFromOdbElementMaterials(elementMaterials=("SK-NORPA#PARIETAL", ))
-    session.viewports['Viewport: 1'].odbDisplay.displayGroup.remove(leaf=leaf)
-
-        # remove Suture
-    leaf = dgo.LeafFromOdbElementMaterials(elementMaterials=("SU#SUTURE", ))
-    session.viewports['Viewport: 1'].odbDisplay.displayGroup.remove(leaf=leaf)
-
-
-        # remove skull
-    leaf = dgo.LeafFromOdbElementMaterials(elementMaterials=("SK-NORPA#SKULL", ))
-    session.viewports['Viewport: 1'].odbDisplay.displayGroup.remove(leaf=leaf)
-
-    # leaf = dgo.LeafFromNodeSets(nodeSets=("MAIN_SIDE_A", ))
-    # session.viewports['Viewport: 1'].odbDisplay.displayGroup.setByRGB((1,0,0))
-
-
+    #For wireframe images
+    if wireframe == True:
+        session.viewports['Viewport: 1'].assemblyDisplay.setValues(
+        renderStyle=WIREFRAME)
 
     #Make background white
     session.graphicsOptions.setValues(backgroundStyle=SOLID, 
@@ -106,8 +89,6 @@ for filepath in file_name_list:
         meshVisibleEdges=FREE)
     session.viewports['Viewport: 1'].assemblyDisplay.geometryOptions.setValues(
         datumPoints=OFF, datumAxes=OFF, datumPlanes=OFF, datumCoordSystems=OFF)
-
-    #adjusting the view of the skull
     session.viewports['Viewport: 1'].view.fitView()
     session.viewports['Viewport: 1'].view.setValues(nearPlane=404.993, 
         farPlane=735.403, width=518.806, height=179.784, cameraPosition=(289.861, 
@@ -119,8 +100,8 @@ for filepath in file_name_list:
     session.viewports['Viewport: 1'].view.setValues(nearPlane=361.481, 
         farPlane=630.024, width=184.351, height=88.9544, viewOffsetX=0, 
         viewOffsetY=0)
-    
-    #start of new highlighting code
+
+ #start of new highlighting code
     session.viewports['Viewport: 1'].enableMultipleColors()
     session.viewports['Viewport: 1'].setColor(initialColor='#BDBDBD')
     leaf = dgo.LeafFromElementSets(elementSets=('PART-1-1._MATE_CRACK_0_S4'))
@@ -257,14 +238,13 @@ for filepath in file_name_list:
     session.viewports['Viewport: 1'].disableMultipleColors()
 
     #end of new highlighting code
-
     
     image_name = model_name + '.png'
     destination_dir = destination_file+new_dir
     if not os.path.exists(destination_dir):
         os.mkdir(destination_dir)
-    #session.printOptions.setValues(vpDecorations=OFF)
     session.printOptions.setValues(reduceColors=False)
     session.printToFile(fileName=destination_dir+'/'+image_name, format=PNG, canvasObjects=(
         session.viewports['Viewport: 1'], ))
+
 

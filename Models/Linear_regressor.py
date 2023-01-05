@@ -52,14 +52,14 @@ def make_linear_model(df_filename, label_to_predict, epochs, features_to_drop=No
     """ normalizing features and labels """
     normalizer = tf.keras.layers.Normalization(axis=-1) #creating normalization layer
     normalizer.adapt(np.array(train_features)) #fitting the state of the preprocessing layer
-    #print(normalizer.mean.numpy())
+    print(normalizer.mean.numpy())
 
     """ Just an example of how it is normalizing """
     first = np.array(train_features[:1])
     with np.printoptions(precision=3, suppress=True):
-        # print('First example:', first)
+        print('First example:', first)
         print()
-        # print('Normalized:', normalizer(first).numpy())
+        print('Normalized:', normalizer(first).numpy())
 
 
 

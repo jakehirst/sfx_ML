@@ -105,6 +105,20 @@ def prepare_data(parent_folder_name, augmentation_list):
     return [image_path_list, height_list, phi_list, theta_list, input_shape, img_arr_list]
 
 
+def remove_augmentations(images):
+    indexes_to_delete = []
+    for i in range(images.n):
+        if(not images.filenames[i].endswith("Dynamic.png")):
+            indexes_to_delete.append(i)
+    
+    images.filenames = np.delete(images.filenames, indexes_to_delete)
+    images.filepaths = np.delete(images.filepaths, indexes_to_delete)
+    images.labels = np.delete(images.labels, indexes_to_delete)
+    images._filepaths = np.delete(images._filepaths, indexes_to_delete)
+    images._targets = np.delete(images._targets, indexes_to_delete)
+
+    return images
+
 
 
 
@@ -189,6 +203,9 @@ def make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=1000,
             shuffle=False
         )
 
+        test_images = remove_augmentations(test_images)
+        val_images = remove_augmentations(val_images)
+
         #TODO check out examples in this stack overflow article:
         #https://stackoverflow.com/questions/45528285/cnn-image-recognition-with-regression-output-on-tensorflow
 
@@ -226,7 +243,7 @@ def make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=1000,
         tf.keras.layers.MaxPooling2D(2),
         tf.keras.layers.Conv2D(3, 3, activation='relu'),
         tf.keras.layers.Conv2D(3, 3, activation='relu'),
-        tf.keras.layers.Dropout(0.2), #TODO: study dropout rates and frequency of dropouts. Dropouts are supposed to reduce overfitting. generally increase dropout rate in the later layers, and reduce for initial layers
+        #tf.keras.layers.Dropout(0.2), #TODO: study dropout rates and frequency of dropouts. Dropouts are supposed to reduce overfitting. generally increase dropout rate in the later layers, and reduce for initial layers
         tf.keras.layers.MaxPooling2D(2),
         tf.keras.layers.Conv2D(3, 3, activation='relu'),
         tf.keras.layers.Conv2D(3, 3, activation='relu'),
@@ -346,22 +363,24 @@ def plot_stuff(test_images, train_images, history, trainr2, testr2, test_predict
 
 
 parent_folder_name = "Original"
+#parent_folder_name = "Highlighted_only_Parietal"
 label_to_predict = "height"
 augmentation_list = ["OG", "Posterize", "Color", "Flipping", "Rotation", "Solarize"]
 args = prepare_data(parent_folder_name, augmentation_list)
-height_result = make_CNN(args, label_to_predict, batch_size=5, patience=50, max_epochs=500, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=False) #smaller kernel size leads to better results usually.
+height_result = make_CNN(args, label_to_predict, batch_size=5, patience=20, max_epochs=500, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=False)
 #print(result)
 
 label_to_predict = "phi"
-augmentation_list = ["OG", "Posterize", "Color", "Flipping", "Rotation", "Solarize"]
+augmentation_list = ["OG"]
 args = prepare_data(parent_folder_name, augmentation_list)
-phi_result = make_CNN(args, label_to_predict, batch_size=5, patience=50, max_epochs=500, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=False) #smaller kernel size leads to better results usually.
+phi_result = make_CNN(args, label_to_predict, batch_size=5, patience=20, max_epochs=500, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=False) 
 #print(result)
 
 label_to_predict = "theta"
-augmentation_list = ["OG", "Posterize", "Color", "Flipping", "Rotation", "Solarize"]
+augmentation_list = ["OG"]
 args = prepare_data(parent_folder_name, augmentation_list)
-theta_result = make_CNN(args, label_to_predict, batch_size=5, patience=50, max_epochs=500, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=False) #smaller kernel size leads to better results usually.
+theta_result = make_CNN(args, label_to_predict, batch_size=5, patience=20, max_epochs=500, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=False) 
+
 #print(result)
 print(height_result)
 print(phi_result)

@@ -6,6 +6,7 @@ from initiation_sites import *
 from linearity import *
 from width_of_crack import *
 import tensorflow_probability as tfp
+import scipy.stats
 
 #gets the maximum steps and UCIs from the simulation_results folder
 def get_max_step_and_max_UCIs():
@@ -41,8 +42,16 @@ def turn_filename_to_labels(filename):
 def Pearson_Correlation(feature, label, df):
     y = df[label]
     x = df[feature]
+
+    #stuff from pearson correlation from before
     new_df = pd.concat([x, y], axis=1)
-    return new_df.corr()
+    r = new_df.corr()[feature][label]
+    degfreedom = len(df) - 2
+    t = r / (m.sqrt((1-r**2) / degfreedom ) )
+    #stuff from pearson correlations from before
+
+    return scipy.stats.pearsonr(x, y) #returns (pearson correlation, 2-tailed p value) #p value is supposed to show the significance
+    # of a pearson correlation. A p value below 0.05 means the results is statistically significant
 
 """ finds the pearson correlation of each feature and prints it out"""
 def Pearson_Correlations_for_df(df, label):
@@ -52,8 +61,8 @@ def Pearson_Correlations_for_df(df, label):
         if(feature == "height" or feature == "phi" or feature =="theta" or feature =="x" or feature =="y" or feature =="z"):
             continue
         pc = Pearson_Correlation(feature, label, df)
-        Correlations[feature + "/" + label] = pc[label][feature]
-        print("\n"+ feature + "/" + label+" = " + str(pc[label][feature]))
+        Correlations[feature + "/" + label] = pc
+        print("\n"+ feature + "/" + label+" = " + str(pc))
     return Correlations
 
 """ just turns phi and theta into cartesian points (with r being assumed to be 1) """
