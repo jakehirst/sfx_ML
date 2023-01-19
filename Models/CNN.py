@@ -112,7 +112,8 @@ def prepare_data(parent_folder_name, augmentation_list):
 def add_augmentations(df, augmentation_list):
     image_name_list = []
     new_df = df
-    augmentation_list.remove("OG")
+    if(augmentation_list.__contains__("OG")):
+        augmentation_list.remove("OG")
     for folder in augmentation_list:
         for row in df.iterrows():
             OG_picture_step_UCI = row[1]["Filepath"].split("\\")[-1].split(".")[0]
@@ -128,7 +129,9 @@ def add_augmentations(df, augmentation_list):
                         if file.find("mesh")==-1:
                             if((OG_picture_step_UCI in file) and (parameters in root)):
                                 path = os.path.join(root, file)
-                                new_df = new_df.append({'Filepath':str(path), df.columns[1]:label}, ignore_index=True) #DONT use pd.concat here... it changes the type of things in the dataframe
+                                new_row = pd.DataFrame([{'Filepath':str(path), df.columns[1]:label}])
+                                new_df = pd.concat([new_df, new_row], ignore_index=True) 
+                                #new_df.append({'Filepath':str(path), df.columns[1]:label}, ignore_index=True) #DONT use pd.concat here... it changes the type of things in the dataframe
 
     return new_df
 
@@ -187,7 +190,7 @@ def make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=1000,
 
         train_generator = tf.keras.preprocessing.image.ImageDataGenerator(
             rescale = 1./255, #all pixel values set between 0 and 1 instead of 0 and 255.
-            #validation_split=0.2 #creating a validation split in our training generator
+            validation_split=0.2 #creating a validation split in our training generator
         )
 
         val_generator = tf.keras.preprocessing.image.ImageDataGenerator(
@@ -242,36 +245,6 @@ def make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=1000,
             shuffle=False
         )
 
-        #TODO check out examples in this stack overflow article:
-        #https://stackoverflow.com/questions/45528285/cnn-image-recognition-with-regression-output-on-tensorflow
-
-        # """ start training """
-        # inputs = tf.keras.Input(shape=args[4]) #not sure if the shape is right here. i got (256, 256, 1) by looking at train_images.image_shape
-        #                                             #trying (642, 802, 3) by looking at img_arr_list[0].shape
-        #                                             #tryig  (256, 256, 3) by looking at train_images[0][0].shape
-        # #TODO: layers study
-        # x = tf.keras.layers.Conv2D(filters=16, kernel_size=kernel_size, activation='relu')(inputs)
-        # x = tf.keras.layers.Conv2D(filters=16, kernel_size=kernel_size, activation='relu')(inputs)
-        # x = tf.keras.layers.MaxPool2D()(x) #takes the max of each window to reduce the size of the image... dont know if i need this...
-        # x = tf.keras.layers.Conv2D(filters=32, kernel_size=kernel_size, activation='relu')(inputs)
-        # x = tf.keras.layers.Conv2D(filters=32, kernel_size=kernel_size, activation='relu')(inputs)
-        # x = tf.keras.layers.MaxPool2D()(x)
-        # x = tf.keras.layers.Conv2D(filters=64, kernel_size=kernel_size, activation='relu')(inputs)
-        # x = tf.keras.layers.MaxPool2D()(x)
-        # x = tf.keras.layers.Conv2D(filters=128, kernel_size=kernel_size, activation='relu')(inputs)
-        # x = tf.keras.layers.MaxPool2D()(x)
-        # x = tf.keras.layers.Conv2D(filters=256, kernel_size=kernel_size, activation='relu')(inputs)
-        # x = tf.keras.layers.MaxPool2D()(x)
-        # x = tf.keras.layers.Conv2D(filters=512, kernel_size=kernel_size, activation='relu')(inputs)
-        # x = tf.keras.layers.MaxPool2D()(x)
-
-        # x = tf.keras.layers.GlobalAveragePooling2D()(x) #could try GlobalMaxPooling2D instead
-        # x = tf.keras.layers.Flatten()(x)
-        # x = tf.keras.layers.Dense(64, activation='relu')(x) #TODO: figure out why these are here
-        # #x = tf.keras.layers.Dense(64, activation='relu')(x) #TODO: figure out why these are here
-        # outputs = tf.keras.layers.Dense(1, activation='linear')(x)
-        # model = tf.keras.Model(inputs=inputs, outputs=outputs)
-
         #https://datascience.stackexchange.com/questions/106600/how-to-perform-regression-on-image-data-using-tensorflow
         model = tf.keras.Sequential([
         tf.keras.layers.Conv2D(3, 3, activation='relu'),
@@ -283,6 +256,7 @@ def make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=1000,
         tf.keras.layers.MaxPooling2D(2),
         tf.keras.layers.Conv2D(3, 3, activation='relu'),
         tf.keras.layers.Conv2D(3, 3, activation='relu'),
+        tf.keras.layers.MaxPooling2D(2),
         tf.keras.layers.Flatten(),
         #tf.keras.layers.Dense(units=1024, activation='relu'),
         tf.keras.layers.Dense(units=512, activation='relu'),
@@ -370,8 +344,8 @@ def plot_stuff(test_images, train_images, history, trainr2, testr2, test_predict
     plt.grid(True)
     fig.text(.5, .007, "Best loss = " + str(round(min(history.history['loss'])*10000)/10000) + " Best val_loss = " + str(round(min(history.history['val_loss'])*10000)/10000) + " train r^2 = " + str(round(trainr2*10000)/10000) + " test r^2 = " + str(round(testr2*10000)/10000),fontsize = 7, ha='center')
     fig_name = "C:\\Users\\u1056\\sfx\\Result_plots_after_fixing_augmentation\\" + label_to_predict + "_loss_vs_epochs_" + date_and_time + ".png"
-    #plt.savefig(fig_name)
-    plt.show()
+    plt.savefig(fig_name)
+    #plt.show()
 
     fig = plt.figure()
     a = plt.axes(aspect='equal')
@@ -385,8 +359,8 @@ def plot_stuff(test_images, train_images, history, trainr2, testr2, test_predict
     _ = plt.plot(lims, lims) 
     fig.text(.5, .007, "Best loss = " + str(round(min(history.history['loss'])*10000)/10000) + " Best val_loss = " + str(round(min(history.history['val_loss'])*10000)/10000) + " train r^2 = " + str(round(trainr2*10000)/10000) + " test r^2 = " + str(round(testr2*10000)/10000), fontsize = 8, ha='center')
     fig_name = "C:\\Users\\u1056\\sfx\\Result_plots_after_fixing_augmentation\\" + label_to_predict + "_predictions_vs_true_" + date_and_time + ".png"
-    #plt.savefig(fig_name)
-    plt.show()
+    plt.savefig(fig_name)
+    #plt.show()
 
 
 
@@ -399,23 +373,24 @@ def plot_stuff(test_images, train_images, history, trainr2, testr2, test_predict
 
 
 parent_folder_name = "Original"
+parent_folder_name = "Original_from_test_matrix"
 #parent_folder_name = "Highlighted_only_Parietal"
 label_to_predict = "height"
 augmentation_list = ["OG", "Posterize", "Color", "Flipping", "Rotation", "Solarize"]
 args = prepare_data(parent_folder_name, augmentation_list)
-height_result = make_CNN(args, label_to_predict, batch_size=5, patience=20, max_epochs=500, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=False)
+height_result = make_CNN(args, label_to_predict, batch_size=5, patience=20, max_epochs=500, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True)
 #print(result)
 
 label_to_predict = "phi"
-augmentation_list = ["OG"]
+augmentation_list = ["OG", "Posterize", "Color", "Flipping", "Rotation", "Solarize"]
 args = prepare_data(parent_folder_name, augmentation_list)
-phi_result = make_CNN(args, label_to_predict, batch_size=5, patience=20, max_epochs=500, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=False) 
+phi_result = make_CNN(args, label_to_predict, batch_size=5, patience=20, max_epochs=500, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True) 
 #print(result)
 
 label_to_predict = "theta"
-augmentation_list = ["OG"]
+augmentation_list = ["OG", "Posterize", "Color", "Flipping", "Rotation", "Solarize"]
 args = prepare_data(parent_folder_name, augmentation_list)
-theta_result = make_CNN(args, label_to_predict, batch_size=5, patience=20, max_epochs=500, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=False) 
+theta_result = make_CNN(args, label_to_predict, batch_size=5, patience=20, max_epochs=500, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True) 
 
 #print(result)
 print(height_result)
