@@ -23,10 +23,10 @@ import matplotlib.image as img
 import imageio
 
 
-df = tf.keras.datasets.fashion_mnist
-(X_train, y_train), (X_test, y_test) = df.load_data()
-print(X_train.shape)
-print(X_test.shape)
+# df = tf.keras.datasets.fashion_mnist
+# (X_train, y_train), (X_test, y_test) = df.load_data()
+# print(X_train.shape)
+# print(X_test.shape)
 
 #Gathers image list
 def get_images(pathname, image_name_list):
@@ -158,6 +158,9 @@ def remove_augmentations(images):
 
     return images
 
+
+
+
 """ Builds model for hyperparameter tuning """
 #https://www.analyticsvidhya.com/blog/2021/06/create-convolutional-neural-network-model-and-optimize-using-keras-tuner-deep-learning/
 def build_model(hp):
@@ -166,7 +169,7 @@ def build_model(hp):
     #adding first convolutional layer    
     keras.layers.Conv2D(
         #adding filter 
-        filters=hp.Int('conv_1_filter', min_value=32, max_value=128, step=16),
+        filters=hp.Int('conv_1_filter', min_value=16, max_value=64, step=3),
         # adding filter size or kernel size
         kernel_size=hp.Choice('conv_1_kernel', values = [3,5]),
         #activation function
@@ -174,7 +177,7 @@ def build_model(hp):
         input_shape=(642, 802, 3)),
     keras.layers.Conv2D(
         #adding filter 
-        filters=hp.Int('conv_2_filter', min_value=32, max_value=128, step=16),
+        filters=hp.Int('conv_2_filter', min_value=16, max_value=64, step=3),
         # adding filter size or kernel size
         kernel_size=hp.Choice('conv_2_kernel', values = [3,5]),
         #activation function
@@ -194,15 +197,15 @@ def build_model(hp):
     keras.layers.Flatten(),
     # adding dense layer    
     keras.layers.Dense(
-        units=hp.Int('dense_1_units', min_value=32, max_value=512, step=16),
+        units=hp.Int('dense_1_units', min_value=16, max_value=64, step=3),
         activation='relu'
     ),
     keras.layers.Dense(
-        units=hp.Int('dense_2_units', min_value=32, max_value=512, step=16),
+        units=hp.Int('dense_2_units', min_value=16, max_value=64, step=3),
         activation='relu'
     ),
     keras.layers.Dense(
-        units=hp.Int('dense_3_units', min_value=32, max_value=512, step=16),
+        units=hp.Int('dense_3_units', min_value=16, max_value=64, step=3),
         activation='relu'
     ),
     # output layer    
@@ -213,6 +216,12 @@ def build_model(hp):
               loss='mae',
               metrics=['mae'])
     return model
+
+
+
+
+
+
 
 def make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=1000, optimizer="adam", activation="relu", kernel_size=(5,5), plot = True, augmentation_list = [], num_folds=5):
     results = []
@@ -337,14 +346,14 @@ def make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=1000,
         tuner = BayesianOptimization(
             build_model,
             objective='val_mae',
-            max_trials=20
+            max_trials=3
             # seed=42,
             # executions_per_trial=2
         )
 
         #https://datascience.stackexchange.com/questions/106600/how-to-perform-regression-on-image-data-using-tensorflow
 
-        tuner.search(train_inputs, train_images._targets, epochs=5, validation_data=(val_inputs, val_images._targets))
+        tuner.search(train_inputs, train_images._targets, epochs=6, validation_data=(val_inputs, val_images._targets))
         model=tuner.get_best_models(num_models=1)[0]
         #summary of best model
         model.summary()

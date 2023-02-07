@@ -18,6 +18,22 @@ from tensorflow.keras.preprocessing.image import load_img, img_to_array
 from sklearn.model_selection import KFold
 from Binning_phi_and_theta import *
 from PIL import Image
+from keras_tuner import BayesianOptimization
+import imageio
+from time import time
+
+"""
+to show tensorboard do the following:
+- open anaconda prompt
+- cd to directory with the log files (example C:\\Users\\u1056\\sfx\\bin_tuner_models)
+- activate tensorflow env 
+    - conda activate tensorflow_env
+- type the following with "tb_logs" being the log directory you want to show
+    - tensorboard --logdir=tb_logs
+- it will say something like this:    TensorBoard 2.9.0 at http://localhost:6006/ (Press CTRL+C to quit)
+    - copy http://localhost:6006/ and paste into your browser
+"""
+
 
 
 
@@ -159,8 +175,83 @@ def remove_augmentations(images):
 
 
 
+""" Builds model for hyperparameter tuning """
+#https://www.analyticsvidhya.com/blog/2021/06/create-convolutional-neural-network-model-and-optimize-using-keras-tuner-deep-learning/
+def build_model_1_Con_layer(hp):
+    # create model object
+    model = keras.Sequential([
+    #adding first convolutional layer    
+    keras.layers.Conv2D(
+        #adding filter 
+        filters=hp.Int('conv_1_filter', min_value=16, max_value=128, step=16),
+        # adding filter size or kernel size
+        kernel_size=hp.Choice('conv_1_kernel', values = [3]),
+        #activation function
+        activation='relu',
+        input_shape=(642, 802, 3)),
+    keras.layers.MaxPooling2D(2),
+    # adding flatten layer
+    keras.layers.Flatten(),
+    # adding dense layer    
+    keras.layers.Dense(
+        units=hp.Int('dense_1_units', min_value=16, max_value=256, step=16),
+        activation='relu'
+    ),
+    # output layer    
+    keras.layers.Dense(units=25, activation = 'softmax')
+    ])
+    #compilation of model
+    model.compile(optimizer=keras.optimizers.Adam(hp.Choice('learning_rate', values=[5e-3, 1e-3, 5e-4, 1e-4, 5e-5, 1e-5])),
+              loss='categorical_crossentropy',
+              metrics=['acc'])
+    return model
 
-def make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=1000, optimizer="adam", activation="relu", kernel_size=(5,5), plot = True, augmentation_list = [], num_folds=5, num_bins=5):
+
+def build_model_2_Con_layer(hp):
+    # create model object
+    model = keras.Sequential([
+    #adding first convolutional layer    
+    keras.layers.Conv2D(
+        #adding filter 
+        filters=hp.Int('conv_1_filter', min_value=8, max_value=64, step=8),
+        # adding filter size or kernel size
+        kernel_size=hp.Choice('conv_1_kernel', values = [3]),
+        #activation function
+        activation='relu',
+        input_shape=(642, 802, 3)),
+    keras.layers.MaxPooling2D(2),
+    
+    keras.layers.Conv2D(
+        #adding filter 
+        filters=hp.Int('conv_2_filter', min_value=8, max_value=64, step=8),
+        # adding filter size or kernel size
+        kernel_size=hp.Choice('conv_2_kernel', values = [3]),
+        #activation function
+        activation='relu',
+        input_shape=(642, 802, 3)),
+    keras.layers.MaxPooling2D(2),
+    # adding flatten layer
+    keras.layers.Flatten(),
+    # adding dense layer    
+    keras.layers.Dense(
+        units=hp.Int('dense_1_units', min_value=16, max_value=256, step=16),
+        activation='relu'
+    ),
+    # output layer    
+    keras.layers.Dense(units=25, activation = 'softmax')
+    ])
+    #compilation of model
+    model.compile(optimizer=keras.optimizers.Adam(hp.Choice('learning_rate', values=[5e-3, 1e-3, 5e-4, 1e-4, 5e-5, 1e-5])),
+              loss='categorical_crossentropy',
+              metrics=['acc'])
+    return model
+
+
+
+
+
+
+def make_CNN(args, batch_size=5, patience=25, max_epochs=10, plot = True, augmentation_list = [], num_folds=5, num_bins=5, Name="_"):
     results = []
     #TODO: do this for phi and theta later
     #shuffles the dataset and puts it into a dataframe
@@ -240,22 +331,59 @@ def make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=1000,
             shuffle=False,
         )
 
-        #https://datascience.stackexchange.com/questions/106600/how-to-perform-regression-on-image-data-using-tensorflow
 
-        model = tf.keras.Sequential([
-        tf.keras.layers.Conv2D(32, (3, 3), activation='relu'),
-        tf.keras.layers.MaxPooling2D(2),
-        # tf.keras.layers.Conv2D(32, (3, 3), activation='relu'),
-        # tf.keras.layers.MaxPooling2D(2),
-        # tf.keras.layers.Conv2D(64, (3, 3), activation='relu'),
-        # tf.keras.layers.MaxPooling2D(2),
-        tf.keras.layers.Flatten(),
-        #tf.keras.layers.Dense(units=1024, activation='relu'),
-        # tf.keras.layers.Dense(units=512, activation='relu'),
-        # tf.keras.layers.Dense(units=256, activation='relu'),
-        tf.keras.layers.Dense(units=16, activation='relu'),
-        tf.keras.layers.Dense(units= num_bins*num_bins, activation='softmax') #one node per class label for a softmax activation function
-        ])
+        #pulling the image matricies from the filepaths of images
+        test_inputs = []
+        train_inputs = []
+        val_inputs = []
+
+        #puttin the rgb matricies into train_inputs, test_inputs, and val_inputs
+        #to see the image, use plt.imshow(arr)
+        for image in test_images._filepaths:
+            arr = imageio.v2.imread(image)[:,:,0:3] / 255.0
+            test_inputs.append(arr)
+        for image in train_images._filepaths:
+            arr = imageio.v2.imread(image)[:,:,0:3] / 255.0
+            train_inputs.append(arr)
+        for image in val_images._filepaths:
+            arr = imageio.v2.imread(image)[:,:,0:3] / 255.0
+            val_inputs.append(arr)
+
+        test_inputs = np.array(test_inputs)
+        train_inputs = np.array(train_inputs)
+        val_inputs = np.array(val_inputs)
+
+        """ Random search hyperparameter tuner """
+        # tuner = RandomSearch(build_model,
+        #             objective='val_mae',
+        #             max_trials = 20)
+
+        """ Baysian Optimization hyperparameter tuner """
+        tuner = BayesianOptimization(
+            # build_model_1_Con_layer,
+            build_model_2_Con_layer,
+            objective='val_loss',
+            max_trials=100,
+            overwrite = True, #need this otherwise it will compare to previous trials done in the past
+            directory = "C:\\Users\\u1056\\sfx\\bin_tuner_models\\"+ Name + "_tb"
+            # seed=42,
+            # executions_per_trial=2
+        )
+
+        tuner.search(
+            train_inputs,
+            train_images._targets, 
+            epochs=max_epochs, 
+            validation_data=(val_inputs, val_images._targets), 
+            callbacks=[keras.callbacks.TensorBoard("C:\\Users\\u1056\\sfx\\bin_tuner_models\\"+ Name + "_tb_logs")]
+         )
+
+        best_models = tuner.get_best_models(num_models=20)
+        model= best_models[0]
+        #summary of best model
+        model.summary()
+
+        #https://datascience.stackexchange.com/questions/106600/how-to-perform-regression-on-image-data-using-tensorflow
 
         model.compile(
             optimizer=tf.keras.optimizers.Adam(learning_rate = 0.001), 
@@ -448,11 +576,9 @@ def plot_stuff(test_images, train_images, history, trainr2, testr2, test_predict
 
 
 parent_folder_name = "Original"
-# parent_folder_name = "Original_from_test_matrix"
-#parent_folder_name = "Highlighted_only_Parietal"
-
 label_to_predict = "binned_orientation"
 augmentation_list = ["OG", "Posterize", "Color", "Flipping", "Rotation", "Solarize"]
+Name = "2_Conv_1_Dense_{}".format(int(time()))
 args = prepare_data(parent_folder_name, augmentation_list)
-make_CNN(args, label_to_predict, batch_size=5, patience=3, max_epochs=25, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, num_bins=5)
+make_CNN(args, batch_size=5, patience=3, max_epochs=8, augmentation_list=augmentation_list, plot=True, num_bins=5, Name=Name)
 #make_CNN(args, label_to_predict, batch_size=5, patience=3, max_epochs=20, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, num_bins=6)
