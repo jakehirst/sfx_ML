@@ -11,7 +11,7 @@ def get_min_step_and_min_UCIs(folder_path):
     for root, dirs, files in os.walk(folder_path):
         # select file name
         for file in files:
-            print(file)
+            #print(file)
             # check the extension of files
             if (file.startswith('Para') and file.endswith(".inp")):
                 if(file.__contains__("LOCAL") or file.__contains__("GLOBAL") or file.__contains__("full")):
@@ -35,9 +35,7 @@ def get_distance(N1, N2):
     return distance
 
 
-folder_name = "F:\\Jake\\good_simies\\"
-folder_name = "Z:\\bjornssimies\\"
-folder_name ="C:\\Users\\u1056\\sfx\\Skull_thru_plate_results\\3_180_180\\"
+folder_name = "F:\\Jake\\good_simies_coats\\"
 
 min_steps_and_ucis = get_min_step_and_min_UCIs(folder_name)
 
