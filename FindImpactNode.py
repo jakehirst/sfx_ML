@@ -35,7 +35,17 @@ def get_distance(N1, N2):
     return distance
 
 
+
+
+
+
+
+
+
+
 folder_name = "F:\\Jake\\good_simies_coats\\"
+folder_name = "C:\\Users\\u1056\\OneDrive\\Desktop\\Loyd_42_0_case\\delta_k_code\\"
+folder_name = "C:\\Users\\u1056\\sfx\\impact_node_check\\"
 
 min_steps_and_ucis = get_min_step_and_min_UCIs(folder_name)
 

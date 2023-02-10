@@ -194,11 +194,11 @@ def build_model_1_Con_layer(hp):
     keras.layers.Flatten(),
     # adding dense layer    
     keras.layers.Dense(
-        units=hp.Int('dense_1_units', min_value=16, max_value=256, step=16),
+        units=hp.Int('dense_1_units', min_value=16, max_value=128, step=16),
         activation='relu'
     ),
     # output layer    
-    keras.layers.Dense(units=25, activation = 'softmax')
+    keras.layers.Dense(units=4, activation = 'softmax')
     ])
     #compilation of model
     model.compile(optimizer=keras.optimizers.Adam(hp.Choice('learning_rate', values=[5e-3, 1e-3, 5e-4, 1e-4, 5e-5, 1e-5])),
@@ -208,6 +208,51 @@ def build_model_1_Con_layer(hp):
 
 
 def build_model_2_Con_layer(hp):
+    # create model object
+    model = keras.Sequential([
+    #adding first convolutional layer    
+    keras.layers.Conv2D(
+        #adding filter 
+        filters=hp.Int('conv_1_filter', min_value=8, max_value=128, step=8),
+        # adding filter size or kernel size
+        kernel_size=hp.Choice('conv_1_kernel', values = [3]),
+        #activation function
+        activation='relu',
+        input_shape=(642, 802, 3)),
+    keras.layers.MaxPooling2D(2),
+    
+    keras.layers.Conv2D(
+        #adding filter 
+        filters=hp.Int('conv_2_filter', min_value=8, max_value=128, step=8),
+        # adding filter size or kernel size
+        kernel_size=hp.Choice('conv_2_kernel', values = [3]),
+        #activation function
+        activation='relu',
+        input_shape=(642, 802, 3)),
+    keras.layers.MaxPooling2D(2),
+    # adding flatten layer
+    keras.layers.Flatten(),
+    # adding dense layer    
+    keras.layers.Dense(
+        units=hp.Int('dense_1_units', min_value=16, max_value=256, step=16),
+        activation='relu'
+    ),
+    # output layer    
+    keras.layers.Dense(units=4, activation = 'softmax')
+    ])
+    #compilation of model
+    # model.compile(optimizer=keras.optimizers.Adam(hp.Choice('learning_rate', values=[5e-3, 1e-3, 5e-4, 1e-4, 5e-5, 1e-5])),
+    #           loss='categorical_crossentropy',
+    #           metrics=['acc'])
+    
+    model.compile(optimizer=keras.optimizers.Adam(),
+                loss = 'categorical_crossentropy',
+                metrics=['acc'])
+    return model
+
+
+
+def build_model_2_Con_2_Dense_layer(hp):
     # create model object
     model = keras.Sequential([
     #adding first convolutional layer    
@@ -234,16 +279,25 @@ def build_model_2_Con_layer(hp):
     keras.layers.Flatten(),
     # adding dense layer    
     keras.layers.Dense(
-        units=hp.Int('dense_1_units', min_value=16, max_value=256, step=16),
+        units=hp.Int('dense_1_units', min_value=8, max_value=256, step=8),
+        activation='relu'
+    ),
+
+    keras.layers.Dense(
+        units=hp.Int('dense_2_units', min_value=8, max_value=256, step=8),
         activation='relu'
     ),
     # output layer    
-    keras.layers.Dense(units=25, activation = 'softmax')
+    keras.layers.Dense(units=4, activation = 'softmax')
     ])
     #compilation of model
-    model.compile(optimizer=keras.optimizers.Adam(hp.Choice('learning_rate', values=[5e-3, 1e-3, 5e-4, 1e-4, 5e-5, 1e-5])),
-              loss='categorical_crossentropy',
-              metrics=['acc'])
+    # model.compile(optimizer=keras.optimizers.Adam(hp.Choice('learning_rate', values=[5e-3, 1e-3, 5e-4, 1e-4, 5e-5, 1e-5])),
+    #           loss='categorical_crossentropy',
+    #           metrics=['acc'])
+    
+    model.compile(optimizer=keras.optimizers.Adam(),
+                loss = 'categorical_crossentropy',
+                metrics=['acc'])
     return model
 
 
@@ -361,11 +415,12 @@ def make_CNN(args, batch_size=5, patience=25, max_epochs=10, plot = True, augmen
         """ Baysian Optimization hyperparameter tuner """
         tuner = BayesianOptimization(
             # build_model_1_Con_layer,
-            build_model_2_Con_layer,
+            #build_model_2_Con_layer,
+            build_model_2_Con_2_Dense_layer,
             objective='val_loss',
-            max_trials=100,
+            max_trials=50,
             overwrite = True, #need this otherwise it will compare to previous trials done in the past
-            directory = "C:\\Users\\u1056\\sfx\\bin_tuner_models\\"+ Name + "_tb"
+            directory = "F:\\Jake\\model_tuning\\bin_tuner_models\\"+ Name + "_tb"
             # seed=42,
             # executions_per_trial=2
         )
@@ -375,7 +430,7 @@ def make_CNN(args, batch_size=5, patience=25, max_epochs=10, plot = True, augmen
             train_images._targets, 
             epochs=max_epochs, 
             validation_data=(val_inputs, val_images._targets), 
-            callbacks=[keras.callbacks.TensorBoard("C:\\Users\\u1056\\sfx\\bin_tuner_models\\"+ Name + "_tb_logs")]
+            callbacks=[keras.callbacks.TensorBoard("F:\\Jake\\model_tuning\\bin_tuner_models\\"+ Name + "_tb_logs")]
          )
 
         best_models = tuner.get_best_models(num_models=20)
@@ -578,7 +633,7 @@ def plot_stuff(test_images, train_images, history, trainr2, testr2, test_predict
 parent_folder_name = "Original"
 label_to_predict = "binned_orientation"
 augmentation_list = ["OG", "Posterize", "Color", "Flipping", "Rotation", "Solarize"]
-Name = "2_Conv_1_Dense_{}".format(int(time()))
+Name = "2_Conv_2_Dense_4_total_bins{}".format(int(time()))
 args = prepare_data(parent_folder_name, augmentation_list)
-make_CNN(args, batch_size=5, patience=3, max_epochs=8, augmentation_list=augmentation_list, plot=True, num_bins=5, Name=Name)
+make_CNN(args, batch_size=5, patience=3, max_epochs=8, augmentation_list=augmentation_list, plot=True, num_bins=2, Name=Name)
 #make_CNN(args, label_to_predict, batch_size=5, patience=3, max_epochs=20, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, num_bins=6)

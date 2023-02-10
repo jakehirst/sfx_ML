@@ -4,11 +4,15 @@ from visualization import *
 #Input = sys.argv[-1]
 
 #The path to the simulation results folder to get images from. e.g. Para_2-56ft_PHI_23_THETA_-10
-origin_file = "F:\\Jake\\test_folder" #"C:\\Users\\Bjorn\\Desktop\\sfx\\sfx_matrix"
+origin_file = "F:\\Jake\\test_folder"
+origin_file = "F:\\Jake\\good_simies" 
+#"C:\\Users\\Bjorn\\Desktop\\sfx\\sfx_matrix"
 wireframe = False
 
 #The path to the folder to store the images at
 destination_file = "F:\\Jake\\test_images" #"C:\\Users\\Bjorn\\Desktop\\sfx\\sfx_matrix\\matrix_images"
+destination_file = "C:\\Users\\u1056\\OneDrive\\Desktop\\bjorns pics"
+
 file_type = '.odb'
 file_name_list = []
 dir_list = []
@@ -50,14 +54,21 @@ for filepath in file_name_list:
     a = mdb.models[model_name].rootAssembly
     session.viewports['Viewport: 1'].setValues(displayedObject=a)
 
+
     #odb instead of cae
     myOdb = visualization.openOdb(path = filepath)
     session.viewports['Viewport: 1'].setValues(displayedObject=myOdb)
     session.viewports['Viewport: 1'].odbDisplay.display.setValues(plotState=( CONTOURS_ON_DEF, ))
     
+    #setting stress type to be max principal
+    session.viewports['Viewport: 1'].odbDisplay.setPrimaryVariable(
+    variableLabel='S', outputPosition=INTEGRATION_POINT, refinement=(INVARIANT,
+    'Max. Principal'))
+
     #set contour values
     session.viewports['Viewport: 1'].odbDisplay.contourOptions.setValues(numIntervals=10, 
-    maxAutoCompute=OFF, maxValue=0.10, 
+    # maxAutoCompute=OFF, maxValue=0.10,
+    maxAutoCompute=OFF, maxValue=23000, 
     minAutoCompute=OFF, minValue=0.0,)
 
     session.viewports['Viewport: 1'].odbDisplay.commonOptions.setValues(

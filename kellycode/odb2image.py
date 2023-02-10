@@ -3,10 +3,20 @@ import os
 import time
 
 #Input = sys.argv[-1]
-# origin_file = "C:\\Users\\u1056\\sfx\\good_simies"
-origin_file = "F:\\Jake\\good_simies"
+#origin_file = "F:\\Jake\\good_simies"
+#origin_file = "F:\\Jake\\good_simies_coats"
+origin_file = "C:\\Users\\u1056\\sfx\\simulation_results"
+origin_file = "C:\\Users\\u1056\\sfx\\Jimmy_cases_validation\\Weber_1"
+origin_file = "C:\\Users\\u1056\\sfx\\Jimmy_cases_validation\\deltaK_simulation_results"
+#origin_file = "C:\\Users\\u1056\\sfx\\Jimmy_cases_validation\\main_simulation_results"
+#origin_file = "C:\\Users\\u1056\\sfx\\bad_simies"
+
 wireframe = False
-destination_file = "C:\\Users\\u1056\\sfx\\images_sfx\\Original\\OG"
+#destination_file = "C:\\Users\\u1056\\sfx\\images_sfx\\Original\\OG"
+#destination_file = "C:\\Users\\u1056\\sfx\\images_sfx\\Original_from_test_matrix\\OG"
+destination_file = "C:\\Users\\u1056\\OneDrive\\Desktop\\test_images"
+#destination_file = "C:\\Users\\u1056\\OneDrive\\Desktop\\bad_simie_images"
+
 # destination_file = "F:\\Jake\\brian_simies\\pics"
 file_type = '.odb'
 file_name_list = []
