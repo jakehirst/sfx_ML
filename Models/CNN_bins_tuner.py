@@ -305,13 +305,15 @@ def build_model_2_Con_2_Dense_layer(hp):
 
 
 
-def make_CNN(args, batch_size=5, patience=25, max_epochs=10, plot = True, augmentation_list = [], num_folds=5, num_bins=5, Name="_"):
+def make_CNN(args, batch_size=5, patience=25, max_epochs=10, plot = True, augmentation_list = [], num_folds=5, num_phi_bins=5, num_theta_bins=5, Name="_"):
     results = []
     #TODO: do this for phi and theta later
     #shuffles the dataset and puts it into a dataframe
-    df = pd.concat([args[0], args[2], args[3]], axis=1).sample(frac=1.0, random_state=1).reset_index(drop=True)
-    df.columns = ["Filepath", "phi", "theta"]
-    df, y_col_values = Bin_phi_and_theta(df, num_bins)
+    phiandtheta_df = pd.concat([args[0], args[2], args[3]], axis=1).sample(frac=1.0, random_state=1).reset_index(drop=True)
+    phiandtheta_df.columns = ["Filepath", "phi", "theta"]
+    df, y_col_values, bins_and_values = Bin_phi_and_theta(phiandtheta_df, num_phi_bins, num_theta_bins)
+    make_sphere(bins_and_values)
+    
     kfold = KFold(n_splits=num_folds, shuffle=True)
     inputs = np.array(df["Filepath"])
     outputs = np.array(df[y_col_values])
@@ -635,5 +637,5 @@ label_to_predict = "binned_orientation"
 augmentation_list = ["OG", "Posterize", "Color", "Flipping", "Rotation", "Solarize"]
 Name = "2_Conv_2_Dense_4_total_bins{}".format(int(time()))
 args = prepare_data(parent_folder_name, augmentation_list)
-make_CNN(args, batch_size=5, patience=3, max_epochs=8, augmentation_list=augmentation_list, plot=True, num_bins=2, Name=Name)
+make_CNN(args, batch_size=5, patience=3, max_epochs=8, augmentation_list=augmentation_list, plot=True, num_phi_bins=2, num_theta_bins=4, Name=Name)
 #make_CNN(args, label_to_predict, batch_size=5, patience=3, max_epochs=20, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, num_bins=6)

@@ -18,6 +18,7 @@ from tensorflow.keras.preprocessing.image import load_img, img_to_array
 from sklearn.model_selection import KFold
 from Binning_phi_and_theta import *
 from PIL import Image
+import os
 
 
 
@@ -121,7 +122,8 @@ def add_augmentations(df, augmentation_list):
         for row in df.iterrows():
             OG_picture_step_UCI = row[1]["Filepath"].split("\\")[-1].split(".")[0]
             parameters = row[1]["Filepath"].split("\\")[-2]
-            label = row[1][df.columns[1]]
+            #print("\nrow filepath = " + str(row[1]["Filepath"]))
+            #print(row[1].to_frame().transpose())
 
             pathname = 'C:\\Users\\u1056\\sfx\\images_sfx\\' + parent_folder_name + "\\" + folder
             for root, dirs, files in os.walk(pathname):
@@ -133,10 +135,8 @@ def add_augmentations(df, augmentation_list):
                             if((OG_picture_step_UCI in file) and (parameters in root)):
                                 path = os.path.join(root, file)
                                 new_row = row[1].to_frame().transpose()
-                                new_row["Filepath"][0] = path
-                                #new_row = pd.DataFrame([{'Filepath':str(path), df.columns[1]:label}])
+                                new_row.iloc[0]["Filepath"] = path
                                 new_df = pd.concat([new_df, new_row], ignore_index=True) 
-                                #new_df.append({'Filepath':str(path), df.columns[1]:label}, ignore_index=True) #DONT use pd.concat here... it changes the type of things in the dataframe
     for i in range(len(new_df.columns) - 1):
         new_df[[str(i)]] = new_df[[str(i)]].apply(pd.to_numeric)
     return new_df
@@ -160,13 +160,19 @@ def remove_augmentations(images):
 
 
 
-def make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=1000, optimizer="adam", activation="relu", kernel_size=(5,5), plot = True, augmentation_list = [], num_folds=5, num_bins=5):
+def make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=1000, optimizer="adam", activation="relu", kernel_size=(5,5), plot = True, augmentation_list = [], num_folds=5, num_phi_bins=5, num_theta_bins=5, solid_center=False):
     results = []
     #TODO: do this for phi and theta later
     #shuffles the dataset and puts it into a dataframe
-    df = pd.concat([args[0], args[2], args[3]], axis=1).sample(frac=1.0, random_state=1).reset_index(drop=True)
-    df.columns = ["Filepath", "phi", "theta"]
-    df, y_col_values = Bin_phi_and_theta(df, num_bins)
+    phiandtheta_df = pd.concat([args[0], args[2], args[3]], axis=1).sample(frac=1.0, random_state=1).reset_index(drop=True)
+    phiandtheta_df.columns = ["Filepath", "phi", "theta"]
+    if(solid_center):
+        df, y_col_values, bins_and_values = Bin_phi_and_theta_center_target(phiandtheta_df, num_phi_bins, num_theta_bins)
+    else:
+        df, y_col_values, bins_and_values = Bin_phi_and_theta(phiandtheta_df, num_phi_bins, num_theta_bins)
+
+    print("\nTOTAL NUMBER OF BINS = " + str(len(y_col_values)))
+
     kfold = KFold(n_splits=num_folds, shuffle=True)
     inputs = np.array(df["Filepath"])
     outputs = np.array(df[y_col_values])
@@ -243,7 +249,9 @@ def make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=1000,
         #https://datascience.stackexchange.com/questions/106600/how-to-perform-regression-on-image-data-using-tensorflow
 
         model = tf.keras.Sequential([
-        tf.keras.layers.Conv2D(32, (3, 3), activation='relu'),
+        tf.keras.layers.Conv2D(8, (3, 3), activation='relu'),
+        tf.keras.layers.MaxPooling2D(2),
+        tf.keras.layers.Conv2D(16, (3, 3), activation='relu'),
         tf.keras.layers.MaxPooling2D(2),
         # tf.keras.layers.Conv2D(32, (3, 3), activation='relu'),
         # tf.keras.layers.MaxPooling2D(2),
@@ -253,12 +261,12 @@ def make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=1000,
         #tf.keras.layers.Dense(units=1024, activation='relu'),
         # tf.keras.layers.Dense(units=512, activation='relu'),
         # tf.keras.layers.Dense(units=256, activation='relu'),
-        tf.keras.layers.Dense(units=16, activation='relu'),
-        tf.keras.layers.Dense(units= num_bins*num_bins, activation='softmax') #one node per class label for a softmax activation function
+        tf.keras.layers.Dense(units=128, activation='relu'),
+        tf.keras.layers.Dense(units= len(y_col_values), activation='softmax') #one node per class label for a softmax activation function
         ])
 
         model.compile(
-            optimizer=tf.keras.optimizers.Adam(learning_rate = 0.001), 
+            optimizer=tf.keras.optimizers.Adam(), 
             loss= 'categorical_crossentropy', #TODO idk about this loss #https://stackoverflow.com/questions/47034888/how-to-choose-cross-entropy-loss-in-tensorflow
             #loss = tf.keras.losses.SparseCategoricalCrossentropy,
             #https://towardsdatascience.com/deep-learning-which-loss-and-activation-functions-should-i-use-ac02f1c56aa8
@@ -289,14 +297,23 @@ def make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=1000,
         # """ makes predictions with the test dataset and plots them. Good predictions should lie on the line. """
         test_predictions = np.squeeze(model.predict(test_images))
 
+        print("min val loss = " + str(min(history.history['val_loss'])))
+
+        #making nice plots to look at :)
+        label_to_predict = "Orientation via bins"
+        folder = f"C:\\Users\\u1056\\sfx\\captain_america_plots\\center_circle_phi_{num_phi_bins}_theta_{num_theta_bins}_bins\\fold{fold_no}\\"
+        for i in range(len(test_predictions)):
+            make_sphere(bins_and_values, test_predictions[i], test_images._filepaths[i], folder)
+        plot_stuff(history, label_to_predict, folder) #this has to be after make_sphere because make_sphere makes the folder duh
+
         """prediction sheet should tell us alot about the location of the prediction vs the actual location to see if it is relatively close"""
         prediction_sheet = [] 
 
 
         hit_arr = []
         bins_checked_arr = []
-        misses_arr = np.zeros(num_bins*num_bins)
-        for bins_checked in range(1,num_bins*num_bins+1):
+        misses_arr = np.zeros(len(y_col_values))
+        for bins_checked in range(1,4):
             hits = 0
             for test in range(len(test_predictions)):
                 tuples = []
@@ -360,8 +377,40 @@ def make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=1000,
     # print("AVERAGE TEST R^2: " + str(np.average(results[:,1])))
     # print("AVERAGE MIN VALIDATION LOSS: " + str(np.average(results[:,2])))
     # print("AVERAGE MIN TRAINING LOSS: " + str(np.average(results[:,3])))
+
     return model
     # return [history, model, avg_training_r, avg_test_r, avg_train_loss, avg_val_loss]
+
+def plot_stuff(history, label_to_predict, folder):
+
+    fig = plt.figure()
+    plt.plot(history.history['loss'], label='loss (categorical cross entropy)')
+    plt.plot(history.history['val_loss'], label='val_loss')
+    #plt.ylim([0, 4])
+    plt.xlabel('Epoch')
+    plt.ylabel('loss')
+    plt.title("loss over epochs predicting " + label_to_predict)
+    plt.legend()
+    plt.grid(True)
+    fig.text(.5, .007, "Best val_loss = " + str(round(min(history.history['val_loss'])*10000)/10000),fontsize = 7, ha='center')
+    fig_name = folder + "loss_vs_epochs.png"
+    plt.savefig(fig_name)
+    plt.close()
+
+    fig = plt.figure()
+    plt.plot(history.history['acc'], label='accuracy')
+    plt.plot(history.history['val_acc'], label='validation accuracy')
+    #plt.ylim([0, 4])
+    plt.xlabel('Epoch')
+    plt.ylabel('Accuracy')
+    plt.title("Accuracy over epochs predicting " + label_to_predict)
+    plt.legend()
+    plt.grid(True)
+    fig.text(.5, .007, "Best validation accuracy = " + str(round(min(history.history['val_acc'])*10000)/10000),fontsize = 7, ha='center')
+    fig_name = folder + "accuracy_vs_epochs.png"
+    plt.savefig(fig_name)
+    plt.close()
+
 
 def plot_3_Bin_misses(misses_arr, fold, num_bins):
     bins = []
@@ -403,40 +452,6 @@ def check_bins_plot(hit_arr, num_tests, bins_checked_arr, fold, num_bins):
     return
 
 
-def plot_stuff(test_images, train_images, history, trainr2, testr2, test_predictions, augmentation_list, label_to_predict, fold):
-    test_labels = test_images.labels
-    train_labels = train_images.labels
-    date_and_time = (str(datetime.datetime.now())[:10]).replace("-", "_")
-
-    fig = plt.figure()
-    plt.plot(history.history['loss'], label='loss (mean absolute error)')
-    plt.plot(history.history['val_loss'], label='val_loss')
-    #plt.ylim([0, 4])
-    plt.xlabel('Epoch')
-    plt.ylabel('Error')
-    plt.title("loss over epochs predicting " + label_to_predict)
-    plt.legend()
-    plt.grid(True)
-    fig.text(.5, .007, "Best loss = " + str(round(min(history.history['loss'])*10000)/10000) + " Best val_loss = " + str(round(min(history.history['val_loss'])*10000)/10000) + " train r^2 = " + str(round(trainr2*10000)/10000) + " test r^2 = " + str(round(testr2*10000)/10000),fontsize = 7, ha='center')
-    fig_name = "C:\\Users\\u1056\\sfx\\Result_plots_newTestMatrix_bins\\" + label_to_predict + "_loss_vs_epochs_" + "_fold" + str(fold) +".png"
-    plt.savefig(fig_name)
-    #plt.show()
-
-    fig = plt.figure()
-    a = plt.axes(aspect='equal')
-    plt.scatter(test_labels, test_predictions)
-    plt.xlabel('True labels')
-    plt.ylabel('Predicted labels')
-    plt.title("predictions vs true labels predicting " + label_to_predict)
-    lims = [0, max(test_labels)]
-    plt.xlim(lims)
-    plt.ylim(lims)
-    _ = plt.plot(lims, lims) 
-    fig.text(.5, .007, "Best loss = " + str(round(min(history.history['loss'])*10000)/10000) + " Best val_loss = " + str(round(min(history.history['val_loss'])*10000)/10000) + " train r^2 = " + str(round(trainr2*10000)/10000) + " test r^2 = " + str(round(testr2*10000)/10000), fontsize = 8, ha='center')
-    fig_name = "C:\\Users\\u1056\\sfx\\Result_plots_newTestMatrix_bins\\" + label_to_predict + "_parody_" + "_fold" + str(fold) + ".png"
-    plt.savefig(fig_name)
-    #plt.show()
-
 
 
 
@@ -454,5 +469,18 @@ parent_folder_name = "Original"
 label_to_predict = "binned_orientation"
 augmentation_list = ["OG", "Posterize", "Color", "Flipping", "Rotation", "Solarize"]
 args = prepare_data(parent_folder_name, augmentation_list)
-make_CNN(args, label_to_predict, batch_size=5, patience=3, max_epochs=25, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, num_bins=5)
+# make_CNN(args, label_to_predict, batch_size=5, patience=10, max_epochs=100, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, num_phi_bins=2, num_theta_bins=3, solid_center=True)
+# make_CNN(args, label_to_predict, batch_size=5, patience=10, max_epochs=100, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, num_phi_bins=2, num_theta_bins=4, solid_center=True)
+# make_CNN(args, label_to_predict, batch_size=5, patience=10, max_epochs=100, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, num_phi_bins=2, num_theta_bins=5, solid_center=True)
+make_CNN(args, label_to_predict, batch_size=5, patience=10, max_epochs=100, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, num_phi_bins=3, num_theta_bins=3, solid_center=True)
+make_CNN(args, label_to_predict, batch_size=5, patience=10, max_epochs=100, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, num_phi_bins=3, num_theta_bins=4, solid_center=True)
+make_CNN(args, label_to_predict, batch_size=5, patience=10, max_epochs=100, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, num_phi_bins=3, num_theta_bins=5, solid_center=True)
+make_CNN(args, label_to_predict, batch_size=5, patience=10, max_epochs=100, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, num_phi_bins=4, num_theta_bins=3, solid_center=True)
+make_CNN(args, label_to_predict, batch_size=5, patience=10, max_epochs=100, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, num_phi_bins=4, num_theta_bins=4, solid_center=True)
+make_CNN(args, label_to_predict, batch_size=5, patience=10, max_epochs=100, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, num_phi_bins=4, num_theta_bins=5, solid_center=True)
+make_CNN(args, label_to_predict, batch_size=5, patience=10, max_epochs=100, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, num_phi_bins=5, num_theta_bins=3, solid_center=True)
+make_CNN(args, label_to_predict, batch_size=5, patience=10, max_epochs=100, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, num_phi_bins=5, num_theta_bins=4, solid_center=True)
+make_CNN(args, label_to_predict, batch_size=5, patience=10, max_epochs=100, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, num_phi_bins=5, num_theta_bins=5, solid_center=True)
+
+print("done")
 #make_CNN(args, label_to_predict, batch_size=5, patience=3, max_epochs=20, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, num_bins=6)
