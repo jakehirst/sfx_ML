@@ -118,6 +118,58 @@ def Bin_phi_and_theta_center_target(df, num_phi_bins, num_theta_bins):
 
     return df, y_col_values, bins_and_values
 
+def Bin_just_theta(df, num_theta_bins):
+    theta_spacing = 361 / num_theta_bins
+    bin_num = 0
+    bin = np.zeros(len(df))
+    thetas = np.array(df["theta"])
+    y_col_values = []
+    bins_and_values = {}
+    bins_and_frequencies = {}
+    
+    for theta_bin in range(num_theta_bins):
+        theta_low = theta_bin * theta_spacing #creating a high and low value for theta for this respective bin
+        theta_high = (theta_bin + 1) * theta_spacing
+
+        for i in range(len(df)):
+            if(thetas[i] >= theta_low and thetas[i] < theta_high):
+                if(bin[i] > 0): 
+                    print("This index was catergorized twice")
+                    break
+                print(f"theta = {thetas[i]} bin = {bin_num}")
+                assigned_bin = str(int(bin_num))
+                bin[i] = assigned_bin
+                
+                if(not bins_and_frequencies.keys().__contains__(assigned_bin)):
+                    bins_and_frequencies[assigned_bin] = 0
+                else:
+                    bins_and_frequencies[assigned_bin] = bins_and_frequencies[assigned_bin] + 1
+            
+        bins_and_values[bin_num] = {"phi":[0, 60], "theta":[theta_low, theta_high]}
+        y_col_values.append(str(int(bin_num)))
+        bin_num += 1
+            
+    
+    bin = to_categorical(bin)
+    bin_df = pd.DataFrame(bin)
+    
+    bin_df.columns = y_col_values
+    df = pd.concat([df, bin_df], axis=1)
+
+    # for i in range(len(df)):
+    #     print("\nphi = " + str(df.iloc[i]["phi"]))
+    #     print("theta = " + str(df.iloc[i]["theta"]))
+    #     print("bin = " + str(np.where(bin[i]== 1.0)[0][0]))
+
+    df = df.drop("phi", axis=1)
+    df = df.drop("theta", axis=1)
+
+    return df, y_col_values, bins_and_values
+    
+    
+def Bin_just_phi():
+    print("not implemented yet")
+
 
 
 def turn_filepath_to_nparray(x):
