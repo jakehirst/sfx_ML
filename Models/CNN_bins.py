@@ -37,7 +37,13 @@ def get_images(pathname, image_name_list):
 
 def prepare_data(parent_folder_name, augmentation_list):
     image_name_list = []
-    image_name_list = get_images('C:\\Users\\u1056\\sfx\\images_sfx\\' + parent_folder_name + "\\" + "OG", image_name_list)
+    
+    #in lab
+    #image_name_list = get_images('C:\\Users\\u1056\\sfx\\images_sfx\\' + parent_folder_name + "\\" + "OG", image_name_list)
+    
+    #at home
+    image_name_list = get_images('/Users/jakehirst/Desktop/sfx/sfx_pics/jake/images_sfx/' + parent_folder_name + "/" + "OG", image_name_list)
+    
     # for folder in augmentation_list:
     #     image_name_list = get_images('C:\\Users\\u1056\\sfx\\images_sfx\\' + parent_folder_name + "\\" + folder, image_name_list)
 
@@ -48,8 +54,15 @@ def prepare_data(parent_folder_name, augmentation_list):
         if(image_path.endswith("Dynamic.png")):
             # if(image_path.__contains__("Para_2ft_PHI_30_THETA_135")):
             #     print(image_path)
-            image_name = image_path.split("\\")[-1]
-            folder_name = image_path.split("\\")[-2]
+            
+            #in lab
+            # image_name = image_path.split("\\")[-1]
+            # folder_name = image_path.split("\\")[-2]
+            
+            #at home
+            image_name = image_path.split("/")[-1]
+            folder_name = image_path.split("/")[-2]            
+            
             UCI = int(image_name.split("_")[2])
             step = int(image_name.split("_")[0].split("p")[1])
             if(not (folder_name in max_steps_and_UCIs.keys())):
@@ -70,8 +83,14 @@ def prepare_data(parent_folder_name, augmentation_list):
     #Extracts parameters from image names
     for image_path in image_name_list:
         if(image_path.endswith("Dynamic.png") or image_path.split("_")[-2] == "Dynamic"):
-            image_name = image_path.split("\\")[-1]
-            folder_name = image_path.split("\\")[-2]
+            #in lab
+            # image_name = image_path.split("\\")[-1]
+            # folder_name = image_path.split("\\")[-2]
+            
+            #at home
+            image_name = image_path.split("/")[-1]
+            folder_name = image_path.split("/")[-2]
+               
             UCI = int(image_name.split("_")[2])
             step = int(image_name.split("_")[0].split("p")[1])
             #Only selects the images from the max step/uci combinations
@@ -81,7 +100,13 @@ def prepare_data(parent_folder_name, augmentation_list):
                 img_arr = img_to_array(img)
                 input_shape = img_arr.shape
                 img_arr_list.append(img_arr)
-                image_name = image_path.split('\\')[-1]
+                
+                #in lab
+                #image_name = image_path.split('\\')[-1]
+                
+                #at home
+                image_name = image_path.split('/')[-1]
+                
                 height = folder_name.split('ft_')[0]
                 height = height.split('Para_')[1]
                 height = height.replace('-', '.')
@@ -120,12 +145,24 @@ def add_augmentations(df, augmentation_list):
         augmentation_list.remove("OG")
     for folder in augmentation_list:
         for row in df.iterrows():
-            OG_picture_step_UCI = row[1]["Filepath"].split("\\")[-1].split(".")[0]
-            parameters = row[1]["Filepath"].split("\\")[-2]
+            
+            #in lab
+            # OG_picture_step_UCI = row[1]["Filepath"].split("\\")[-1].split(".")[0]
+            # parameters = row[1]["Filepath"].split("\\")[-2]
+            
+            #at home
+            OG_picture_step_UCI = row[1]["Filepath"].split("/")[-1].split(".")[0]
+            parameters = row[1]["Filepath"].split("/")[-2]
+            
             #print("\nrow filepath = " + str(row[1]["Filepath"]))
             #print(row[1].to_frame().transpose())
 
-            pathname = 'C:\\Users\\u1056\\sfx\\images_sfx\\' + parent_folder_name + "\\" + folder
+            #in lab
+            #pathname = 'C:\\Users\\u1056\\sfx\\images_sfx\\' + parent_folder_name + "\\" + folder
+            
+            #at home
+            pathname = '/Users/jakehirst/Desktop/sfx/sfx_pics/jake/images_sfx' + parent_folder_name + '/' + folder
+            
             for root, dirs, files in os.walk(pathname):
             # select file name
                 for file in files:
@@ -301,7 +338,13 @@ def make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=1000,
 
         #making nice plots to look at :)
         label_to_predict = "Orientation via bins"
-        folder = f"C:\\Users\\u1056\\sfx\\captain_america_plots\\center_circle_phi_{num_phi_bins}_theta_{num_theta_bins}_bins\\fold{fold_no}\\"
+        
+        #in lab
+        #folder = f"C:\\Users\\u1056\\sfx\\captain_america_plots\\center_circle_phi_{num_phi_bins}_theta_{num_theta_bins}_bins\\fold{fold_no}\\"
+        
+        #at home
+        folder = f"/Users/jakehirst/Desktop/sfx/captain_america_plots/center_circle_phi_{num_phi_bins}_theta_{num_theta_bins}_bins/fold{fold_no}/"
+        
         for i in range(len(test_predictions)):
             make_sphere(bins_and_values, test_predictions[i], test_images._filepaths[i], folder)
         plot_stuff(history, label_to_predict, folder) #this has to be after make_sphere because make_sphere makes the folder duh
@@ -322,7 +365,12 @@ def make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=1000,
                 tuples.sort(key=lambda t: -t[0]) #sorted array of tuples by prediction value ==> [(prediction val of bin, bin number)]
                 real_location = np.where(test_labels[test] == 1)[0][0]
                 
-                prediction_sheet.append([fold_no, tuples[0], tuples[1], tuples[2], real_location, test_images.filenames[0].split("\\")[-2]])
+                #in lab
+                #prediction_sheet.append([fold_no, tuples[0], tuples[1], tuples[2], real_location, test_images.filenames[0].split("\\")[-2]])
+                
+                #at home
+                prediction_sheet.append([fold_no, tuples[0], tuples[1], tuples[2], real_location, test_images.filenames[0].split("/")[-2]])
+
                 
                 for i in range(bins_checked):
                     if(bins_checked == 5 and i == bins_checked - 1 and tuples[i][1] != real_location):
@@ -469,9 +517,9 @@ parent_folder_name = "Original"
 label_to_predict = "binned_orientation"
 augmentation_list = ["OG", "Posterize", "Color", "Flipping", "Rotation", "Solarize"]
 args = prepare_data(parent_folder_name, augmentation_list)
-# make_CNN(args, label_to_predict, batch_size=5, patience=10, max_epochs=100, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, num_phi_bins=2, num_theta_bins=3, solid_center=True)
-# make_CNN(args, label_to_predict, batch_size=5, patience=10, max_epochs=100, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, num_phi_bins=2, num_theta_bins=4, solid_center=True)
-# make_CNN(args, label_to_predict, batch_size=5, patience=10, max_epochs=100, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, num_phi_bins=2, num_theta_bins=5, solid_center=True)
+make_CNN(args, label_to_predict, batch_size=5, patience=10, max_epochs=100, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, num_phi_bins=2, num_theta_bins=3, solid_center=True)
+make_CNN(args, label_to_predict, batch_size=5, patience=10, max_epochs=100, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, num_phi_bins=2, num_theta_bins=4, solid_center=True)
+make_CNN(args, label_to_predict, batch_size=5, patience=10, max_epochs=100, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, num_phi_bins=2, num_theta_bins=5, solid_center=True)
 make_CNN(args, label_to_predict, batch_size=5, patience=10, max_epochs=100, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, num_phi_bins=3, num_theta_bins=3, solid_center=True)
 make_CNN(args, label_to_predict, batch_size=5, patience=10, max_epochs=100, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, num_phi_bins=3, num_theta_bins=4, solid_center=True)
 make_CNN(args, label_to_predict, batch_size=5, patience=10, max_epochs=100, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, num_phi_bins=3, num_theta_bins=5, solid_center=True)

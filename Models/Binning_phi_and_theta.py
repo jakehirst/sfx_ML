@@ -194,8 +194,14 @@ def make_sphere(bins_and_values, test_prediction ,true_value, filepath):
     c = inp[:,2].reshape((n_theta,n_phi)).T
     #print(z.shape)
     #print(c.shape)
-    point_theta = int(true_value.split("\\")[-2].split("_")[-1])* np.pi/180
-    point_phi = int(true_value.split("\\")[-2].split("_")[-3])* np.pi/180
+    
+    #in lab
+    # point_theta = int(true_value.split("\\")[-2].split("_")[-1])* np.pi/180
+    # point_phi = int(true_value.split("\\")[-2].split("_")[-3])* np.pi/180
+    
+    #at home
+    point_theta = int(true_value.split("/")[-2].split("_")[-1])* np.pi/180
+    point_phi = int(true_value.split("/")[-2].split("_")[-3])* np.pi/180
 
     point_x = (r+.1)*np.sin(point_phi)*np.cos(point_theta)
     point_y = (r+.1)*np.sin(point_phi)*np.sin(point_theta)
@@ -217,12 +223,23 @@ def make_sphere(bins_and_values, test_prediction ,true_value, filepath):
     ax.legend()
     ax.view_init(90, 90)
     #ax.plot_wireframe(x, y, z, color="k") #not needed?!
-    if(not os.path.isdir(filepath.split("\\fold")[0])):
-        os.mkdir(filepath.split("\\fold")[0])
-    if not os.path.isdir(filepath.removesuffix("\\")):
-        os.mkdir(filepath.removesuffix("\\"))
+    
+    #in lab
+    # if(not os.path.isdir(filepath.split("\\fold")[0])):
+    #     os.mkdir(filepath.split("\\fold")[0])
+    # if not os.path.isdir(filepath.removesuffix("\\")):
+    #     os.mkdir(filepath.removesuffix("\\"))
+    # fig.colorbar(surf)
+    # plt.savefig(filepath + true_value.split("\\")[-2] +".png")
+    
+    #at home
+    if(not os.path.isdir(filepath.split("/fold")[0])):
+        os.mkdir(filepath.split("/fold")[0])
+    if not os.path.isdir(filepath.removesuffix("/")):
+        os.mkdir(filepath.removesuffix("/"))
     fig.colorbar(surf)
-    plt.savefig(filepath + true_value.split("\\")[-2] +".png")
+    plt.savefig(filepath + true_value.split("/")[-2] +".png")
+    
     plt.close(fig)
     #plt.show()
 
