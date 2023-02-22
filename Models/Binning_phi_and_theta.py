@@ -75,8 +75,6 @@ def Bin_phi_and_theta_center_target(df, num_phi_bins, num_theta_bins):
     bins_and_values[bin_num] = {"phi":[0, phi_spacing], "theta":[0, 361]}
     bin_num += 1
 
-    # for j in range(num_theta_bins*num_phi_bins - num_theta_bins + 1):
-    #     y_col_values.append(str(int(j)))
 
     for phi_bin in range(1, num_phi_bins):
         phi_low = phi_bin * phi_spacing #creating a high and low value for phi for this respective bin
@@ -89,6 +87,7 @@ def Bin_phi_and_theta_center_target(df, num_phi_bins, num_theta_bins):
             # print(f"theta low and high = {theta_low} and {theta_high}")
             # print(f"bin number = {bin_num}")
 
+            #goes through all of the examples and sees if any examples fall within the current bin
             for i in range(len(df)):
                 if(phis[i] >= phi_low and phis[i] < phi_high and thetas[i] >= theta_low and thetas[i] < theta_high):
                     if(bin[i] > 0): 
@@ -101,8 +100,11 @@ def Bin_phi_and_theta_center_target(df, num_phi_bins, num_theta_bins):
             y_col_values.append(str(int(bin_num)))
             bin_num += 1
             
-    
+    #changes the bin array to a categorical matrix with 1's in each examples corresponding bin column
     bin = to_categorical(bin)
+    while(bin.shape[1] < int(y_col_values[-1]) + 1):
+        bin = np.hstack((bin,np.zeros((bin.shape[0],1))))
+    
     bin_df = pd.DataFrame(bin)
     
     bin_df.columns = y_col_values
@@ -116,8 +118,11 @@ def Bin_phi_and_theta_center_target(df, num_phi_bins, num_theta_bins):
     df = df.drop("phi", axis=1)
     df = df.drop("theta", axis=1)
 
+    
     return df, y_col_values, bins_and_values
 
+
+""" bins phi and theta into just theta bins, no phi. so it looks like a bunch of pizza slices."""
 def Bin_just_theta(df, num_theta_bins):
     theta_spacing = 361 / num_theta_bins
     bin_num = 0
@@ -167,8 +172,57 @@ def Bin_just_theta(df, num_theta_bins):
     return df, y_col_values, bins_and_values
     
     
-def Bin_just_phi():
-    print("not implemented yet")
+    
+""" bins phi and theta into just phi bins, no theta. so it looks like a bunch of circles."""
+def Bin_just_phi(df, num_phi_bins):
+    phi_spacing = 60 / num_phi_bins
+    bin_num = 0
+    bin = np.zeros(len(df))
+    phis = np.array(df["phi"])
+    y_col_values = []
+    bins_and_values = {}
+    bins_and_frequencies = {}
+
+
+    for phi_bin in range(0, num_phi_bins):
+        phi_low = phi_bin * phi_spacing #creating a high and low value for phi for this respective bin
+        phi_high = (phi_bin + 1) * phi_spacing  
+        #print(f"phi low and high = {phi_low} and {phi_high}")
+        for i in range(len(df)):
+            if(phis[i] >= phi_low and phis[i] < phi_high):
+                if(bin[i] > 0): 
+                    print("This index was catergorized twice")
+                    break
+                print(f"phi = {phis[i]} bin = {phi_bin}")
+                assigned_bin = str(int(phi_bin))
+                bin[i] = assigned_bin
+                
+                if(not bins_and_frequencies.keys().__contains__(assigned_bin)):
+                    bins_and_frequencies[assigned_bin] = 0
+                else:
+                    bins_and_frequencies[assigned_bin] = bins_and_frequencies[assigned_bin] + 1
+                    
+                                
+        bins_and_values[bin_num] = {"phi":[phi_low, phi_high], "theta":[0, 361]}
+        y_col_values.append(str(int(phi_bin)))
+        bin_num += 1
+        
+    
+    bin = to_categorical(bin)
+    bin_df = pd.DataFrame(bin)
+    
+    bin_df.columns = y_col_values
+    df = pd.concat([df, bin_df], axis=1)
+
+    # for i in range(len(df)):
+    #     print("\nphi = " + str(df.iloc[i]["phi"]))
+    #     print("theta = " + str(df.iloc[i]["theta"]))
+    #     print("bin = " + str(np.where(bin[i]== 1.0)[0][0]))
+
+    df = df.drop("phi", axis=1)
+    df = df.drop("theta", axis=1)
+
+    return df, y_col_values, bins_and_values
 
 
 
@@ -181,6 +235,8 @@ def turn_filepath_to_nparray(x):
         x[i] = nump
     return x
 
+"""plots a heat map of a particular example's prediction probabilities across each bin and 
+   plots the location of the example as a comparison"""
 def make_sphere(bins_and_values, test_prediction ,true_value, filepath):
 
     heats = test_prediction
@@ -295,6 +351,64 @@ def make_sphere(bins_and_values, test_prediction ,true_value, filepath):
     plt.close(fig)
     #plt.show()
 
+
+""" shows a bar chart of the nubmer of examples per bin and the number of misses per bin. """
+def Plot_Bins_and_misses(bins_and_values, test_predictions, df, folder):
+    misses = []
+    totals = []
+    false_positives = []
+    x = []
+    for i in range(df.shape[1]):
+        misses.append(0)
+        totals.append(0)
+        false_positives.append(0)
+        x.append(i)
+    
+    for kfold in range(len(test_predictions)):
+        for test_example in range(len(test_predictions[kfold][1])):
+            prediction = test_predictions[kfold][0][test_example]
+            Filepath = test_predictions[kfold][1][test_example]
+            predicted_bin = np.where(prediction == np.max(prediction))[0][0]
+            row = df.loc[df["Filepath"] == Filepath]
+            #print(row)
+            true_bin = np.where(np.delete(row.to_numpy(), 0) == 1.0)[0][0]
+            #print("true bin = " + str(true_bin))
+            totals[true_bin] = totals[true_bin] + 1
+            #print(f"predicted bin = {predicted_bin}")
+            
+            if(predicted_bin != true_bin):
+                misses[true_bin] = misses[true_bin] + 1
+                false_positives[predicted_bin] = false_positives[predicted_bin] + 1
+    
+    X_axis = np.arange(len(x))
+  
+    plt.bar(X_axis - 0.2, misses, 0.4, label = 'misses')
+    plt.bar(X_axis + 0.2, totals, 0.4, label = 'totals')
+    
+    plt.xticks(X_axis, x)
+    plt.xlabel("Bin #")
+    plt.ylabel("Number examples per bin")
+    plt.title("Misses per bin")
+    plt.legend()
+    fig_name = folder.removesuffix("fold5/") + "per_bin_misses.png"
+    plt.savefig(fig_name)
+    plt.close()
+    
+    plt.bar(X_axis - 0.2, false_positives, 0.4, label = 'false_positives')
+    plt.bar(X_axis + 0.2, totals, 0.4, label = 'totals')
+    
+    plt.xticks(X_axis, x)
+    plt.xlabel("Bin #")
+    plt.ylabel("Number examples per bin")
+    plt.title("False positives per bin")
+    plt.legend()
+    fig_name = folder.removesuffix("fold5/") + "per_bin_false_positives.png"
+    plt.savefig(fig_name)
+    plt.close()
+                
+            
+            
+    
 
 #make_sphere()
     
