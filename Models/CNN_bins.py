@@ -485,8 +485,8 @@ args = prepare_data(parent_folder_name, augmentation_list)
 # make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=200, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, num_phi_bins=4, num_theta_bins=4, bin_type="solid center phi and theta")
 # make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=200, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, num_phi_bins=4, num_theta_bins=5, bin_type="solid center phi and theta")
 # make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=200, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, num_phi_bins=5, num_theta_bins=2, bin_type="solid center phi and theta")
-make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=200, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, num_phi_bins=10, num_theta_bins=10, bin_type="solid center phi and theta")
-make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=200, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, num_phi_bins=5, num_theta_bins=4, bin_type="solid center phi and theta")
+make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=200, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, num_phi_bins=2, num_theta_bins=2, bin_type="solid center phi and theta")
+make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=200, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, num_phi_bins=3, num_theta_bins=3, bin_type="solid center phi and theta")
 make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=200, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, num_phi_bins=5, num_theta_bins=5, bin_type="solid center phi and theta")
 
 

@@ -388,7 +388,7 @@ def Plot_Bins_and_misses(bins_and_values, test_predictions, df, folder):
     plt.xticks(X_axis, x)
     plt.xlabel("Bin #")
     plt.ylabel("Number examples per bin")
-    plt.title("Misses per bin")
+    plt.title(f"Misses per bin \nTotal misses = {sum(misses)} Total accuracy = {100 * ((len(df) - sum(misses))/len(df))}%")
     plt.legend()
     fig_name = folder.removesuffix("fold5/") + "per_bin_misses.png"
     plt.savefig(fig_name)
