@@ -19,6 +19,7 @@ from sklearn.model_selection import KFold
 from Binning_phi_and_theta import *
 from PIL import Image
 import os
+from k_means_clustering import *
 
 
 
@@ -199,10 +200,16 @@ def remove_augmentations(images):
 
 def make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=1000, optimizer="adam", activation="relu", kernel_size=(5,5), plot = True, augmentation_list = [], num_folds=5, num_phi_bins=5, num_theta_bins=5, bin_type="solid center phi and theta"):
     results = []
+    
     #TODO: do this for phi and theta later
     #shuffles the dataset and puts it into a dataframe
     phiandtheta_df = pd.concat([args[0], args[2], args[3]], axis=1).sample(frac=1.0, random_state=1).reset_index(drop=True)
     phiandtheta_df.columns = ["Filepath", "phi", "theta"]
+    
+    #find_clustering_elbow(phiandtheta_df, 500)
+    #main_clustering_call(phiandtheta_df, 5, 1000)
+
+    
     if(bin_type == "solid center phi and theta"):
         df, y_col_values, bins_and_values = Bin_phi_and_theta_center_target(phiandtheta_df, num_phi_bins, num_theta_bins)
     elif(bin_type == "phi and theta"):
@@ -211,6 +218,9 @@ def make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=1000,
         df, y_col_values, bins_and_values = Bin_just_theta(phiandtheta_df, num_theta_bins)
     elif(bin_type == "phi"):
         df, y_col_values, bins_and_values = Bin_just_phi(phiandtheta_df, num_phi_bins)
+    elif(bin_type == "clustering"):
+        k = 5
+        df, y_col_values, bins_and_values = main_clustering_call(phiandtheta_df, k, 100)
 
 
     print("\nTOTAL NUMBER OF BINS = " + str(len(y_col_values)))
@@ -485,7 +495,7 @@ args = prepare_data(parent_folder_name, augmentation_list)
 # make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=200, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, num_phi_bins=4, num_theta_bins=4, bin_type="solid center phi and theta")
 # make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=200, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, num_phi_bins=4, num_theta_bins=5, bin_type="solid center phi and theta")
 # make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=200, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, num_phi_bins=5, num_theta_bins=2, bin_type="solid center phi and theta")
-make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=200, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, num_phi_bins=2, num_theta_bins=2, bin_type="solid center phi and theta")
+make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=200, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, num_phi_bins=2, num_theta_bins=2, bin_type="clustering")
 make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=200, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, num_phi_bins=3, num_theta_bins=3, bin_type="solid center phi and theta")
 make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=200, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, num_phi_bins=5, num_theta_bins=5, bin_type="solid center phi and theta")
 
