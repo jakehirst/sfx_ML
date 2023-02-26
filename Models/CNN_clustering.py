@@ -198,25 +198,26 @@ def remove_augmentations(images):
 
 
 
-def make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=1000, optimizer="adam", activation="relu", kernel_size=(5,5), plot = True, augmentation_list = [], num_folds=5, num_phi_bins=5, num_theta_bins=5, bin_type="solid center phi and theta"):
+def make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=1000, optimizer="adam", activation="relu", kernel_size=(5,5), plot = True, augmentation_list = [], num_folds=5, k=5, folder="No folder applied"):
     results = []
+    
+    if(folder == "No folder applied"): print("NEED TO ASSIGN A FOLDER")
+    
+    folder = folder + f"/{k}_k"
+    if(not os.path.exists(folder)):
+        os.mkdir(folder)
     
     #TODO: do this for phi and theta later
     #shuffles the dataset and puts it into a dataframe
     phiandtheta_df = pd.concat([args[0], args[2], args[3]], axis=1).sample(frac=1.0, random_state=1).reset_index(drop=True)
     phiandtheta_df.columns = ["Filepath", "phi", "theta"]
     
-    if(bin_type == "solid center phi and theta"):
-        df, y_col_values, bins_and_values = Bin_phi_and_theta_center_target(phiandtheta_df, num_phi_bins, num_theta_bins)
-    elif(bin_type == "phi and theta"):
-        df, y_col_values, bins_and_values = Bin_phi_and_theta(phiandtheta_df, num_phi_bins, num_theta_bins)
-    elif(bin_type == "theta"):
-        df, y_col_values, bins_and_values = Bin_just_theta(phiandtheta_df, num_theta_bins)
-    elif(bin_type == "phi"):
-        df, y_col_values, bins_and_values = Bin_just_phi(phiandtheta_df, num_phi_bins)
+    #phiandtheta_df = phiandtheta_df.iloc[0:10]
+    #find_clustering_elbow(phiandtheta_df, 500)
+    #main_clustering_call(phiandtheta_df, 5, 1000)
 
+    df, clusters, y_col_values = main_clustering_call(phiandtheta_df, k, 1000)
 
-    print("\nTOTAL NUMBER OF BINS = " + str(len(y_col_values)))
 
     kfold = KFold(n_splits=num_folds, shuffle=True)
     inputs = np.array(df["Filepath"])
@@ -352,15 +353,16 @@ def make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=1000,
         #folder = f"C:\\Users\\u1056\\sfx\\captain_america_plots\\center_circle_phi_{num_phi_bins}_theta_{num_theta_bins}_bins\\fold{fold_no}\\"
         
         #at home
-        folder = f"/Users/jakehirst/Desktop/sfx/captain_america_plots/center_circle_phi_{num_phi_bins}_theta_{num_theta_bins}_bins/fold{fold_no}/"
+        #folder = f"/Users/jakehirst/Desktop/sfx/captain_america_plots/center_circle_phi_{num_phi_bins}_theta_{num_theta_bins}_bins/fold{fold_no}/"
         
 
-        for i in range(len(test_predictions)):
-            make_sphere(bins_and_values, test_predictions[i], test_images._filepaths[i], folder)
-        plot_stuff(history, label_to_predict, folder) #this has to be after make_sphere because make_sphere makes the folder duh
+    #     for i in range(len(test_predictions)):
+    #         make_sphere(bins_and_values, test_predictions[i], test_images._filepaths[i], folder)
+    #     plot_stuff(history, label_to_predict, folder) #this has to be after make_sphere because make_sphere makes the folder duh
 
         fold_no += 1
-    Plot_Bins_and_misses(bins_and_values, all_test_predictions, df, folder)
+    
+    Plot_Bins_and_misses(clusters, all_test_predictions, df, folder)
 
     # print(prediction_sheet)
     print("done")
@@ -475,22 +477,17 @@ parent_folder_name = "Original"
 label_to_predict = "binned_orientation"
 augmentation_list = ["OG", "Posterize", "Color", "Flipping", "Rotation", "Solarize"]
 args = prepare_data(parent_folder_name, augmentation_list)
-# make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=200, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, num_phi_bins=2, num_theta_bins=2, bin_type="solid center phi and theta")
-# make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=200, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, num_phi_bins=2, num_theta_bins=3, bin_type="solid center phi and theta")
-# make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=200, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, num_phi_bins=2, num_theta_bins=4, bin_type="solid center phi and theta")
-# make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=200, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, num_phi_bins=2, num_theta_bins=5, bin_type="solid center phi and theta")
-# make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=200, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, num_phi_bins=3, num_theta_bins=2, bin_type="solid center phi and theta")
-# make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=200, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, num_phi_bins=3, num_theta_bins=3, bin_type="solid center phi and theta")
-# make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=200, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, num_phi_bins=3, num_theta_bins=4, bin_type="solid center phi and theta")
-# make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=200, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, num_phi_bins=3, num_theta_bins=5, bin_type="solid center phi and theta")
-# make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=200, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, num_phi_bins=4, num_theta_bins=2, bin_type="solid center phi and theta")
-# make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=200, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, num_phi_bins=4, num_theta_bins=3, bin_type="solid center phi and theta")
-# make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=200, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, num_phi_bins=4, num_theta_bins=4, bin_type="solid center phi and theta")
-# make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=200, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, num_phi_bins=4, num_theta_bins=5, bin_type="solid center phi and theta")
-# make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=200, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, num_phi_bins=5, num_theta_bins=2, bin_type="solid center phi and theta")
-make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=200, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, num_phi_bins=2, num_theta_bins=2, bin_type="solid center phi and theta")
-make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=200, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, num_phi_bins=3, num_theta_bins=3, bin_type="solid center phi and theta")
-make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=200, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, num_phi_bins=5, num_theta_bins=5, bin_type="solid center phi and theta")
+
+#in lab
+# folder = "some folder"
+
+#at home
+folder = "/Users/jakehirst/Desktop/sfx/clustering"
+
+make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=200, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, k=2, folder=folder)
+make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=200, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, k=3, folder=folder)
+make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=200, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, k=4, folder=folder)
+make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=200, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, k=5, folder=folder)
 
 
 print("done")
