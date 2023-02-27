@@ -216,7 +216,7 @@ def make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=1000,
     #find_clustering_elbow(phiandtheta_df, 500)
     #main_clustering_call(phiandtheta_df, 5, 1000)
 
-    df, clusters, y_col_values = main_clustering_call(phiandtheta_df, k, 1000)
+    df, clusters, y_col_values = main_clustering_call(phiandtheta_df, k, 1000, folder)
 
 
     kfold = KFold(n_splits=num_folds, shuffle=True)

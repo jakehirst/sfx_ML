@@ -24,7 +24,7 @@ PSEUDOCODE
 
 """
 
-def main_clustering_call(df, k, num_tries):
+def main_clustering_call(df, k, num_tries, folder):
     #df = df.iloc[1:20]
     #COMMENT must change the phi and theta values to radians otherwise built in python trig functions will not work.
     df['theta'] = df['theta'].multiply(m.pi / 180)
@@ -52,7 +52,7 @@ def main_clustering_call(df, k, num_tries):
         
         
     
-    #plot_clusters(df, best_clusters)
+    plot_clusters(df, best_clusters, folder)
     df = df.drop("phi", axis=1)
     df = df.drop("theta", axis=1)
     df = df.drop("Distance_to_Cluster", axis=1)
@@ -186,9 +186,10 @@ def plot_all_points(df, clusters):
     plt.close()
 
 """ plots all of the points the same color on a polar coordinate system as well as the centroids of the clusters """
-def plot_clusters(df, clusters):
+def plot_clusters(df, clusters, folder):
     k = len(clusters[2])
     for i in range(k):
+        
         r_arr = []
         theta_arr = []
         for row in clusters[0][i].iterrows():
@@ -215,9 +216,9 @@ def plot_clusters(df, clusters):
 
         # Add gridlines
         ax.grid(True)
-
+        path = folder + f"/cluster_num{i}"
         # Show the plot
-        plt.show()
+        plt.savefig(path)
         plt.close()
     return
 
