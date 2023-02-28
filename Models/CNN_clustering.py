@@ -1,9 +1,9 @@
-import tensorflow as tf
-from tensorflow import keras
+
 import pandas as pd
 from pathlib import Path
 import os.path
 from sklearn.model_selection import train_test_split
+import numpy as np
 import tensorflow as tf
 import tensorflow_addons as tfa
 from sklearn.metrics import r2_score
@@ -12,14 +12,15 @@ import matplotlib.pyplot as plt
 import datetime
 from tensorflow.keras.models import Sequential
 from tensorflow.keras.layers import Activation, Dense
-from tensorflow.keras.optimizers import Adam
+from tensorflow.keras.optimizers.legacy import Adam
 from tensorflow.keras.metrics import categorical_crossentropy
 from tensorflow.keras.preprocessing.image import load_img, img_to_array
 from sklearn.model_selection import KFold
 from Binning_phi_and_theta import *
-from PIL import Image
+#from PIL import Image
 import os
 from k_means_clustering import *
+from tensorflow import keras
 
 
 
@@ -198,7 +199,7 @@ def remove_augmentations(images):
 
 
 
-def make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=1000, optimizer="adam", activation="relu", kernel_size=(5,5), plot = True, augmentation_list = [], num_folds=5, k=5, folder="No folder applied"):
+def make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=1000, optimizer="adam", activation="relu", kernel_size=(5,5), plot = True, augmentation_list = [], num_folds=5, k=5, folder="No folder applied", num_tries = 10):
     results = []
     
     if(folder == "No folder applied"): print("NEED TO ASSIGN A FOLDER")
@@ -213,10 +214,10 @@ def make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=1000,
     phiandtheta_df.columns = ["Filepath", "phi", "theta"]
     
     #phiandtheta_df = phiandtheta_df.iloc[0:10]
-    #find_clustering_elbow(phiandtheta_df, 500)
+    #find_clustering_elbow(phiandtheta_df, 2000)
     #main_clustering_call(phiandtheta_df, 5, 1000)
 
-    df, clusters, y_col_values = main_clustering_call(phiandtheta_df, k, 1000, folder)
+    df, clusters, y_col_values = main_clustering_call(phiandtheta_df, k, num_tries, folder)
 
 
     kfold = KFold(n_splits=num_folds, shuffle=True)
@@ -348,17 +349,11 @@ def make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=1000,
 
         #making nice plots to look at :)
         label_to_predict = "Orientation via bins"
-        
-        #in lab
-        #folder = f"C:\\Users\\u1056\\sfx\\captain_america_plots\\center_circle_phi_{num_phi_bins}_theta_{num_theta_bins}_bins\\fold{fold_no}\\"
-        
-        #at home
-        #folder = f"/Users/jakehirst/Desktop/sfx/captain_america_plots/center_circle_phi_{num_phi_bins}_theta_{num_theta_bins}_bins/fold{fold_no}/"
-        
+
 
     #     for i in range(len(test_predictions)):
     #         make_sphere(bins_and_values, test_predictions[i], test_images._filepaths[i], folder)
-    #     plot_stuff(history, label_to_predict, folder) #this has to be after make_sphere because make_sphere makes the folder duh
+        plot_stuff(history, label_to_predict, folder, fold_no) #this has to be after make_sphere because make_sphere makes the folder duh
 
         fold_no += 1
     
@@ -403,20 +398,23 @@ def make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=1000,
     return model
     # return [history, model, avg_training_r, avg_test_r, avg_train_loss, avg_val_loss]
 
-def plot_stuff(history, label_to_predict, folder):
-
+def plot_stuff(history, label_to_predict, folder, fold_no):
+    folder = folder + f"/fold {fold_no}"
+    if(not os.path.exists(folder)):
+        os.mkdir(folder)
+    
     fig = plt.figure()
     plt.plot(history.history['loss'], label='loss (categorical cross entropy)')
     plt.plot(history.history['val_loss'], label='val_loss')
     #plt.ylim([0, 4])
     plt.xlabel('Epoch')
     plt.ylabel('loss')
-    plt.title("loss over epochs predicting " + label_to_predict)
+    plt.title(f"fold {fold_no} loss over epochs predicting " + label_to_predict)
     plt.legend()
     plt.grid(True)
     plt.ylim(0, max(history.history['val_loss'])+2)
     fig.text(.5, .007, "Best val_loss = " + str(round(min(history.history['val_loss'])*10000)/10000),fontsize = 7, ha='center')
-    fig_name = folder + "loss_vs_epochs.png"
+    fig_name = folder + "/loss_vs_epochs.png"
     plt.savefig(fig_name)
     plt.close()
 
@@ -426,11 +424,11 @@ def plot_stuff(history, label_to_predict, folder):
     #plt.ylim([0, 4])
     plt.xlabel('Epoch')
     plt.ylabel('Accuracy')
-    plt.title("Accuracy over epochs predicting " + label_to_predict)
+    plt.title(f"fold {fold_no} Accuracy over epochs predicting " + label_to_predict)
     plt.legend()
     plt.grid(True)
     fig.text(.5, .007, "Best validation accuracy = " + str(round(max(history.history['val_acc'])*10000)/10000),fontsize = 7, ha='center')
-    fig_name = folder + "accuracy_vs_epochs.png"
+    fig_name = folder + "/accuracy_vs_epochs.png"
     plt.savefig(fig_name)
     plt.close()
     
@@ -483,11 +481,17 @@ args = prepare_data(parent_folder_name, augmentation_list)
 
 #at home
 folder = "/Users/jakehirst/Desktop/sfx/clustering"
+num_tries = 2000
 
-make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=200, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, k=2, folder=folder)
-make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=200, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, k=3, folder=folder)
-make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=200, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, k=4, folder=folder)
-make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=200, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, k=5, folder=folder)
+make_CNN(args, label_to_predict, batch_size=5, patience=50, max_epochs=2, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, k=15, folder=folder, num_tries=50)
+make_CNN(args, label_to_predict, batch_size=5, patience=50, max_epochs=500, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, k=3, folder=folder, num_tries=num_tries)
+make_CNN(args, label_to_predict, batch_size=5, patience=50, max_epochs=500, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, k=4, folder=folder, num_tries=num_tries)
+make_CNN(args, label_to_predict, batch_size=5, patience=50, max_epochs=500, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, k=5, folder=folder, num_tries=num_tries)
+make_CNN(args, label_to_predict, batch_size=5, patience=50, max_epochs=500, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, k=6, folder=folder, num_tries=num_tries)
+make_CNN(args, label_to_predict, batch_size=5, patience=50, max_epochs=500, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, k=7, folder=folder, num_tries=num_tries)
+make_CNN(args, label_to_predict, batch_size=5, patience=50, max_epochs=500, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, k=8, folder=folder, num_tries=num_tries)
+make_CNN(args, label_to_predict, batch_size=5, patience=50, max_epochs=500, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, k=9, folder=folder, num_tries=num_tries)
+make_CNN(args, label_to_predict, batch_size=5, patience=50, max_epochs=500, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, k=10, folder=folder, num_tries=num_tries)
 
 
 print("done")

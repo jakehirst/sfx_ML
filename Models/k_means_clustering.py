@@ -115,7 +115,7 @@ def find_clustering_elbow(df, num_tries):
     
     return
 
-""" Removes any cluster sets that have 0 examples in a cluster """
+""" Removes any cluster sets that have 0 examples in any of its clusters """
 def remove_bad_clusters(clusters):
     for cluster in clusters:
         for i in range(len(cluster[2])):
@@ -147,7 +147,7 @@ def find_good_clusters(df, k):
         total_SSE = find_SSE(cluster_dfs)
     except:
         total_SSE = 1000
-    return np.array([cluster_dfs, total_SSE, cluster_centroids])
+    return np.array([cluster_dfs, total_SSE, cluster_centroids], dtype=object)
 
 def plot_all_points(df, clusters):
     k = len(clusters[2])
