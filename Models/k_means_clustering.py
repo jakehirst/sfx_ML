@@ -5,6 +5,9 @@ import matplotlib.pyplot as plt
 import math as m
 from keras.utils import to_categorical
 import os
+from sklearn import metrics
+import seaborn as sns
+
 
 """ 
 This fucntion library will help bin phi and theta values into clusters that have hopefully equal number of examples in them. 
@@ -310,6 +313,46 @@ def find_polar_distance(cluster, row_phi, row_theta):
     phi1 = cluster[0] ; theta1 = cluster[1]
     phi2 = row_phi ; theta2 = row_theta
     return ((phi1**2) + (phi2**2) - (2*phi1*phi2*m.cos(theta1 - theta2)))**(1/2)
+
+
+""" creates a confusion matrix that shows where the misses are going """
+def confusion_matrix(test_predictions, df, folder):
+    y_pred = []
+    y_true = []
+    for fold in range(len(test_predictions)):
+        test_fold = test_predictions[fold]
+        for i in range(len(test_fold[1])):
+            image_path = test_fold[1][i]
+            prediction_cluster = np.argmax(test_fold[0][i])
+            print(f"predicted cluster = {prediction_cluster}")
+            #gets the row of the filepath and turns it into a dict
+            true_cluster_row = df.loc[df['Filepath'] == image_path] 
+            true_cluster = np.where((true_cluster_row.to_numpy())[0] == 1.0)[0][0] - 1
+            print(f"true cluster = {true_cluster}")
+            y_pred.append(prediction_cluster)
+            y_true.append(true_cluster)
+            
+    
+    cm = metrics.confusion_matrix(np.asarray(y_true), np.asarray(y_pred))
+    axes = np.arange(cm.shape[0])
+    
+    # Creating a dataframe for a array-formatted Confusion matrix,so it will be easy for plotting.
+    cm_df = pd.DataFrame(cm,
+                        index = axes, 
+                        columns = axes)
+    #Plotting the confusion matrix
+    plt.figure(figsize=(9,9))
+    sns.heatmap(cm_df, annot=True)
+    plt.title('Confusion Matrix')
+    plt.ylabel('Actal Values')
+    plt.xlabel('Predicted Values')
+    figname = "/hits_and_misses/Cumulative_Confusion_matrix.png"
+    if(not os.path.exists(folder + "/hits_and_misses")):
+        os.mkdir(folder + "/hits_and_misses")
+    
+    plt.savefig(folder + figname)
+    plt.close()
+    return
 
 
 """ shows a bar chart of the nubmer of examples per bin and the number of misses per bin. """

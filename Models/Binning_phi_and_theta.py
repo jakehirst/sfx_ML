@@ -8,6 +8,8 @@ import matplotlib.pyplot as plt
 from matplotlib import cm
 from mpl_toolkits.mplot3d import Axes3D
 import os
+import seaborn as sns
+from sklearn import metrics
 
 
 """Bins phi and theta into num_phi_bins and num_theta_bins"""
@@ -55,7 +57,6 @@ def Bin_phi_and_theta(df, num_phi_bins, num_theta_bins):
     df = df.drop("theta", axis=1)
 
     return df, y_col_values, bins_and_values
-
 
 """Bins phi and theta into num_phi_bins and num_theta_bins. the first couple of bins are combined so a solid circle is in the middle"""
 def Bin_phi_and_theta_center_target(df, num_phi_bins, num_theta_bins):
@@ -121,7 +122,6 @@ def Bin_phi_and_theta_center_target(df, num_phi_bins, num_theta_bins):
     
     return df, y_col_values, bins_and_values
 
-
 """ bins phi and theta into just theta bins, no phi. so it looks like a bunch of pizza slices."""
 def Bin_just_theta(df, num_theta_bins):
     theta_spacing = 361 / num_theta_bins
@@ -170,8 +170,6 @@ def Bin_just_theta(df, num_theta_bins):
     df = df.drop("theta", axis=1)
 
     return df, y_col_values, bins_and_values
-    
-    
     
 """ bins phi and theta into just phi bins, no theta. so it looks like a bunch of circles."""
 def Bin_just_phi(df, num_phi_bins):
@@ -223,8 +221,6 @@ def Bin_just_phi(df, num_phi_bins):
     df = df.drop("theta", axis=1)
 
     return df, y_col_values, bins_and_values
-
-
 
 def turn_filepath_to_nparray(x):
     images = np.empty(0)
@@ -341,19 +337,18 @@ def make_sphere(bins_and_values, test_prediction ,true_value, filepath):
     # plt.savefig(filepath + true_value.split("\\")[-2] +".png")
     
     #at home
-    if(not os.path.isdir(filepath.split("/fold")[0])):
-        os.mkdir(filepath.split("/fold")[0])
-    if not os.path.isdir(filepath.removesuffix("/")):
-        os.mkdir(filepath.removesuffix("/"))
+
     fig.colorbar(surf)
     plt.savefig(filepath + true_value.split("/")[-2] +".png")
     
     plt.close(fig)
     #plt.show()
 
-
 """ shows a bar chart of the nubmer of examples per bin and the number of misses per bin. """
 def Plot_Bins_and_misses(bins_and_values, test_predictions, df, folder):
+    if(not os.path.exists(folder.removesuffix("fold5/") + "/hits_and_misses")):
+        os.mkdir(folder.removesuffix("fold5/") + "/hits_and_misses")
+        
     misses = []
     totals = []
     false_positives = []
@@ -390,7 +385,7 @@ def Plot_Bins_and_misses(bins_and_values, test_predictions, df, folder):
     plt.ylabel("Number examples per bin")
     plt.title(f"Misses per bin \nTotal misses = {sum(misses)} Total accuracy = {100 * ((len(df) - sum(misses))/len(df))}%")
     plt.legend()
-    fig_name = folder.removesuffix("fold5/") + "per_bin_misses.png"
+    fig_name = folder.removesuffix("fold5/") + "hits_and_misses/per_bin_misses.png"
     plt.savefig(fig_name)
     plt.close()
     
@@ -402,9 +397,49 @@ def Plot_Bins_and_misses(bins_and_values, test_predictions, df, folder):
     plt.ylabel("Number examples per bin")
     plt.title("False positives per bin")
     plt.legend()
-    fig_name = folder.removesuffix("fold5/") + "per_bin_false_positives.png"
+    fig_name = folder.removesuffix("fold5/") + "hits_and_misses/per_bin_false_positives.png"
     plt.savefig(fig_name)
     plt.close()
+
+""" plots a confusion matrix with the text data from all kfolds """  
+def confusion_matrix(test_predictions, df, folder):
+    y_pred = []
+    y_true = []
+    for fold in range(len(test_predictions)):
+        test_fold = test_predictions[fold]
+        for i in range(len(test_fold[1])):
+            image_path = test_fold[1][i]
+            prediction_cluster = np.argmax(test_fold[0][i])
+            print(f"predicted cluster = {prediction_cluster}")
+            #gets the row of the filepath and turns it into a dict
+            true_cluster_row = df.loc[df['Filepath'] == image_path] 
+            true_cluster = np.where((true_cluster_row.to_numpy())[0] == 1.0)[0][0] - 1
+            print(f"true cluster = {true_cluster}")
+            y_pred.append(prediction_cluster)
+            y_true.append(true_cluster)
+            
+    
+    cm = metrics.confusion_matrix(np.asarray(y_true), np.asarray(y_pred))
+    axes = np.arange(cm.shape[0])
+    
+    # Creating a dataframe for a array-formatted Confusion matrix,so it will be easy for plotting.
+    cm_df = pd.DataFrame(cm,
+                        index = axes, 
+                        columns = axes)
+    #Plotting the confusion matrix
+    plt.figure(figsize=(9,9))
+    sns.heatmap(cm_df, annot=True)
+    plt.title('Confusion Matrix')
+    plt.ylabel('Actal Values')
+    plt.xlabel('Predicted Values')
+    figname = "/hits_and_misses/Cumulative_Confusion_matrix.png"
+    if(not os.path.exists(folder + "/hits_and_misses")):
+        os.mkdir(folder + "/hits_and_misses")
+    
+    plt.savefig(folder + figname)
+    plt.close()
+    return
+    
                 
             
             

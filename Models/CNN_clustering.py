@@ -357,8 +357,9 @@ def make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=1000,
 
         fold_no += 1
     
+    confusion_matrix(all_test_predictions, df, folder)
     Plot_Bins_and_misses(clusters, all_test_predictions, df, folder)
-
+    
     # print(prediction_sheet)
     print("done")
 
@@ -483,7 +484,7 @@ args = prepare_data(parent_folder_name, augmentation_list)
 folder = "/Users/jakehirst/Desktop/sfx/clustering"
 num_tries = 2000
 
-make_CNN(args, label_to_predict, batch_size=5, patience=50, max_epochs=2, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, k=15, folder=folder, num_tries=50)
+make_CNN(args, label_to_predict, batch_size=5, patience=50, max_epochs=500, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, k=2, folder=folder, num_tries=num_tries)
 make_CNN(args, label_to_predict, batch_size=5, patience=50, max_epochs=500, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, k=3, folder=folder, num_tries=num_tries)
 make_CNN(args, label_to_predict, batch_size=5, patience=50, max_epochs=500, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, k=4, folder=folder, num_tries=num_tries)
 make_CNN(args, label_to_predict, batch_size=5, patience=50, max_epochs=500, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, k=5, folder=folder, num_tries=num_tries)
