@@ -3,11 +3,14 @@ import os
 import time
 
 #Input = sys.argv[-1]
-#origin_file = "F:\\Jake\\good_simies"
+origin_file = "F:\\Jake\\good_simies"
 #origin_file = "F:\\Jake\\good_simies_coats"
 origin_file = "C:\\Users\\u1056\\sfx\\simulation_results"
-origin_file = "C:\\Users\\u1056\\sfx\\Jimmy_cases_validation\\Weber_1"
-origin_file = "C:\\Users\\u1056\\sfx\\Jimmy_cases_validation\\deltaK_simulation_results"
+origin_file = "Z:\\bjornssimies\\delta_k"
+# origin_file = "Z:\\Brian_simies\\k_diff_simmies"
+# origin_file = "C:\\Users\\u1056\\sfx\\Jimmy_cases_validation\\Weber_1"
+# origin_file = "C:\\Users\\u1056\\sfx\\Jimmy_cases_validation\\deltaK_simulation_results"
+# origin_file = "C:\\Users\\u1056\\sfx\\try_kdiff_2"
 #origin_file = "C:\\Users\\u1056\\sfx\\Jimmy_cases_validation\\main_simulation_results"
 #origin_file = "C:\\Users\\u1056\\sfx\\bad_simies"
 
@@ -15,6 +18,8 @@ wireframe = False
 #destination_file = "C:\\Users\\u1056\\sfx\\images_sfx\\Original\\OG"
 #destination_file = "C:\\Users\\u1056\\sfx\\images_sfx\\Original_from_test_matrix\\OG"
 destination_file = "C:\\Users\\u1056\\OneDrive\\Desktop\\test_images"
+# destination_file = "C:\\Users\\u1056\\sfx\\images_sfx\\Visible_cracks_new_dataset_\\OG"
+# destination_file = "C:\\Users\\u1056\\sfx\\images_sfx\\Original_new_dataset\\OG"
 #destination_file = "C:\\Users\\u1056\\OneDrive\\Desktop\\bad_simie_images"
 
 # destination_file = "F:\\Jake\\brian_simies\\pics"
@@ -57,7 +62,7 @@ for filepath in file_name_list:
         optimizationTasks=OFF, geometricRestrictions=OFF, stopConditions=OFF)
     a = mdb.models[model_name].rootAssembly
     session.viewports['Viewport: 1'].setValues(displayedObject=a)
-    
+
     #Remove plate
     a = mdb.models[model_name].rootAssembly
     if filepath.find("Dynamic")==-1:
@@ -96,7 +101,9 @@ for filepath in file_name_list:
     session.viewports['Viewport: 1'].viewportAnnotationOptions.setValues(triad=OFF, 
         legend=OFF, title=OFF, state=OFF, annotations=OFF, compass=OFF)
     session.viewports['Viewport: 1'].assemblyDisplay.meshOptions.setValues(
-        meshVisibleEdges=FREE)
+        meshVisibleEdges=FEATURE)#TODO changing this from "FREE" to "FEATURE" to show more of the crack potentially
+    session.viewports['Viewport: 1'].odbDisplay.commonOptions.setValues(
+        edgeLineThickness=VERY_THIN)#TODO changing the look of the thickness of the crack options: "VERY_THIN, THIN, MEDIUM, THICK"
     session.viewports['Viewport: 1'].assemblyDisplay.geometryOptions.setValues(
         datumPoints=OFF, datumAxes=OFF, datumPlanes=OFF, datumCoordSystems=OFF)
     session.viewports['Viewport: 1'].view.fitView()
