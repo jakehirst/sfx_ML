@@ -5,13 +5,21 @@ from front_locations import *
 from initiation_sites import *
 from linearity import *
 from width_of_crack import *
-import tensorflow_probability as tfp
+# import tensorflow_probability as tfp
 import scipy.stats
+from thickness import *
+
+FOLDER_PATH = "F:\\Jake\\good_simies\\"
+FOLDER_PATH = "Z:\\Brian_simies\\k_diff_simmies"
 
 #gets the maximum steps and UCIs from the simulation_results folder
 def get_max_step_and_max_UCIs():
     #folder_path = "C:\\Users\\u1056\\sfx\\good_simies\\"
-    folder_path = "F:\\Jake\\good_simies\\"
+    # folder_path = "F:\\Jake\\old_good_simies\\"
+    folder_path = FOLDER_PATH
+    # folder_path = "F:\\Jake\\bad_simies\\"
+    # folder_path = "Z:\\bjornssimies\\delta_k\\"
+
     dic = {}
     for root, dirs, files in os.walk(folder_path):
         # select file name
@@ -104,12 +112,14 @@ def create_df():
             "dist btw frts", 
             "crack len",
             "linearity",
+            "max thickness",
+            "mean thickness",
             "height", 
             "phi", 
             "theta"]
     df = pd.DataFrame(columns=columns)
-    # folder_path = "C:\\Users\\u1056\\sfx\\good_simies\\"
-    folder_path = "F:\\Jake\\good_simies\\"
+    folder_path = FOLDER_PATH
+
     front_0_array_x = []
     front_0_array_y = []
     front_0_array_z = []
@@ -125,7 +135,10 @@ def create_df():
     height_array = []
     phi_array = []
     theta_array = []
+    max_thickness_arr = []
+    mean_thickness_arr = []
 
+    i = 0
     #goes through each of the simulations and gathers features for the dataframe
     for key in maxes.keys():
         #TODO: add feature gathering functions as necessary here
@@ -134,14 +147,15 @@ def create_df():
         #max_crack_width(folder_path, key, maxes[key][0], maxes[key][1])
         #mean_crack_width(folder_path, key)
         #TODO: delete this above
-
+        max_thickness, mean_thickness = get_max_and_mean_thickness(folder_path, key)
         labels = turn_filename_to_labels(key)
         final_front_locations = get_final_front_locations(folder_path, key)
-        #final_front_locations = get_final_front_locations(folder_path, key, maxes[key][0], maxes[key][1])
+        # final_front_locations = get_final_front_locations(folder_path, key, maxes[key][0], maxes[key][1]) #TODO delete this
         initiation_cite = get_initiation_cite(folder_path, key)
         d = get_euclidean_distance(final_front_locations[0], final_front_locations[1])
         len = get_crack_len(folder_path, key)
         linearity = get_linearity(folder_path, key)
+        
 
         height_array.append(labels[0])
         phi_array.append(labels[1])
@@ -158,6 +172,10 @@ def create_df():
         distance_between_fronts.append(d)
         crack_lengths.append(len)
         linearity_arr.append(linearity)
+        max_thickness_arr.append(max_thickness)
+        mean_thickness_arr.append(mean_thickness)
+        print(i)
+        i += 1
                 
 
 
@@ -173,6 +191,8 @@ def create_df():
             "dist btw frts": distance_between_fronts, 
             "crack len": crack_lengths,
             "linearity": linearity_arr,
+            "max thickness": max_thickness_arr,
+            "mean thickness": mean_thickness_arr,
             "height": height_array, 
             "phi": phi_array, 
             "theta": theta_array}
@@ -189,10 +209,10 @@ print(df)
 Pearson_Correlations_for_df(df, "height")
 Pearson_Correlations_for_df(df, "phi")
 Pearson_Correlations_for_df(df, "theta")
-save_df(df, "C:\\Users\\u1056\\sfx\\ML\\Feature_gathering\\OG_dataframe.csv")
+save_df(df, "C:\\Users\\u1056\\sfx\\sfx_ML\\sfx_ML\\Feature_gathering\\OG_dataframe.csv")
 df = PhiTheta_to_cartesian(df)
-save_df(df, "C:\\Users\\u1056\\sfx\\ML\\Feature_gathering\\OG_dataframe_cartesian.csv")
-# Pearson_Correlations_for_df(df, "x")
-# Pearson_Correlations_for_df(df, "y")
-# Pearson_Correlations_for_df(df, "z")
+save_df(df, "C:\\Users\\u1056\\sfx\\sfx_ML\\sfx_ML\\Feature_gathering\\OG_dataframe_cartesian.csv")
+Pearson_Correlations_for_df(df, "x")
+Pearson_Correlations_for_df(df, "y")
+Pearson_Correlations_for_df(df, "z")
 
