@@ -14,6 +14,8 @@ import tensorflow_addons as tfa
 # from keras import layers
 import math as m
 #import tensorflow_probability as tfp
+import tensorflow.keras.backend as K
+
 
 def prepare_data(df_filename, label_to_predict, epochs, features_to_drop=None):
     print("----- PREDICTING " + label_to_predict + " -----")
@@ -48,13 +50,13 @@ def prepare_data(df_filename, label_to_predict, epochs, features_to_drop=None):
     return [train_features, train_labels, test_features, test_labels, epochs]
 
 
-def prepare_data_Kfold(folder, dataset, label_to_predict, epochs, numfolds=5, features_to_drop=None):
+def prepare_data_Kfold(folder, dataset, labels_to_predict, epochs, numfolds=5, features_to_drop=None):
     df = pd.read_csv(folder+dataset, index_col = [0])
 
     """ drops all of the labesl that are not the one we are trying to predict """
     labels = ["height", "phi", "theta", "x", "y", "z"]
     for label in labels:
-        if((not label == label_to_predict) and df.columns.__contains__(label)):
+        if((not labels_to_predict.__contains__(label)) and df.columns.__contains__(label)):
             df = df.drop(label, axis=1)
     
     """ drop whatever you are not predicting or predicting with here"""
@@ -80,24 +82,30 @@ def prepare_data_Kfold(folder, dataset, label_to_predict, epochs, numfolds=5, fe
     """ putting all fold combinations into a list to run the machin e learning model with """
     args = []
     for fold in folds:
-        test_dataset = fold
-        train_dataset = df.drop(fold.index)
+        for label_to_predict in labels_to_predict:
+            test_dataset = fold
+            train_dataset = df.drop(fold.index)
 
-        train_features = train_dataset.copy()
-        test_features = test_dataset.copy()
-
-        train_labels = train_features.pop(label_to_predict)
-        test_labels = test_features.pop(label_to_predict)
+            train_features = train_dataset.copy()
+            test_features = test_dataset.copy()
+            
+            train_labels = train_features[labels_to_predict]
+            test_labels = test_features[labels_to_predict]
+            
+            train_features = train_features.drop(labels_to_predict, axis=1)
+            test_features = test_features.drop(labels_to_predict, axis=1)
 
         args.append([train_features, train_labels, test_features, test_labels, epochs])
 
     return args
 
 
-def run_Kfold_ANN(args, Full_df, activation='relu', show=False):
+def run_Kfold_ANN(args, Full_df, activation='relu', show=False, saving_folder=""):
     results = []
+    fold = 1
     for arg in args:
-        results.append(make_ANN(*arg))
+        results.append(make_ANN(*arg, fold_no=fold, saving_folder=saving_folder))
+        fold += 1
     
     train_r2 = np.empty(0)
     test_r2 = np.empty(0)
@@ -154,7 +162,7 @@ def run_Kfold_ANN(args, Full_df, activation='relu', show=False):
         print("done")
 
 
-def make_ANN(train_features, train_labels, test_features, test_labels, epochs, activation='relu', show=False):
+def make_ANN(train_features, train_labels, test_features, test_labels, epochs, saving_folder="", fold_no=0, activation='relu', show=False):
     #quote from tensorflow:
     """One reason this is important is because the features are multiplied by the model weights. So, the scale of the outputs and the scale of the gradients are affected by the scale of the inputs.
     Although a model might converge without feature normalization, normalization makes training much more stable"""
@@ -182,16 +190,37 @@ def make_ANN(train_features, train_labels, test_features, test_labels, epochs, a
     #                              tf.keras.layers.Dense(1)])
     
     model = tf.keras.Sequential([tf.keras.layers.InputLayer(input_shape=numfeatures),
+                                #  tf.keras.layers.Dense(1024, activation = activation),
+                                #  tf.keras.layers.Dense(512, activation = activation),
+                                # #  tf.keras.layers.Dropout(0.2),
+                                 tf.keras.layers.Dense(256, activation = activation),
+                                 tf.keras.layers.Dropout(0.1),
                                  tf.keras.layers.Dense(128, activation = activation),
+                                 tf.keras.layers.Dropout(0.1),
                                  tf.keras.layers.Dense(64, activation = activation),
+                                 tf.keras.layers.Dropout(0.1),
+
                                  tf.keras.layers.Dense(32, activation = activation),
                                  tf.keras.layers.Dense(16, activation = activation),
                                  tf.keras.layers.Dense(8, activation = activation),
-                                 tf.keras.layers.Dense(1)])
+                                 tf.keras.layers.Dense(2)])
+    
+    def mean_distance_error_phi_theta(y_true, y_pred):
+        # print(y_true)
+        # print(y_pred)
+        phi1 = y_pred[:,0]
+        theta1 = y_pred[:,1]
+        phi2 = y_true[:,0]
+        theta2 = y_true[:,1]
+        # print(f"phi1 = {phi1}")
+        # print(f"theta1 = {theta1}")
+        
+        distances = tf.sqrt(tf.pow(phi1,[2]) + tf.pow(phi2,[2]) - 2*phi1*phi2 * tf.cos(theta1 - theta2))
+        print(distances)
+        return K.mean(distances)
     
     model.compile(
         optimizer = tf.keras.optimizers.Adam(),
-        # loss='mean_absolute_error')
         # loss=mean_distance_error_phi_theta)
         # loss='mean_absolute_error')
         loss='mean_squared_error')
@@ -215,52 +244,77 @@ def make_ANN(train_features, train_labels, test_features, test_labels, epochs, a
     print("minimum validation MAE: ")
     print(min(history.history['val_loss']))
     
+    if(not os.path.exists(saving_folder)):
+        os.mkdir(saving_folder)
+    folder_path = saving_folder + f"/fold_{fold_no}"
+    if(not os.path.exists(folder_path)):
+        os.mkdir(folder_path)
     
-    plt.plot(history.history['loss'], label='loss (mean absolute error)')
-    plt.plot(history.history['val_loss'], label='val_loss')
-    #plt.ylim([0, 4])
-    plt.xlabel('Epoch')
-    plt.ylabel('loss')
-    plt.title("theta")
-    plt.legend()
-    plt.grid(True)
-    plt.show()
-
+    
     """ makes predictions with the test dataset and plots them. Good predictions should lie on the line. """
-    test_predictions = model.predict(test_features).flatten()
-
-    a = plt.axes(aspect='equal')
-    plt.scatter(test_labels, test_predictions)
-    plt.xlabel('True labels')
-    plt.ylabel('Predicted labels')
-    plt.title("theta")
-    lims = [0, max(test_labels)]
-    plt.xlim(lims)
-    plt.ylim(lims)
-    _ = plt.plot(lims, lims)
-    plt.show()
-
-
+    test_predictions = model.predict(test_features)
+    training_predictions = model.predict(train_features)
     """ gets r^2 value of the test dataset with the predictions made from above ^ """
+    metric = tfa.metrics.r_square.RSquare()
+    metric.update_state(train_labels, training_predictions)
+    training_result = metric.result()
+    print("Training R^2 = " + str(training_result.numpy()))
+    
+
+    """ gets r^2 value of the training dataset """
     metric = tfa.metrics.r_square.RSquare()
     metric.update_state(test_labels, test_predictions)
     test_result = metric.result()
     print("Test R^2 = " + str(test_result.numpy()))
+    
+    
+    plt.plot(history.history['loss'], label='loss (mean absolute error)')
+    plt.plot(history.history['val_loss'], label='val_loss')
+    #plt.ylim([0, 4])
+    plt.xlabel(f'Train R^2 = {str(training_result.numpy())}, Test R^2 = {str(test_result.numpy())}')
+    plt.ylabel('loss')
+    plt.title("theta")
+    plt.legend()
+    plt.grid(True)
+    # plt.text(.5, .0001, f"Train R^2 = {str(training_result.numpy())}, Test R^2 = {str(test_result.numpy())}")
+    plt.savefig(folder_path + "/loss_vs_epochs")
+    plt.close()
 
+    a = plt.axes(aspect='equal')
+    plt.scatter(test_labels["phi"], test_predictions[:,0])
+    plt.xlabel('True labels')
+    plt.ylabel('Predicted labels')
+    plt.title("phi")
+    lims = [0, max(test_labels["phi"])]
+    plt.xlim(lims)
+    plt.ylim(lims)
+    _ = plt.plot(lims, lims)
+    plt.savefig(folder_path + "/phi_predictions")
+    plt.close()
 
-    """ gets r^2 value of the training dataset """
-    training_predictions = model.predict(train_features).flatten()
-    metric = tfa.metrics.r_square.RSquare()
-    metric.update_state(train_labels, training_predictions)
-    train_result = metric.result()
-    print("Train R^2 = " + str(train_result.numpy()))
-    return {"Training R^2": train_result.numpy(), "Test R^2": test_result.numpy(), "history": history, "model": model}
+    a = plt.axes(aspect='equal')
+    plt.scatter(test_labels["theta"], test_predictions[:,1])
+    plt.xlabel('True labels')
+    plt.ylabel('Predicted labels')
+    plt.title("theta")
+    lims = [0, max(test_labels["theta"])]
+    plt.xlim(lims)
+    plt.ylim(lims)
+    _ = plt.plot(lims, lims)
+    plt.savefig(folder_path + "/theta_predictions")
+    plt.close()
+
+    return {"Training R^2": training_result.numpy(), "Test R^2": test_result.numpy(), "history": history, "model": model}
 
 
 def Prepare_Full_Df(folder, dataset, label_to_predict):
     df = pd.read_csv(folder + dataset, index_col = [0])
+    if(label_to_predict == "phi_and_theta"):
+        labels = ["height", "x", "y", "z"]
+    else:
+        labels = ["height", "phi", "theta", "x", "y", "z"]
+
     """ drops all of the labesl that are not the one we are trying to predict """
-    labels = ["height", "phi", "theta", "x", "y", "z"]
     for label in labels:
         if((not label == label_to_predict) and df.columns.__contains__(label)):
             df = df.drop(label, axis=1)
@@ -294,47 +348,24 @@ def remove_features(df, features_to_remove=[], features_to_keep=[]):
     
 
 
+
+
 """feature options = "front 0 x", "front 0 y", "front 0 z", "front 1 x", "front 1 y", 
                     "front 1 z", "init x", "init y", "init z", "dist btw frts", "crack len", 
                     "linearity", "max thickness", "mean thickness"  """
           
           
-"""   ********* theta **********   """
-# folder = "/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Feature_gathering/"
-# dataset = "OG_dataframe.csv"
-# Full_df = Prepare_Full_Df(folder, dataset, "theta")          
-# theta_p_less_point5 = ["front 0 y", "front 0 z", "init y", "init z", "dist btw frts"]
-
-# simple_df = remove_features(Full_df, features_to_keep=theta_p_less_point5)
-# args = prepare_data_Kfold(folder, dataset, "theta", epochs=5000)
-# run_Kfold_ANN(args, simple_df, activation="relu")
-
-
-
-
-# """   ********* phi **********   """
-# folder = "/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Feature_gathering/"
-# dataset = "OG_dataframe.csv"
-# Full_df = Prepare_Full_Df(folder, dataset, "phi")    
-# phi_p_less_point5 = ["front 0 x", "front 0 z", "front 1 z"]
-
-# simple_df = remove_features(Full_df, features_to_keep=phi_p_less_point5)
-# args = prepare_data_Kfold(folder, dataset, "phi", epochs=5000)
-# run_Kfold_ANN(args, simple_df, activation="relu")
-
-
-
-
-"""   ********* height **********   """
+"""   ********* phi and theta **********   """
 folder = "/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Feature_gathering/"
 dataset = "OG_dataframe.csv"
-Full_df = Prepare_Full_Df(folder, dataset, "height")    
-height_p_less_point05 = ["init y", "crack len", "max thickness",  "abs_val_mean_kink"]
-height_p_closeto_point05 = ["init y", "dist btw fts", "crack len", "max thickness", "max_kink", "abs_val_mean_kink", "abs_val_sum_kink"]
+saving_folder = "/Users/jakehirst/Desktop/sfx/regression/multi_regression_2_out_3-29_no_features_out_dropout"
+Full_df = Prepare_Full_Df(folder, dataset, "phi_and_theta")          
+theta_p_less_point5 = ["front 0 y", "front 0 z", "init y", "init z", "dist btw frts"]
+phi_p_less_point5 = ["front 0 x", "front 0 z", "front 1 z"]
 
-
-simple_df = remove_features(Full_df, features_to_keep=height_p_less_point05)
+# simple_df = remove_features(Full_df, features_to_keep=theta_p_less_point5)
+simple_df = remove_features(Full_df, features_to_keep=["front 0 x", "front 0 y", "front 0 z", "front 1 z", "init y", "init z", "dist btw frts", "angle_btw"])
 simple_df = remove_features(Full_df, features_to_remove=[])
-args = prepare_data_Kfold(folder, dataset, "height", epochs=5000)
-run_Kfold_ANN(args, simple_df, activation="relu")
+args = prepare_data_Kfold(folder, dataset, ["phi", "theta"], epochs=5000)
+run_Kfold_ANN(args, simple_df, activation="relu", saving_folder=saving_folder)
 
