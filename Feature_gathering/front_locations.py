@@ -69,8 +69,63 @@ path_to_simulations example: "C:\\Users\\u1056\\sfx\\good_simies\\"
 simulation example: "Para_3ft_PHI_55_THETA_250"
 """
 def get_all_front_locations(path_to_simulations, simulation):
+    missing_front = None
+    sorted_list = get_sorted_step_ucis(path_to_simulations, simulation)
     simulation_folder = path_to_simulations + simulation
     front_locations = []
+    for step_uci in sorted_list:
+        step = step_uci[0]
+        uci = step_uci[1]
+        for root, dirs, files in os.walk(simulation_folder):
+            # select file name
+                for file in files:
+                    # check the extension of files
+                    #print(file)
+                    if (file.startswith('Para') and file.endswith(".frt") and file.__contains__(f"_Stp{step}_UCI_{uci}_original")):
+                        location = get_average_node_locations(simulation_folder + "\\" + file)
+                        if(len(front_locations) > 0):
+                            d1 = get_euclidean_distance(front_locations[-1][2], location["front 0"])
+                            d2 = get_euclidean_distance(front_locations[-1][3], location["front 1"])
+                            #print(f"distances = {d1}, and {d2}")
+                            #print("\n")
+                            if(d1 > 10):
+                                missing_front = 0
+                            elif(d2 > 10):
+                                missing_front = 1
+                        if(missing_front == None):
+                            front_locations.append([int(step), int(uci), location["front 0"], location["front 1"]])
+                        elif(missing_front == 0):
+                            d1 = get_euclidean_distance(location["front 0"],front_locations[-1][3] )
+                            d2 = get_euclidean_distance(location["front 1"],front_locations[-1][3] )
+                            distance_list = [d1, d2]
+                            location_list = [location["front 0"] , location["front 1"]]
+
+                            location0 = front_locations[-1][2]
+                            location1 = location_list[distance_list.index(min(distance_list))]
+
+                            front_locations.append([int(step), int(uci), location0, location1])    
+                            #print("")                    
+                        elif(missing_front == 1):
+                            d1 = get_euclidean_distance(location["front 0"],front_locations[-1][2] )
+                            d2 = get_euclidean_distance(location["front 1"],front_locations[-1][2] )
+                            distance_list = [d1, d2]
+                            location_list = [location["front 0"] , location["front 1"]]
+
+                            location0 = location_list[distance_list.index(min(distance_list))]
+                            location1 = front_locations[-1][3]
+
+                            front_locations.append([int(step), int(uci), location0, location1])
+                            #print("")
+                        break
+
+    #sorted_list = sorted(front_locations, key=lambda x: (x[0], x[1])) #sorts the list of front locations by step, then by uci... soooo nice
+    # df = pd.DataFrame(sorted_list)
+    # df.columns = ["step", "uci", "front 0 location", "front 1 location"]
+    return front_locations
+
+def get_sorted_step_ucis(path_to_simulations, simulation):
+    simulation_folder = path_to_simulations + simulation
+    step_ucis = []
     for root, dirs, files in os.walk(simulation_folder):
         # select file name
             for file in files:
@@ -80,13 +135,9 @@ def get_all_front_locations(path_to_simulations, simulation):
                     location = get_average_node_locations(simulation_folder + "\\" + file)
                     step = int(file.split("Stp")[1].split("_")[0])
                     uci = int(file.split("Stp")[1].split("_")[2])
-                    front_locations.append([step, uci, location["front 0"], location["front 1"]])
-
-    sorted_list = sorted(front_locations, key=lambda x: (x[0], x[1])) #sorts the list of front locations by step, then by uci... soooo nice
-    # df = pd.DataFrame(sorted_list)
-    # df.columns = ["step", "uci", "front 0 location", "front 1 location"]
+                    step_ucis.append([step, uci])
+    sorted_list = sorted(step_ucis, key=lambda x: (x[0],x[1]))
     return sorted_list
-
 
 """ gets euclidean distance between two 3d cartesian points """
 def get_euclidean_distance(pt_a, pt_b):

@@ -2,6 +2,23 @@ from front_locations import *
 import math as m
 import pandas as pd
 
+# """ gets the total crack length based on euclidean distance between each front location """
+# def get_distances_from_initiation(simulation_folder, simulation):
+#     prev_front_0 = get_initiation_cite(simulation_folder, simulation)
+#     prev_front_1 = get_initiation_cite(simulation_folder, simulation)
+#     front_locations = get_all_front_locations(simulation_folder, simulation)
+#     dist_frt_0 = 0.0
+#     dist_frt_1 = 0.0
+
+#     for locations in front_locations:
+#         dist_frt_0 += get_arc_len(prev_front_0, locations[2])
+#         dist_frt_1 += get_arc_len(prev_front_1, locations[3])
+#         prev_front_0 = locations[2]
+#         prev_front_1 = locations[3]
+
+#     return dist_frt_0, dist_frt_1
+
+
 """ gets the total crack length based on euclidean distance between each front location """
 def get_distances_from_initiation(simulation_folder, simulation):
     prev_front_0 = get_initiation_cite(simulation_folder, simulation)
@@ -11,12 +28,25 @@ def get_distances_from_initiation(simulation_folder, simulation):
     dist_frt_1 = 0.0
 
     for locations in front_locations:
-        dist_frt_0 += get_arc_len(prev_front_0, locations[2])
+        dist_frt_0 += get_arc_len(prev_front_0, locations[2]) 
+        if get_arc_len(prev_front_0, locations[2]) > .04:
+            dist_frt_0 -= get_arc_len(prev_front_0, locations[2])
+            locations[3]=locations[2]
+            locations[2]= prev_front_0
+            #print('happened 0')
+
         dist_frt_1 += get_arc_len(prev_front_1, locations[3])
+        if get_arc_len(prev_front_1, locations[3]) > .04: # if front 2 ends it will insert a random previous startin point, this changes that entry to the previous entry.
+            dist_frt_1 -= get_arc_len(prev_front_1, locations[3]) 
+            locations[3]=prev_front_1
+            #print('happened 1')
         prev_front_0 = locations[2]
         prev_front_1 = locations[3]
+        front_0_final_location = locations[2]
+        front_1_final_location = locations[3]
 
-    return dist_frt_0, dist_frt_1
+    #print('hillooo')
+    return dist_frt_0, dist_frt_1,front_0_final_location,front_1_final_location
 
 
 """ Turns cartesian coordinates [x,y,z] into spherical coordinates [r, phi, theta] """
@@ -117,18 +147,33 @@ def get_final_front_locations(simulation_folder, simulation):
 
 
 
+# """ gets the ratio of the distance between the initiation site and the end points of the fronts, over the
+# distances of all of the front locations combined, assuming that the skull is a perfect sphere with radius of 1 so that
+# we can hopefully capture the non-linearity of the crack. linearity of 1 = perfectly straight crack. """
+# def get_linearity(simulation_folder, simulation):
+#     #print(simulation)
+#     d0, d1 = get_distances_from_initiation(simulation_folder, simulation)
+#     init_cite = get_initiation_cite(simulation_folder, simulation)
+#     front_0_endpoint, front_1_endpoint = get_final_front_locations(simulation_folder, simulation)
+#     True_len0 = get_arc_len(init_cite, front_0_endpoint)
+#     True_len1 = get_arc_len(init_cite, front_1_endpoint)
+
+#     linearity = (True_len0 + True_len1) / (d0 + d1)
+#     return linearity
+
 """ gets the ratio of the distance between the initiation site and the end points of the fronts, over the
 distances of all of the front locations combined, assuming that the skull is a perfect sphere with radius of 1 so that
 we can hopefully capture the non-linearity of the crack. linearity of 1 = perfectly straight crack. """
 def get_linearity(simulation_folder, simulation):
     #print(simulation)
-    d0, d1 = get_distances_from_initiation(simulation_folder, simulation)
+    d0, d1,front_0_endpoint,front_1_endpoint = get_distances_from_initiation(simulation_folder, simulation)
     init_cite = get_initiation_cite(simulation_folder, simulation)
-    front_0_endpoint, front_1_endpoint = get_final_front_locations(simulation_folder, simulation)
+    #front_0_endpoint, front_1_endpoint = get_final_front_locations(simulation_folder, simulation)
     True_len0 = get_arc_len(init_cite, front_0_endpoint)
     True_len1 = get_arc_len(init_cite, front_1_endpoint)
 
     linearity = (True_len0 + True_len1) / (d0 + d1)
+    #print(linearity)
     return linearity
 
 # get_linearity('F:\\Jake\\good_simies\\', 'Para_1-5ft_PHI_0_THETA_0')
