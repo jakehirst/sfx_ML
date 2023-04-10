@@ -346,14 +346,50 @@ def make_sphere(bins_and_values, test_prediction ,true_value, filepath):
 
 """ shows a bar chart of the nubmer of examples per bin and the number of misses per bin. """
 def Plot_Bins_and_misses(bins_and_values, test_predictions, df, folder):
+    folder = folder + "/fold5/"
+    #TODO: df actually needs to be the original df with all of the examples in it
     if(not os.path.exists(folder.removesuffix("fold5/") + "/hits_and_misses")):
         os.mkdir(folder.removesuffix("fold5/") + "/hits_and_misses")
+    df = df.drop("index", axis=1)
+    
+    if(df.columns.__contains__("image_path")):
+        df.rename(columns={"image_path": "Filepath"}, inplace=True)
+    
+    if(df.columns.__contains__("phi" or "theta" or "height")):
+        bins = []
+        y_col_values = []
+        for row in df.iterrows():
+            for bin in bins_and_values.keys():
+                phi_low = bins_and_values[bin]["phi"][0]
+                phi_high = bins_and_values[bin]["phi"][1]
+                theta_low = bins_and_values[bin]["theta"][0]
+                theta_high = bins_and_values[bin]["theta"][1]
+                if((phi_low <= row[1]["phi"] < phi_high) and (theta_low <= row[1]["theta"] < theta_high)):
+                    bins.append(bin)
+                    break
+        for bin in bins_and_values.keys():
+            y_col_values.append(str(bin))
         
+        
+        # for i in range(len(df)): 
+        #     row = df.iloc[i] 
+        #     print(f"\n phi = {row['phi']} \n theta = {row['theta']} \n bin_vals = {bins_and_values[bins[i]]}\n")
+        bins = to_categorical(bins)
+        bin_df = pd.DataFrame(bins)
+        bin_df.columns = y_col_values
+        df = pd.concat([df, bin_df], axis=1)
+        labels = df.columns[df.columns.to_list().index('0'):].to_list()
+        if(df.columns.__contains__("phi")): df = df.drop("phi", axis=1)
+        if(df.columns.__contains__("theta")): df = df.drop("theta", axis=1)
+        if(df.columns.__contains__("height")): df = df.drop("height", axis=1)
+        
+    
+    # df = df[labels]
     misses = []
     totals = []
     false_positives = []
     x = []
-    for i in range(df.shape[1]):
+    for i in range(len(labels)):
         misses.append(0)
         totals.append(0)
         false_positives.append(0)
@@ -376,7 +412,8 @@ def Plot_Bins_and_misses(bins_and_values, test_predictions, df, folder):
                 false_positives[predicted_bin] = false_positives[predicted_bin] + 1
     
     X_axis = np.arange(len(x))
-  
+    
+
     plt.bar(X_axis - 0.2, misses, 0.4, label = 'misses')
     plt.bar(X_axis + 0.2, totals, 0.4, label = 'totals')
     
@@ -385,7 +422,7 @@ def Plot_Bins_and_misses(bins_and_values, test_predictions, df, folder):
     plt.ylabel("Number examples per bin")
     plt.title(f"Misses per bin \nTotal misses = {sum(misses)} Total accuracy = {100 * ((len(df) - sum(misses))/len(df))}%")
     plt.legend()
-    fig_name = folder.removesuffix("fold5/") + "hits_and_misses/per_bin_misses.png"
+    fig_name = folder.removesuffix("fold5/") + "/hits_and_misses/per_bin_misses.png"
     plt.savefig(fig_name)
     plt.close()
     
@@ -400,6 +437,7 @@ def Plot_Bins_and_misses(bins_and_values, test_predictions, df, folder):
     fig_name = folder.removesuffix("fold5/") + "hits_and_misses/per_bin_false_positives.png"
     plt.savefig(fig_name)
     plt.close()
+    return df
 
 """ plots a confusion matrix with the text data from all kfolds """  
 def confusion_matrix(test_predictions, df, folder):
@@ -440,8 +478,114 @@ def confusion_matrix(test_predictions, df, folder):
     plt.close()
     return
     
-                
-            
+
+"""plots a heat map of a particular example's prediction probabilities across each bin and 
+   plots the location of the example as a comparison"""
+def make_circle(bins_and_values, test_prediction ,true_value, filepath):
+    heats = test_prediction
+    #theta inclination angle
+    #phi azimuthal angle
+    n_phi = 60 # number of values for phi
+    n_theta = 360  # number of values for theta
+    r = n_phi     #radius of sphere
+
+    phi, theta = np.mgrid[0.0:0.3*np.pi:n_phi*1j, 0.0:2.0*np.pi:n_theta*1j]
+    # convert to Cartesian coordinates
+    x = phi * np.cos(theta)
+    y = phi * np.sin(theta)
+
+    # mimic the input array
+    # array columns phi, theta, value
+    # first n_theta entries: phi=0, second n_theta entries: phi=0.0315..
+    inp = []
+
+    for j in theta[0,:]:
+        for i in phi[:,0]:
+            for bin_num in bins_and_values.keys():
+
+                min_phi = bins_and_values[bin_num]["phi"][0]
+                max_phi = bins_and_values[bin_num]["phi"][1]
+                min_theta = bins_and_values[bin_num]["theta"][0]
+                max_theta = bins_and_values[bin_num]["theta"][1]
+
+                current_phi = i*180/np.pi
+                current_theta = j*180/np.pi
+                #print(current_phi)
+
+                if(current_theta > 360): 
+                    current_theta = current_theta - 360
+                if(current_phi > 60): 
+                    current_phi = current_phi - 60
+
+                if(current_phi >= min_phi and current_phi < max_phi and current_theta >= min_theta and current_theta < max_theta):
+                    val = heats[bin_num]
+                    inp.append([j, i, val])
+                    # print(f"Sent into bin {bin_num}")
+                    # print(f"phi = {current_phi} falls inside {min_phi} and {max_phi}")
+                    # print(f"theta = {current_theta} falls inside {min_theta} and {max_theta}")
+                    break
+                if(bin_num == list(bins_and_values.keys())[-1]):
+                    print(f"phi = {current_phi}")
+                    print(f"theta = {current_theta}")
+                    print("didnt find bin for this example")
+                    
+    # for j in theta[0,:]:
+    #     for i in phi[:,0]:
+    #         val = 0.7+np.cos(j)*np.sin(i+np.pi/4.)# put something useful here
+    #         inp.append([j, i, val])
+
+    inp = np.array(inp)
+
+    #reshape the input array to the shape of the x,y,z arrays. 
+    c = inp[:,2].reshape((n_theta,n_phi)).T
+    
+    #at home
+    point_theta = int(true_value.split("/")[-2].split("_")[-1])* np.pi/180
+    point_phi = int(true_value.split("/")[-2].split("_")[-3])* np.pi/180
+    
+    point_x = point_phi * np.cos(point_theta)
+    point_y = point_phi * np.sin(point_theta)
+    
+    # Create the polar heatmap plot with a red colormap
+    # fig, ax = plt.subplots(figsize=(10,10), subplot_kw=dict(projection='polar'))
+    
+    # ax.set_ylim(0, np.max(phi))
+    # color = ax.pcolormesh(theta, phi, c, cmap='Reds_r', vmin=np.max(c), vmax=np.min(c))
+    # ax.scatter(np.array(point_x), np.array(point_y), marker='x',c="cyan", s= 150,  label="true value")
+    # # ax.plot(point_x, point_y, marker='o',c="cyan", markersize= 150,  label="true value")
+
+    # fig.text(.5, .001, f"prediction = {test_prediction.tolist()}", ha='center')
+
+    # cbar = plt.colorbar(color)
+    # # Set the colorbar label and range
+    # cbar.set_label('Probabilities')
+    # plt.show()
+    
+    # # plt.savefig(filepath + true_value.split("/")[-2] +".png")
+    
+    # plt.close(fig)
+    
+    print(np.max(phi))
+    print(point_x)
+    print(point_y)
+    # Create the polar heatmap plot with a red colormap
+    fig, (ax1,ax2) = plt.subplots(1, 2, figsize=(15,10), subplot_kw=dict(projection='polar'), sharey=True)
+    ax1.set_ylim(0, np.max(phi))
+    color = ax1.pcolormesh(theta, phi, c, cmap='Reds_r', vmin=np.max(c), vmax=np.min(c), zorder=-1)
+    ax1.set_ylim(0, np.max(phi))
+    ax2.scatter(np.array(point_theta), np.array(point_phi), marker='x',c="cyan", s= 150,  label="true value", zorder=200.5)
+
+    fig.text(.5, .001, f"prediction = {test_prediction.tolist()}", ha='center')
+
+    cbar = plt.colorbar(color)
+    # Set the colorbar label and range
+    cbar.set_label('Probabilities')
+    # plt.show()
+    
+    plt.savefig(filepath + true_value.split("/")[-2] +".png")
+    
+    plt.close(fig)
+
             
     
 
