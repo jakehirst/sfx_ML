@@ -37,14 +37,14 @@ def get_images(pathname, image_name_list):
                         image_name_list.append (os.path.join(root, file))
     return image_name_list
 
-def prepare_data(parent_folder_name, augmentation_list):
+def prepare_data(augmentation_list, dataset):
     image_name_list = []
     
     #in lab
     #image_name_list = get_images('C:\\Users\\u1056\\sfx\\images_sfx\\' + parent_folder_name + "\\" + "OG", image_name_list)
     
     #at home
-    image_name_list = get_images('/Users/jakehirst/Desktop/sfx/sfx_pics/jake/images_sfx/' + parent_folder_name + "/" + "OG", image_name_list)
+    image_name_list = get_images('/Users/jakehirst/Desktop/sfx/sfx_pics/jake/images_sfx/' + dataset + "/OG", image_name_list)
     
     # for folder in augmentation_list:
     #     image_name_list = get_images('C:\\Users\\u1056\\sfx\\images_sfx\\' + parent_folder_name + "\\" + folder, image_name_list)
@@ -140,7 +140,7 @@ def prepare_data(parent_folder_name, augmentation_list):
 
 
 
-def add_augmentations(df, augmentation_list):
+def add_augmentations(df, augmentation_list, dataset):
     image_name_list = []
     new_df = df
     if(augmentation_list.__contains__("OG")):
@@ -163,7 +163,7 @@ def add_augmentations(df, augmentation_list):
             #pathname = 'C:\\Users\\u1056\\sfx\\images_sfx\\' + parent_folder_name + "\\" + folder
             
             #at home
-            pathname = '/Users/jakehirst/Desktop/sfx/sfx_pics/jake/images_sfx' + parent_folder_name + '/' + folder
+            pathname = '/Users/jakehirst/Desktop/sfx/sfx_pics/jake/images_sfx/' + dataset + "/"+ folder
             
             for root, dirs, files in os.walk(pathname):
             # select file name
@@ -199,7 +199,7 @@ def remove_augmentations(images):
 
 
 
-def make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=1000, optimizer="adam", activation="relu", kernel_size=(5,5), plot = True, augmentation_list = [], num_folds=5, k=5, folder="No folder applied", num_tries = 10):
+def make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=1000, optimizer="adam", activation="relu", kernel_size=(5,5), plot = True, augmentation_list = [], num_folds=5, k=5, folder="No folder applied", num_tries = 10, dataset="old_dataset"):
     results = []
     
     if(folder == "No folder applied"): print("NEED TO ASSIGN A FOLDER")
@@ -253,7 +253,7 @@ def make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=1000,
         #removing the validation set from the training set
         train_df = train_df.drop(val_df.index)
         #adding data augmentation to training dataset
-        train_df = add_augmentations(train_df, augmentation_list)
+        train_df = add_augmentations(train_df, augmentation_list, dataset)
 
 
 
@@ -300,15 +300,18 @@ def make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=1000,
         tf.keras.layers.MaxPooling2D(2),
         tf.keras.layers.Conv2D(16, (3, 3), activation='relu'),
         tf.keras.layers.MaxPooling2D(2),
-        # tf.keras.layers.Conv2D(32, (3, 3), activation='relu'),
-        # tf.keras.layers.MaxPooling2D(2),
+        tf.keras.layers.Conv2D(32, (3, 3), activation='relu'),
+        tf.keras.layers.MaxPooling2D(2),
         # tf.keras.layers.Conv2D(64, (3, 3), activation='relu'),
         # tf.keras.layers.MaxPooling2D(2),
         tf.keras.layers.Flatten(),
         #tf.keras.layers.Dense(units=1024, activation='relu'),
         # tf.keras.layers.Dense(units=512, activation='relu'),
-        # tf.keras.layers.Dense(units=256, activation='relu'),
+        tf.keras.layers.Dense(units=256, activation='relu'),
         tf.keras.layers.Dense(units=128, activation='relu'),
+        # tf.keras.layers.Dropout(rate=0.1),
+        tf.keras.layers.Dense(units=64, activation='relu'),
+        # tf.keras.layers.Dropout(rate=0.1),
         tf.keras.layers.Dense(units= len(y_col_values), activation='softmax') #one node per class label for a softmax activation function
         ])
 
@@ -468,31 +471,33 @@ def check_bins_plot(hit_arr, num_tests, bins_checked_arr, fold, num_bins):
 """ all augmentations below """
 # augmentation_list = ["OG", "autoContrast", "Brightness Manipulation", "Color", "Contrast", "Equalize", "Flipping", "Gaussian Noise", "Identity", "Posterize", "Rotation", "Sharpness", "Shearing", "Shifting", "Solarize", "Zooming"]
 
-
-parent_folder_name = "Original"
+dataset = "old_dataset/Original"
+dataset = "new_dataset/Original"
+dataset = "new_dataset/Visible_cracks"
 # parent_folder_name = "Original_from_test_matrix"
 #parent_folder_name = "Highlighted_only_Parietal"
 
 label_to_predict = "binned_orientation"
 augmentation_list = ["OG", "Posterize", "Color", "Flipping", "Rotation", "Solarize"]
-args = prepare_data(parent_folder_name, augmentation_list)
+args = prepare_data(augmentation_list, dataset)
 
 #in lab
 # folder = "some folder"
 
 #at home
-folder = "/Users/jakehirst/Desktop/sfx/clustering"
-num_tries = 2000
+results_folder = "/Users/jakehirst/Desktop/sfx/clustering_new_dataset"
+results_folder = "/Users/jakehirst/Desktop/sfx/clustering_new_dataset_visible_cracks"
+num_tries = 50
 
-make_CNN(args, label_to_predict, batch_size=5, patience=50, max_epochs=500, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, k=2, folder=folder, num_tries=num_tries)
-make_CNN(args, label_to_predict, batch_size=5, patience=50, max_epochs=500, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, k=3, folder=folder, num_tries=num_tries)
-make_CNN(args, label_to_predict, batch_size=5, patience=50, max_epochs=500, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, k=4, folder=folder, num_tries=num_tries)
-make_CNN(args, label_to_predict, batch_size=5, patience=50, max_epochs=500, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, k=5, folder=folder, num_tries=num_tries)
-make_CNN(args, label_to_predict, batch_size=5, patience=50, max_epochs=500, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, k=6, folder=folder, num_tries=num_tries)
-make_CNN(args, label_to_predict, batch_size=5, patience=50, max_epochs=500, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, k=7, folder=folder, num_tries=num_tries)
-make_CNN(args, label_to_predict, batch_size=5, patience=50, max_epochs=500, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, k=8, folder=folder, num_tries=num_tries)
-make_CNN(args, label_to_predict, batch_size=5, patience=50, max_epochs=500, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, k=9, folder=folder, num_tries=num_tries)
-make_CNN(args, label_to_predict, batch_size=5, patience=50, max_epochs=500, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, k=10, folder=folder, num_tries=num_tries)
+make_CNN(args, label_to_predict, batch_size=5, patience=50, max_epochs=500, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, k=2, folder=results_folder, num_tries=num_tries, dataset=dataset)
+make_CNN(args, label_to_predict, batch_size=5, patience=50, max_epochs=500, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, k=3, folder=results_folder, num_tries=num_tries, dataset=dataset)
+make_CNN(args, label_to_predict, batch_size=5, patience=50, max_epochs=500, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, k=4, folder=results_folder, num_tries=num_tries, dataset=dataset)
+make_CNN(args, label_to_predict, batch_size=5, patience=50, max_epochs=500, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, k=5, folder=results_folder, num_tries=num_tries, dataset=dataset)
+make_CNN(args, label_to_predict, batch_size=5, patience=50, max_epochs=500, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, k=6, folder=results_folder, num_tries=num_tries, dataset=dataset)
+make_CNN(args, label_to_predict, batch_size=5, patience=50, max_epochs=500, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, k=7, folder=results_folder, num_tries=num_tries, dataset=dataset)
+make_CNN(args, label_to_predict, batch_size=5, patience=50, max_epochs=500, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, k=8, folder=results_folder, num_tries=num_tries, dataset=dataset)
+make_CNN(args, label_to_predict, batch_size=5, patience=50, max_epochs=500, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, k=9, folder=results_folder, num_tries=num_tries, dataset=dataset)
+make_CNN(args, label_to_predict, batch_size=5, patience=50, max_epochs=500, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, k=10, folder=results_folder, num_tries=num_tries, dataset=dataset)
 
 
 print("done")
