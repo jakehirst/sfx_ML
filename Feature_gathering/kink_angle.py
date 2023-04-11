@@ -19,6 +19,7 @@ def get_all_kink_angles(folder_path, key):
             kink_line = False
 
         elif(line.startswith("INFO:root:##############################                 FRANC 3D: On initiation site")):
+            #print(line)
             if(line.endswith(" no crack growth occurred in this step.\n")):
                 continue
             else:
@@ -30,7 +31,7 @@ def get_all_kink_angles(folder_path, key):
 
 
 def get_max_kink(kinks):
-    if(len(kinks["front 1"]) == 0):
+    if(len(kinks["front 1"]) == 0 and len(kinks['front 0']) == 0):
         return 0
     max0 = np.max(np.abs(np.fromiter(kinks["front 0"].values(), dtype=float)))
     if(len(kinks["front 1"]) == 0):
@@ -42,7 +43,7 @@ def get_max_kink(kinks):
 
 
 def get_abs_value_mean_kink(kinks):
-    if(len(kinks["front 1"]) == 0):
+    if(len(kinks["front 1"]) == 0 and len(kinks['front 0']) == 0):
         return 0
     mean0 = np.mean(np.abs(np.fromiter(kinks["front 0"].values(), dtype=float)))
     if(len(kinks["front 1"]) == 0):
@@ -53,7 +54,7 @@ def get_abs_value_mean_kink(kinks):
 
 
 def get_mean_kink(kinks):
-    if (len(kinks["front 1"]) == 0):
+    if(len(kinks["front 1"]) == 0 and len(kinks['front 0']) == 0):
         return 0
     mean0 = np.mean(np.fromiter(kinks["front 0"].values(), dtype=float))
     if(len(kinks["front 1"]) == 0):
@@ -64,7 +65,7 @@ def get_mean_kink(kinks):
 
 
 def get_sum_of_abs_kink(kinks):
-    if(len(kinks["front 1"]) == 0):
+    if(len(kinks["front 1"]) == 0 and len(kinks['front 0']) == 0):
         return 0
     sum0 = np.sum(np.abs(np.fromiter(kinks["front 0"].values(), dtype=float)))
     if(len(kinks["front 1"]) == 0):
@@ -75,7 +76,7 @@ def get_sum_of_abs_kink(kinks):
 
 
 def get_sum_of_kink(kinks):
-    if(len(kinks["front 1"]) == 0):
+    if(len(kinks["front 1"]) == 0 and len(kinks['front 0']) == 0):
         return 0
     sum0 = np.sum(np.fromiter(kinks["front 0"].values(), dtype=float))
     if(len(kinks["front 1"]) == 0):

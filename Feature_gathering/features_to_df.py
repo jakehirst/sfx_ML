@@ -12,6 +12,8 @@ from orientation import *
 from kink_angle import *
 
 FOLDER_PATH = "F:\\Jake\\good_simies\\"
+# FOLDER_PATH = "F:\\Jake\\new_good_simies\\"
+# FOLDER_PATH = "Z:\\bjornssimies\\delta_k\\"
 # FOLDER_PATH = "Z:\\Brian_simies\\k_diff_simmies\\"
 
 #gets the maximum steps and UCIs from the simulation_results folder
@@ -94,6 +96,16 @@ def PhiTheta_to_cartesian(df):
 def save_df(df, filepath):
     df.to_csv(filepath)
 
+def check_history_output(folder_path, key):
+    file = open(folder_path + key + "\\" + key + "_history.log")
+    for line in file.readlines():
+        if(line.startswith("INFO:root:NAME :  Para")):
+            if(not line.endswith(key + "\n")):
+                print("BAD HISTORY OUTPUT FOR " + key)
+                return
+    return 
+
+
 def create_df():
     maxes = get_max_step_and_max_UCIs(FOLDER_PATH)
     #TODO: add columns to dataframe as necessary
@@ -116,6 +128,8 @@ def create_df():
             "mean_kink",
             "sum_kink",
             "abs_val_sum_kink",
+            "avg_ori",
+            "angle_btw",
             "height", 
             "phi", 
             "theta"]
@@ -144,6 +158,8 @@ def create_df():
     mean_kink_arr = []
     sum_kink_arr = []
     abs_val_sum_kink_arr = []
+    average_orientation_arr = []
+    angle_between_cracks_arr = []
 
     i = 0
     #goes through each of the simulations and gathers features for the dataframe
@@ -158,44 +174,51 @@ def create_df():
         #TODO: delete this above
         # if(key == 'Para_1-03ft_PHI_42_THETA_334'):
         #     continue
-        # if(key == 'Para_1-57ft_PHI_23_THETA_291'):
+        # if(key == 'Para_1-1725ft_PHI_8_THETA_162'):
         #     print("here")
+        # if(key == 'Para_1-2775ft_PHI_10_THETA_74'):
+        #     print("here")
+
+        good_history = check_history_output(folder_path, key)
  
         labels = turn_filename_to_labels(key)
         final_front_locations = get_final_front_locations(folder_path, key)
+        crack_type = get_crack_type(folder_path, key)
         # final_front_locations = get_final_front_locations(folder_path, key, maxes[key][0], maxes[key][1]) #TODO delete this
         initiation_cite = get_initiation_cite(folder_path, key)
-        #average_orientation = find_orientation(folder_path, key, final_front_locations, initiation_cite)
-
-        # d = get_euclidean_distance(final_front_locations[0], final_front_locations[1])
-        # len = get_crack_len(folder_path, key)
-        # linearity = get_linearity(folder_path, key)
-        # max_kink, abs_val_mean_kink, mean_kink, sum_kink, abs_val_sum_kink = kink_angle_call(folder_path, key)
-        # max_thickness, mean_thickness = get_max_and_mean_thickness(folder_path, key)
+        average_orientation, angle_between_cracks = find_orientation(folder_path, key, final_front_locations, initiation_cite, crack_type)
+        
+        d = get_euclidean_distance(final_front_locations[0], final_front_locations[1])
+        len = get_crack_len(folder_path, key)
+        linearity = get_linearity(folder_path, key)
+        max_kink, abs_val_mean_kink, mean_kink, sum_kink, abs_val_sum_kink = kink_angle_call(folder_path, key)
+        max_thickness, mean_thickness = get_max_and_mean_thickness(folder_path, key)
         
 
-        # height_array.append(labels[0])
-        # phi_array.append(labels[1])
-        # theta_array.append(labels[2])
-        # front_0_array_x.append(final_front_locations[0][0])
-        # front_0_array_y.append(final_front_locations[0][1])
-        # front_0_array_z.append(final_front_locations[0][2])
-        # front_1_array_x.append(final_front_locations[1][0])
-        # front_1_array_y.append(final_front_locations[1][1])
-        # front_1_array_z.append(final_front_locations[1][2])
-        # initiation_cite_x.append(initiation_cite[0])
-        # initiation_cite_y.append(initiation_cite[1])
-        # initiation_cite_z.append(initiation_cite[2])
-        # distance_between_fronts.append(d)
-        # crack_lengths.append(len)
-        # linearity_arr.append(linearity)
-        # max_thickness_arr.append(max_thickness)
-        # mean_thickness_arr.append(mean_thickness)
-        # max_kink_arr.append(max_kink)
-        # abs_val_mean_kink_arr.append(abs_val_mean_kink)
-        # mean_kink_arr.append(mean_kink)
-        # sum_kink_arr.append(sum_kink)
-        # abs_val_sum_kink_arr.append(abs_val_sum_kink)
+        height_array.append(labels[0])
+        phi_array.append(labels[1])
+        theta_array.append(labels[2])
+        front_0_array_x.append(final_front_locations[0][0])
+        front_0_array_y.append(final_front_locations[0][1])
+        front_0_array_z.append(final_front_locations[0][2])
+        front_1_array_x.append(final_front_locations[1][0])
+        front_1_array_y.append(final_front_locations[1][1])
+        front_1_array_z.append(final_front_locations[1][2])
+        initiation_cite_x.append(initiation_cite[0])
+        initiation_cite_y.append(initiation_cite[1])
+        initiation_cite_z.append(initiation_cite[2])
+        distance_between_fronts.append(d)
+        crack_lengths.append(len)
+        linearity_arr.append(linearity)
+        max_thickness_arr.append(max_thickness)
+        mean_thickness_arr.append(mean_thickness)
+        max_kink_arr.append(max_kink)
+        abs_val_mean_kink_arr.append(abs_val_mean_kink)
+        mean_kink_arr.append(mean_kink)
+        sum_kink_arr.append(sum_kink)
+        abs_val_sum_kink_arr.append(abs_val_sum_kink)
+        average_orientation_arr.append(average_orientation)
+        angle_between_cracks_arr.append(angle_between_cracks)
 
         i += 1
                 
@@ -220,9 +243,12 @@ def create_df():
             "mean_kink": mean_kink_arr,
             "sum_kink": sum_kink_arr,
             "abs_val_sum_kink": abs_val_sum_kink_arr,
+            "avg_ori": average_orientation_arr,
+            "angle_btw": angle_between_cracks_arr,
             "height": height_array, 
             "phi": phi_array, 
-            "theta": theta_array}
+            "theta": theta_array
+            }
     df = pd.DataFrame(df,columns=columns)
     return df
 
