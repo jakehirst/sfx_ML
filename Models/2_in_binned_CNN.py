@@ -490,7 +490,7 @@ angle btw
 """ getting 1D features """
 print("getting 1D data... ")
 df_1D = get_1D_inputs(folder, dataset, label_to_predict)      
-height_p_less_point5 = ["init y", "crack len", "linearity", "max thickness", "max_kink", "abs_val_mean_kink"]    
+height_p_less_point5 = ["init y", "crack len", "linearity", "max thickness", "max_kink", "abs_val_mean_kink", "abs_val_sum_kink"]    
 phi_p_less_point5 = ["front 0 x", "front 0 z", "front 1 y", "front 1 z", "init y", "linearity", "angle_btw"]
 theta_p_less_point5 = ["front 0 y", "front 0 z", "init y", "init z", "angle_btw"]
 phi_and_theta_p_less_point5 = phi_p_less_point5
