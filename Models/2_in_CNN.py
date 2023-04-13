@@ -24,6 +24,8 @@ import imageio
 from CNN_function_library import *
 import tensorflow.keras.backend as K
 from PIL import Image
+from quaternions import *
+
 """ This code was made while referencing https://towardsdatascience.com/neural-networks-with-multiple-data-sources-ef91d7b4ad5a """
 
 
@@ -34,6 +36,8 @@ def get_1D_inputs(folder, dataset, label_to_predict):
 def remove_unpredicted_labels(df, label_to_predict):
     if(label_to_predict == "phi_and_theta"):
         labels = ["height", "x", "y", "z"]
+    elif(label_to_predict == 'quaternions'):
+        labels = ["height","phi", "theta", "x", "y", "z"]
     else:
         labels = ["height", "phi", "theta", "x", "y", "z"]
 
@@ -44,7 +48,7 @@ def remove_unpredicted_labels(df, label_to_predict):
     return df
 
 def remove_features(df, features_to_remove=[], features_to_keep=[]):
-    labels = ["theta", "phi", "height", "x", "y", "z"]
+    labels = ["theta", "phi", "height", "x", "y", "z", 'quats']
     if(len(features_to_remove) == 0 and len(features_to_keep)>0):
         print("remove all features except listed")
         new_df = df.copy()
@@ -103,7 +107,12 @@ def CNN_1D(train_1D, label_to_predict, batch_size=5, kernel_size=(3,3)):
         feature_list = [ elem for elem in train_1D.columns.tolist() if not labels.__contains__(elem)]
         train_features = train_1D[feature_list].drop("index", axis=1)
         train_labels = train_1D[labels]
-        
+    elif(label_to_predict == 'quaternions'):
+        labels = ['quats']
+        train_1D = remove_unpredicted_labels(train_1D, label_to_predict)
+        feature_list = [ elem for elem in train_1D.columns.tolist() if not labels.__contains__(elem)]
+        train_features = train_1D[feature_list].drop("index", axis=1)
+        train_labels = train_1D[labels]
     
     #quote from tensorflow:
     """One reason this is important is because the features are multiplied by the model weights. So, the scale of the outputs and the scale of the gradients are affected by the scale of the inputs.
@@ -147,10 +156,12 @@ def CNN_img(train_image_dataset, val_image_dataset, label_to_predict, batch_size
         rescale = 1./255, #all pixel values set between 0 and 1 instead of 0 and 255.
     )
     
-    if(label_to_predict == "phi_and_theta"):
+    """ I don think this matters since we get the outputs somehwere else. """
+    if(label_to_predict == "phi_and_theta" or "quaternions"):
         y_col = ["phi", "theta"]
     elif(label_to_predict == "x_and_y"):
         y_col = ["x", "y"]
+    
     #flow the images through the generators
     flow_train_images = train_generator.flow_from_dataframe(
         dataframe=train_image_dataset,
@@ -233,13 +244,21 @@ def CNN_img(train_image_dataset, val_image_dataset, label_to_predict, batch_size
     return img_output, actual_train_images, actual_val_images, resnet_model, input
 
 def organize_test_data(test_1D, test_images, label_to_predict):
-    X_test_B = test_1D.drop(["height", "phi", "theta"], axis=1).drop("index", axis=1)
     if(label_to_predict == "phi_and_theta"):
+        X_test_B = test_1D.drop(["height", "phi", "theta"], axis=1).drop("index", axis=1)
         y_test = test_1D.get(["phi", "theta"]).to_numpy()
+    elif(label_to_predict == 'quaternions'):
+        X_test_B = test_1D.drop(["height", "phi", "theta", 'quats'], axis=1).drop("index", axis=1)
+        y_test = np.asarray(test_1D['quats'].tolist())
         
     if(label_to_predict == "phi_and_theta"):
         labels = ["phi", "theta"]
         test_image_dataset = remove_unpredicted_labels(test_images, label_to_predict).drop("index", axis=1)
+    elif(label_to_predict == 'quaternions'):
+        labels = ['quats']
+        test_image_dataset = remove_unpredicted_labels(test_images, label_to_predict).drop("index", axis=1)
+        test_image_dataset['quats'] = np.zeros(len(test_image_dataset))
+
     
     test_generator = tf.keras.preprocessing.image.ImageDataGenerator(
         rescale = 1./255, #all pixel values set between 0 and 1 instead of 0 and 255.
@@ -249,6 +268,10 @@ def organize_test_data(test_1D, test_images, label_to_predict):
         y_col = ["phi", "theta"]
     elif(label_to_predict == "x_and_y"):
         y_col = ["x", "y"]
+    elif(label_to_predict == "quaternions"):
+        y_col = ['quats']
+
+        
         
     #flow the images through the generators
     flow_test_images = test_generator.flow_from_dataframe(
@@ -276,12 +299,89 @@ def organize_test_data(test_1D, test_images, label_to_predict):
     
     return X_test_A, X_test_B, y_test
 
+def create_combined_model(train_1D, train_images, val_images, label_to_predict, lossfunc):
+    csv_output, csv_input = CNN_1D(train_1D, label_to_predict, batch_size=5, kernel_size=(3,3))
+    image_output, actual_train_images, actual_val_images, resnet_model, input = CNN_img(train_images, val_images, label_to_predict, batch_size=5, kernel_size=(3,3))
+    
+    print(csv_output.shape)
+    print(image_output.shape)
+    x = tf.keras.layers.concatenate([image_output, csv_output], name="concat_csv_img")
+
+    if(label_to_predict == "phi_and_theta"):
+        predictions = tf.keras.layers.Dense(units=2)(x)
+    elif(label_to_predict == 'quaternions'):
+        predictions = tf.keras.layers.Dense(units=4)(x)
+        
+    # model = tf.keras.Model(inputs = [resnet_model.input,csv_input], outputs = [predictions])
+    model = tf.keras.Model(inputs = [input, csv_input], outputs = [predictions])
+
+    model.compile(
+        optimizer=tf.keras.optimizers.Adam(),#can define learning rate here
+    loss = lossfunc,
+    )
+    return model, actual_train_images, actual_val_images
+
+def plot_things(history, y_train, training_predictions, y_test, test_predictions, folder_path, fold_no):
+    """ gets r^2 value of the test dataset with the predictions made from above ^ """
+    metric = tfa.metrics.r_square.RSquare()
+    metric.update_state(y_train, training_predictions)
+    training_result = metric.result()
+    print("Training R^2 = " + str(training_result.numpy()))
+    
+
+    """ gets r^2 value of the training dataset """
+    metric = tfa.metrics.r_square.RSquare()
+    metric.update_state(y_test, test_predictions)
+    test_result = metric.result()
+    print("Test R^2 = " + str(test_result.numpy()))
+    
+    plt.plot(history.history['loss'], label='loss (mean absolute error)')
+    plt.plot(history.history['val_loss'], label='val_loss')
+    #plt.ylim([0, 4])
+    plt.xlabel(f'Train R^2 = {str(training_result.numpy())}, Test R^2 = {str(test_result.numpy())}')
+    plt.ylabel('loss')
+    plt.title("theta")
+    plt.legend()
+    plt.grid(True)
+    # plt.text(.5, .0001, f"Train R^2 = {str(training_result.numpy())}, Test R^2 = {str(test_result.numpy())}")
+    plt.savefig(folder_path + f"/loss_vs_epochs_fold{fold_no}")
+    plt.close()
+
+    a = plt.axes(aspect='equal')
+    plt.scatter(y_test[:,0], test_predictions[:,0])
+    plt.xlabel('True labels')
+    plt.ylabel('Predicted labels')
+    plt.title("phi")
+    lims = [0, max(y_test[:,0])]
+    plt.xlim(lims)
+    plt.ylim(lims)
+    _ = plt.plot(lims, lims)
+    plt.savefig(folder_path + f"/phi_predictions_fold{fold_no}")
+    plt.close()
+
+    a = plt.axes(aspect='equal')
+    plt.scatter(y_test[:,1], test_predictions[:,1])
+    plt.xlabel('True labels')
+    plt.ylabel('Predicted labels')
+    plt.title("theta")
+    lims = [0, max(y_test[:,1])]
+    plt.xlim(lims)
+    plt.ylim(lims)
+    _ = plt.plot(lims, lims)
+    plt.savefig(folder_path + f"/theta_predictions_fold{fold_no}")
+    plt.close()
+
 def run_kfold():
     print("getting image data... ")
     args = prepare_data(parent_folder_name, ["OG"])
     df_images = get_image_inputs(args[0], args[1], args[2], args[3])
     print("syncing data...")
     df_1D, df_images = sync_image_and_1D_inputs(simple_df_1D, df_images)
+    
+    if(label_to_predict == "phi_and_theta"):
+        print("df is good")
+    elif(label_to_predict == "quaternions"):
+        df_1D = height_phi_theta_df_to_quaternions(df_1D)
 
     rnge = range(1, len(df_1D)+1)
     kf5 = KFold(n_splits=5, shuffle=True)
@@ -299,25 +399,7 @@ def run_kfold():
         (train_1D, val_1D, train_images, val_images) = train_test_split(train_1D, train_images, test_size=0.2, random_state=42)
 
         
-        csv_output, csv_input = CNN_1D(train_1D, label_to_predict, batch_size=5, kernel_size=(3,3))
-        image_output, actual_train_images, actual_val_images, resnet_model, input = CNN_img(train_images, val_images, label_to_predict, batch_size=5, kernel_size=(3,3))
-        
-        print(csv_output.shape)
-        print(image_output.shape)
-        x = tf.keras.layers.concatenate([image_output, csv_output], name="concat_csv_img")
-
-        predictions = tf.keras.layers.Dense(units=2)(x)
-        # model = tf.keras.Model(inputs = [resnet_model.input,csv_input], outputs = [predictions])
-        model = tf.keras.Model(inputs = [input, csv_input], outputs = [predictions])
-
-        model.compile(
-            optimizer=tf.keras.optimizers.Adam(),#can define learning rate here
-        # loss=mean_distance_error_phi_theta,
-        # loss='mean_absolute_error',
-        # loss='mean_squared_error',
-        # loss='mean_squared_logarithmic_error',
-        loss = lossfunc,
-        )
+        model, actual_train_images, actual_val_images = create_combined_model(train_1D, train_images, val_images, label_to_predict, lossfunc)
 
         # X_train_A = np.asarray(actual_train_images.get("image")).astype(np.float32)
         # X_val_A = np.asarray(actual_val_images.get("image")).astype(np.float32)
@@ -331,6 +413,13 @@ def run_kfold():
         if(label_to_predict == "phi_and_theta"):
             y_train = train_1D.get(["phi", "theta"]).to_numpy()
             y_val = val_1D.get(["phi", "theta"]).to_numpy()
+        elif(label_to_predict == 'quaternions'):
+            y_train = np.asarray(train_1D['quats'].tolist())
+            y_val = np.asarray(val_1D['quats'].tolist())
+            X_val_B = X_val_B.drop('quats', axis=1)
+            X_train_B = X_train_B.drop('quats', axis=1)
+
+
 
         history = model.fit((X_train_A, X_train_B), 
                             y_train, 
@@ -356,60 +445,27 @@ def run_kfold():
         
         if(not os.path.exists(saving_folder)):
             os.mkdir(saving_folder)
-        folder_path = saving_folder + f"/fold_{fold_no}"
+        folder_path = saving_folder
         if(not os.path.exists(folder_path)):
             os.mkdir(folder_path)
-        
+            
+        # checkpoint_path = folder_path + "/test_checkpoint.ckpt"
+        # checkpoint_dir = os.path.dirname(checkpoint_path)
+        # model.save_weights(checkpoint_path.format(epoch=0))
+        # loadmodel, ti, vi = create_combined_model(train_1D, train_images, val_images, label_to_predict, lossfunc)
+        # checkpoint_path = folder_path + '/test_checkpoint.ckpt'
+        # loadmodel = loadmodel.load_weights(checkpoint_path)
         test_predictions = model.predict((X_test_A, X_test_B))
         training_predictions = model.predict((X_train_A, X_train_B))
-        """ gets r^2 value of the test dataset with the predictions made from above ^ """
-        metric = tfa.metrics.r_square.RSquare()
-        metric.update_state(y_train, training_predictions)
-        training_result = metric.result()
-        print("Training R^2 = " + str(training_result.numpy()))
-        
+        if(label_to_predict == 'quaternions'):
+            test_predictions = quaternions_back_to_sphereical(test_predictions)
+            training_predictions = quaternions_back_to_sphereical(training_predictions)
+            y_test = quaternions_back_to_sphereical(y_test)
+            y_train = quaternions_back_to_sphereical(y_train)
+            plot_things(history, y_train, training_predictions, y_test, test_predictions, folder_path, fold_no)
+        else:
+            plot_things(history, y_train, training_predictions, y_test, test_predictions, folder_path, fold_no)
 
-        """ gets r^2 value of the training dataset """
-        metric = tfa.metrics.r_square.RSquare()
-        metric.update_state(y_test, test_predictions)
-        test_result = metric.result()
-        print("Test R^2 = " + str(test_result.numpy()))
-        
-        plt.plot(history.history['loss'], label='loss (mean absolute error)')
-        plt.plot(history.history['val_loss'], label='val_loss')
-        #plt.ylim([0, 4])
-        plt.xlabel(f'Train R^2 = {str(training_result.numpy())}, Test R^2 = {str(test_result.numpy())}')
-        plt.ylabel('loss')
-        plt.title("theta")
-        plt.legend()
-        plt.grid(True)
-        # plt.text(.5, .0001, f"Train R^2 = {str(training_result.numpy())}, Test R^2 = {str(test_result.numpy())}")
-        plt.savefig(folder_path + "/loss_vs_epochs")
-        plt.close()
-
-        a = plt.axes(aspect='equal')
-        plt.scatter(y_test[:,0], test_predictions[:,0])
-        plt.xlabel('True labels')
-        plt.ylabel('Predicted labels')
-        plt.title("phi")
-        lims = [0, max(y_test[:,0])]
-        plt.xlim(lims)
-        plt.ylim(lims)
-        _ = plt.plot(lims, lims)
-        plt.savefig(folder_path + "/phi_predictions")
-        plt.close()
-
-        a = plt.axes(aspect='equal')
-        plt.scatter(y_test[:,1], test_predictions[:,1])
-        plt.xlabel('True labels')
-        plt.ylabel('Predicted labels')
-        plt.title("theta")
-        lims = [0, max(y_test[:,1])]
-        plt.xlim(lims)
-        plt.ylim(lims)
-        _ = plt.plot(lims, lims)
-        plt.savefig(folder_path + "/theta_predictions")
-        plt.close()
         
         fold_no +=1
         print("done")
@@ -428,32 +484,63 @@ max_epochs = 3000
 """ getting 1D features """
 print("getting 1D data... ")
 df_1D = get_1D_inputs(folder, dataset, label_to_predict)          
-theta_p_less_point5 = ["front 0 y", "front 0 z", "init y", "init z", "dist btw frts"]
-phi_p_less_point5 = ["front 0 x", "front 0 z", "front 1 z"]
-simple_df_1D = remove_features(df_1D, features_to_keep=["front 0 x", "front 0 y", "front 0 z", "front 1 z", "init y", "init z", "dist btw frts", "angle_btw"])
+height_p_less_point5 = ["init y", "crack len", "linearity", "max thickness", "max_kink", "abs_val_mean_kink", "abs_val_sum_kink"]    
+phi_p_less_point5 = ["front 0 x", "front 0 z", "front 1 y", "front 1 z", "init y", "linearity", "angle_btw"]
+theta_p_less_point5 = ["front 0 y", "front 0 z", "init y", "init z", "angle_btw"]
+phi_and_theta_p_less_point5 = set(phi_p_less_point5) | set(theta_p_less_point5)
+# simple_df_1D = remove_features(df_1D, features_to_keep=phi_and_theta_p_less_point5)
+simple_df_1D = remove_features(df_1D, features_to_remove=[])
 # simple_df_1D = remove_features(df_1D, features_to_remove=[])
 
 parent_folder_name = "new_dataset/Original"
 parent_folder_name = "new_dataset/Visible_cracks"
+parent_folder_name = "new_dataset/Visible_cracks_new_dataset_2"
 
+""" loss function options """
 # lossfunc = 'mean_distance_error_phi_theta',
 # lossfunc = 'mean_absolute_error',
 # lossfunc = 'mean_squared_error',
-# lossfunc = 'mean_squared_logarithmic_error',
+# lossfunc = 'mean_squared_logarithmic_error', - BAD
+# lossfunc = tf.keras.losses.CosineSimilarity(axis=1)
+# lossfunc = tf.keras.losses.Huber()
+# lossfunc = tf.keras.losses.LogCosh()
 
-saving_folder = "/Users/jakehirst/Desktop/sfx/regression/2in_2out_regression"
+
+label_to_predict = "quaternions"
+saving_folder = "/Users/jakehirst/Desktop/sfx/regression/2in_2out_regression_QUATERNIONS_all_feats"
 lossfunc = 'mean_absolute_error'
 saving_folder = saving_folder + "_" + lossfunc
 run_kfold()
 
-saving_folder = "/Users/jakehirst/Desktop/sfx/regression/2in_2out_regression"
+label_to_predict = "quaternions"
+saving_folder = "/Users/jakehirst/Desktop/sfx/regression/2in_2out_regression_QUATERNIONS_all_feats"
+lossfunc = tf.keras.losses.LogCosh()
+saving_folder = saving_folder + "_LogCosh"
+run_kfold()
+
+label_to_predict = "quaternions"
+saving_folder = "/Users/jakehirst/Desktop/sfx/regression/2in_2out_regression_QUATERNIONS_all_feats"
+lossfunc = tf.keras.losses.Huber()
+saving_folder = saving_folder + "_Huber"
+run_kfold()
+
+label_to_predict = "quaternions"
+saving_folder = "/Users/jakehirst/Desktop/sfx/regression/2in_2out_regression_QUATERNIONS_all_feats"
+lossfunc = tf.keras.losses.CosineSimilarity(axis=1)
+saving_folder = saving_folder + "_CosineSimilarity"
+run_kfold()
+
+label_to_predict = "quaternions"
+saving_folder = "/Users/jakehirst/Desktop/sfx/regression/2in_2out_regression_QUATERNIONS_all_feats"
+lossfunc = 'mean_squared_error'
+saving_folder = saving_folder + "_" + lossfunc
+run_kfold()
+
+label_to_predict = "quaternions"
+saving_folder = "/Users/jakehirst/Desktop/sfx/regression/2in_2out_regression_QUATERNIONS_all_feats"
 lossfunc = 'mean_squared_logarithmic_error'
 saving_folder = saving_folder + "_" + lossfunc
 run_kfold()
 
-saving_folder = "/Users/jakehirst/Desktop/sfx/regression/2in_2out_regression"
-lossfunc = 'mean_squared_error'
-saving_folder = saving_folder + "_" + lossfunc
-run_kfold()
 
 
