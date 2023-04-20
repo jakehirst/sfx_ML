@@ -25,6 +25,15 @@ from CNN_function_library import *
 import tensorflow.keras.backend as K
 from PIL import Image
 from quaternions import *
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import mean_absolute_error, mean_squared_error, mean_squared_log_error, r2_score
+import csv
+from datetime import date
+
+
+
+
 
 """ This code was made while referencing https://towardsdatascience.com/neural-networks-with-multiple-data-sources-ef91d7b4ad5a """
 
@@ -113,6 +122,16 @@ def CNN_1D(train_1D, label_to_predict, batch_size=5, kernel_size=(3,3)):
         feature_list = [ elem for elem in train_1D.columns.tolist() if not labels.__contains__(elem)]
         train_features = train_1D[feature_list].drop("index", axis=1)
         train_labels = train_1D[labels]
+    elif(label_to_predict == 'height' or label_to_predict == 'phi' or label_to_predict == 'theta'):
+        labels = [label_to_predict]
+        train_1D = remove_unpredicted_labels(train_1D, label_to_predict)
+        feature_list = [ elem for elem in train_1D.columns.tolist() if not labels.__contains__(elem)]
+        if(train_1D.columns.__contains__('index')):
+            train_features = train_1D[feature_list].drop("index", axis=1)
+        else:
+            train_features = train_1D[feature_list]
+        train_labels = train_1D[labels]
+
     
     #quote from tensorflow:
     """One reason this is important is because the features are multiplied by the model weights. So, the scale of the outputs and the scale of the gradients are affected by the scale of the inputs.
@@ -157,11 +176,13 @@ def CNN_img(train_image_dataset, val_image_dataset, label_to_predict, batch_size
     )
     
     """ I don think this matters since we get the outputs somehwere else. """
-    if(label_to_predict == "phi_and_theta" or "quaternions"):
+    if(label_to_predict == "phi_and_theta" or label_to_predict == "quaternions"):
         y_col = ["phi", "theta"]
     elif(label_to_predict == "x_and_y"):
         y_col = ["x", "y"]
-    
+    elif(label_to_predict == 'height' or label_to_predict == 'phi' or label_to_predict == 'theta'):
+        y_col = [label_to_predict]
+        
     #flow the images through the generators
     flow_train_images = train_generator.flow_from_dataframe(
         dataframe=train_image_dataset,
@@ -250,6 +271,9 @@ def organize_test_data(test_1D, test_images, label_to_predict):
     elif(label_to_predict == 'quaternions'):
         X_test_B = test_1D.drop(["height", "phi", "theta", 'quats'], axis=1).drop("index", axis=1)
         y_test = np.asarray(test_1D['quats'].tolist())
+    elif(label_to_predict == 'height' or label_to_predict == 'phi' or label_to_predict == 'theta'):
+        X_test_B = test_1D.drop([label_to_predict], axis=1).drop("index", axis=1)
+        y_test = test_1D.get([label_to_predict]).to_numpy()
         
     if(label_to_predict == "phi_and_theta"):
         labels = ["phi", "theta"]
@@ -258,6 +282,9 @@ def organize_test_data(test_1D, test_images, label_to_predict):
         labels = ['quats']
         test_image_dataset = remove_unpredicted_labels(test_images, label_to_predict).drop("index", axis=1)
         test_image_dataset['quats'] = np.zeros(len(test_image_dataset))
+    elif(label_to_predict == 'height' or label_to_predict == 'phi' or label_to_predict == 'theta'):
+        labels = [label_to_predict]
+        test_image_dataset = remove_unpredicted_labels(test_images, label_to_predict).drop("index", axis=1)
 
     
     test_generator = tf.keras.preprocessing.image.ImageDataGenerator(
@@ -270,6 +297,9 @@ def organize_test_data(test_1D, test_images, label_to_predict):
         y_col = ["x", "y"]
     elif(label_to_predict == "quaternions"):
         y_col = ['quats']
+    elif(label_to_predict == 'height' or label_to_predict == 'phi' or label_to_predict == 'theta'):
+        y_col = [label_to_predict]
+
 
         
         
@@ -311,7 +341,9 @@ def create_combined_model(train_1D, train_images, val_images, label_to_predict, 
         predictions = tf.keras.layers.Dense(units=2)(x)
     elif(label_to_predict == 'quaternions'):
         predictions = tf.keras.layers.Dense(units=4)(x)
-        
+    elif(label_to_predict == 'height' or label_to_predict == 'phi' or label_to_predict == 'theta'):
+        predictions = tf.keras.layers.Dense(units=1)(x)
+
     # model = tf.keras.Model(inputs = [resnet_model.input,csv_input], outputs = [predictions])
     model = tf.keras.Model(inputs = [input, csv_input], outputs = [predictions])
 
@@ -321,7 +353,7 @@ def create_combined_model(train_1D, train_images, val_images, label_to_predict, 
     )
     return model, actual_train_images, actual_val_images
 
-def plot_things(history, y_train, training_predictions, y_test, test_predictions, folder_path, fold_no):
+def plot_things(history, y_train, training_predictions, y_test, test_predictions, folder_path, fold_no, label_to_predict):
     """ gets r^2 value of the test dataset with the predictions made from above ^ """
     metric = tfa.metrics.r_square.RSquare()
     metric.update_state(y_train, training_predictions)
@@ -345,43 +377,131 @@ def plot_things(history, y_train, training_predictions, y_test, test_predictions
     plt.grid(True)
     # plt.text(.5, .0001, f"Train R^2 = {str(training_result.numpy())}, Test R^2 = {str(test_result.numpy())}")
     plt.savefig(folder_path + f"/loss_vs_epochs_fold{fold_no}")
+    # plt.show()
     plt.close()
+    
+    if(label_to_predict == 'quaternions' or label_to_predict == 'phi_and_theta'):
+        a = plt.axes(aspect='equal')
+        plt.scatter(y_test[:,0], test_predictions[:,0])
+        plt.xlabel('True labels')
+        plt.ylabel('Predicted labels')
+        plt.title("phi")
+        lims = [0, max(y_test[:,0])]
+        plt.xlim(lims)
+        plt.ylim(lims)
+        _ = plt.plot(lims, lims)
+        plt.savefig(folder_path + f"/phi_predictions_fold{fold_no}")
+        # plt.show()
+        plt.close()
 
-    a = plt.axes(aspect='equal')
-    plt.scatter(y_test[:,0], test_predictions[:,0])
-    plt.xlabel('True labels')
-    plt.ylabel('Predicted labels')
-    plt.title("phi")
-    lims = [0, max(y_test[:,0])]
-    plt.xlim(lims)
-    plt.ylim(lims)
-    _ = plt.plot(lims, lims)
-    plt.savefig(folder_path + f"/phi_predictions_fold{fold_no}")
-    plt.close()
+        a = plt.axes(aspect='equal')
+        plt.scatter(y_test[:,1], test_predictions[:,1])
+        plt.xlabel('True labels')
+        plt.ylabel('Predicted labels')
+        plt.title("theta")
+        lims = [0, max(y_test[:,1])]
+        plt.xlim(lims)
+        plt.ylim(lims)
+        _ = plt.plot(lims, lims)
+        plt.savefig(folder_path + f"/theta_predictions_fold{fold_no}")
+        # plt.show()
+        plt.close()
+        
+    elif(label_to_predict == 'height' or label_to_predict == 'phi' or label_to_predict == 'theta'):
+        a = plt.axes(aspect='equal')
+        plt.scatter(y_test, test_predictions)
+        plt.xlabel('True labels')
+        plt.ylabel('Predicted labels')
+        plt.title(label_to_predict + f'fold{fold_no}')
+        lims = [0, max(y_test[:,0])]
+        plt.xlim(lims)
+        plt.ylim(lims)
+        _ = plt.plot(lims, lims)
+        plt.savefig(folder_path + f"/{label_to_predict}_predictions_fold{fold_no}")
+        # plt.show()
+        plt.close()
 
-    a = plt.axes(aspect='equal')
-    plt.scatter(y_test[:,1], test_predictions[:,1])
-    plt.xlabel('True labels')
-    plt.ylabel('Predicted labels')
-    plt.title("theta")
-    lims = [0, max(y_test[:,1])]
-    plt.xlim(lims)
-    plt.ylim(lims)
-    _ = plt.plot(lims, lims)
-    plt.savefig(folder_path + f"/theta_predictions_fold{fold_no}")
-    plt.close()
+def principal_component_analysis(df_1D, label_to_predict , pca):
+    features = df_1D.columns.tolist()
+    features.remove('height')
+    features.remove('phi')
+    features.remove('theta')
+    x = StandardScaler().fit_transform(df_1D.loc[:,features].values)
+    PCA_s = PCA(n_components=pca)
+    principalComponents = PCA_s.fit_transform(x)
+    
+    col = []
+    for i in range(pca):
+        col.append(f"PrincComp_{i}")
+    
+    principalDf = pd.DataFrame(data = principalComponents
+             , columns = col)
+    
+    labels = df_1D[['height', 'phi', 'theta']]
+    finalDf = pd.concat([principalDf, labels], axis = 1)
+    return finalDf
 
-def run_kfold():
+def get_model_metrics(true_y, predictions):
+    y_test = true_y
+    test_predictions = predictions
+    mae = mean_absolute_error(y_test, test_predictions)
+    mse = mean_squared_error(y_test, test_predictions)
+    msle = mean_squared_log_error(y_test, test_predictions)
+    r2 = r2_score(y_test, test_predictions)
+    n = len(y_test)
+    p = test_predictions.shape[1] # assuming test_predictions is a 2D array
+    adj_r2 = 1 - ((1 - r2) * (n - 1) / (n - p - 1))
+    return {'mae': mae, 'mse':mse, 'msloge':msle, 'r^2':r2, 'adj_r^2':adj_r2}
+
+def save_model_metrics(y_train, y_val, y_test, training_predictions, val_predictions, test_predictions, folder_path, fold_no):
+    train_metrics = get_model_metrics(y_train, training_predictions)
+    train_metrics = {'train_' + key: value for key, value in train_metrics.items()}
+    val_metrics = get_model_metrics(y_val, val_predictions)
+    val_metrics = {'val_' + key: value for key, value in val_metrics.items()}
+    test_metrics = get_model_metrics(y_test, test_predictions)
+    test_metrics = {'test_' + key: value for key, value in test_metrics.items()}
+    # Append the dictionaries together
+    model_stats = {'included_features': df_1D.columns.to_list(), 
+                    'date_created': date.today(),
+                    'pca':pca,
+                    'loss_func': lossfunc,
+                    'label_to_predict':label_to_predict,
+                    **train_metrics, 
+                    **val_metrics, 
+                    **test_metrics}
+    # Write the merged dictionary to a CSV file
+    with open(folder_path + f'/fold{fold_no}_model_stats.csv', 'w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(['metric', 'value'])
+        for key, value in model_stats.items():
+            writer.writerow([key, value])
+        
+
+
+def run_kfold(simple_df_1D, saving_folder, lossfunc, label_to_predict, pca=False):
+
     print("getting image data... ")
     args = prepare_data(parent_folder_name, ["OG"])
     df_images = get_image_inputs(args[0], args[1], args[2], args[3])
     print("syncing data...")
     df_1D, df_images = sync_image_and_1D_inputs(simple_df_1D, df_images)
     
+    if(pca != False):
+        print(f"doing pca with {pca} components")
+        df_1D = principal_component_analysis(df_1D, label_to_predict, pca)
+        df_1D['index'] = 0 #adding this cause I was lazy before and didnt fix the index row till later...
+    else:
+        print("skipping pca")
+        
     if(label_to_predict == "phi_and_theta"):
         print("df is good")
     elif(label_to_predict == "quaternions"):
         df_1D = height_phi_theta_df_to_quaternions(df_1D)
+    elif(label_to_predict == 'height' or label_to_predict == 'phi' or label_to_predict == 'theta'):
+        labels_to_remove = ['height', 'phi', 'theta']
+        labels_to_remove.remove(label_to_predict)
+        df_1D = df_1D.drop(labels_to_remove, axis=1)
+        
 
     rnge = range(1, len(df_1D)+1)
     kf5 = KFold(n_splits=5, shuffle=True)
@@ -405,19 +525,33 @@ def run_kfold():
         # X_val_A = np.asarray(actual_val_images.get("image")).astype(np.float32)
         
         #TODO: try to make the image data into numpy arrays with dtype float32 ( arr.astype(np.float32) )
-        X_train_A = actual_train_images.astype(np.float32)
-        X_val_A = actual_val_images.astype(np.float32)
-        X_train_B = train_1D.drop(["height", "phi", "theta"], axis=1).drop("index", axis=1)
-        X_val_B = val_1D.drop(["height", "phi", "theta"], axis=1).drop("index", axis=1)
+
         
         if(label_to_predict == "phi_and_theta"):
             y_train = train_1D.get(["phi", "theta"]).to_numpy()
             y_val = val_1D.get(["phi", "theta"]).to_numpy()
+            X_train_A = actual_train_images.astype(np.float32)
+            X_val_A = actual_val_images.astype(np.float32)
+            X_train_B = train_1D.drop(["height", "phi", "theta"], axis=1).drop("index", axis=1)
+            X_val_B = val_1D.drop(["height", "phi", "theta"], axis=1).drop("index", axis=1)
+            
         elif(label_to_predict == 'quaternions'):
+            X_train_A = actual_train_images.astype(np.float32)
+            X_val_A = actual_val_images.astype(np.float32)
+            X_train_B = train_1D.drop(["height", "phi", "theta"], axis=1).drop("index", axis=1)
+            X_val_B = val_1D.drop(["height", "phi", "theta"], axis=1).drop("index", axis=1)
             y_train = np.asarray(train_1D['quats'].tolist())
             y_val = np.asarray(val_1D['quats'].tolist())
             X_val_B = X_val_B.drop('quats', axis=1)
             X_train_B = X_train_B.drop('quats', axis=1)
+            
+        elif(label_to_predict == 'height' or label_to_predict == 'phi' or label_to_predict == 'theta'):
+            X_train_A = actual_train_images.astype(np.float32)
+            X_val_A = actual_val_images.astype(np.float32)
+            X_train_B = train_1D.drop([label_to_predict], axis=1).drop("index", axis=1)
+            X_val_B = val_1D.drop([label_to_predict], axis=1).drop("index", axis=1)
+            y_train = train_1D.get([label_to_predict]).to_numpy()
+            y_val = val_1D.get([label_to_predict]).to_numpy()
 
 
 
@@ -438,6 +572,12 @@ def run_kfold():
         
         X_test_A, X_test_B, y_test = organize_test_data(test_1D, test_images, label_to_predict)
         
+        #saving the model for later use. to load the model again, use syntax loaded_model = tf.keras.models.load_model(MODEL_PATH) 
+        model.save(saving_folder + f"/trained_model_fold_{fold_no}.h5")
+        
+
+        
+        
         print("minimum MAE: ")
         print(min(history.history['loss']))
         print("minimum validation MAE: ")
@@ -449,23 +589,22 @@ def run_kfold():
         if(not os.path.exists(folder_path)):
             os.mkdir(folder_path)
             
-        # checkpoint_path = folder_path + "/test_checkpoint.ckpt"
-        # checkpoint_dir = os.path.dirname(checkpoint_path)
-        # model.save_weights(checkpoint_path.format(epoch=0))
-        # loadmodel, ti, vi = create_combined_model(train_1D, train_images, val_images, label_to_predict, lossfunc)
-        # checkpoint_path = folder_path + '/test_checkpoint.ckpt'
-        # loadmodel = loadmodel.load_weights(checkpoint_path)
+
         test_predictions = model.predict((X_test_A, X_test_B))
         training_predictions = model.predict((X_train_A, X_train_B))
+        val_predictions =  model.predict((X_val_A, X_val_B))
+        
+        
         if(label_to_predict == 'quaternions'):
             test_predictions = quaternions_back_to_sphereical(test_predictions)
             training_predictions = quaternions_back_to_sphereical(training_predictions)
             y_test = quaternions_back_to_sphereical(y_test)
             y_train = quaternions_back_to_sphereical(y_train)
-            plot_things(history, y_train, training_predictions, y_test, test_predictions, folder_path, fold_no)
+            plot_things(history, y_train, training_predictions, y_test, test_predictions, folder_path, fold_no, label_to_predict)
         else:
-            plot_things(history, y_train, training_predictions, y_test, test_predictions, folder_path, fold_no)
+            plot_things(history, y_train, training_predictions, y_test, test_predictions, folder_path, fold_no, label_to_predict)
 
+        save_model_metrics(y_train, y_val, y_test, training_predictions, val_predictions, test_predictions, folder_path, fold_no)
         
         fold_no +=1
         print("done")
@@ -478,7 +617,7 @@ folder = "/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Feature_gathering/"
 dataset = "OG_dataframe.csv"
 label_to_predict = "phi_and_theta"
 patience = 250
-max_epochs = 3000
+max_epochs = 3
 
 
 """ getting 1D features """
@@ -498,49 +637,49 @@ parent_folder_name = "new_dataset/Visible_cracks_new_dataset_2"
 
 """ loss function options """
 # lossfunc = 'mean_distance_error_phi_theta',
-# lossfunc = 'mean_absolute_error',
+# lossfunc = 'mean_absolute_error', 
 # lossfunc = 'mean_squared_error',
-# lossfunc = 'mean_squared_logarithmic_error', - BAD
-# lossfunc = tf.keras.losses.CosineSimilarity(axis=1)
+# lossfunc = 'mean_squared_logarithmic_error', - BAD FOR [phi]
+# lossfunc = tf.keras.losses.CosineSimilarity(axis=1) - BAD FOR [phi, theta]
 # lossfunc = tf.keras.losses.Huber()
 # lossfunc = tf.keras.losses.LogCosh()
 
+# pca = 5
+pca = False
 
-label_to_predict = "quaternions"
-saving_folder = "/Users/jakehirst/Desktop/sfx/regression/2in_2out_regression_QUATERNIONS_all_feats"
+
+
+label_to_predict = "theta"
+# saving_folder = f"/Users/jakehirst/Desktop/sfx/regression/2in_regression_{label_to_predict.upper()}_all_feats_PCA_{str(pca)}"
+saving_folder = f"/Users/jakehirst/Desktop/sfx/regression/TEST_SAVING_MODELS"
+
+
 lossfunc = 'mean_absolute_error'
 saving_folder = saving_folder + "_" + lossfunc
-run_kfold()
+run_kfold(simple_df_1D, saving_folder, lossfunc, label_to_predict, pca)
 
-label_to_predict = "quaternions"
-saving_folder = "/Users/jakehirst/Desktop/sfx/regression/2in_2out_regression_QUATERNIONS_all_feats"
-lossfunc = tf.keras.losses.LogCosh()
-saving_folder = saving_folder + "_LogCosh"
-run_kfold()
-
-label_to_predict = "quaternions"
-saving_folder = "/Users/jakehirst/Desktop/sfx/regression/2in_2out_regression_QUATERNIONS_all_feats"
-lossfunc = tf.keras.losses.Huber()
-saving_folder = saving_folder + "_Huber"
-run_kfold()
-
-label_to_predict = "quaternions"
-saving_folder = "/Users/jakehirst/Desktop/sfx/regression/2in_2out_regression_QUATERNIONS_all_feats"
-lossfunc = tf.keras.losses.CosineSimilarity(axis=1)
-saving_folder = saving_folder + "_CosineSimilarity"
-run_kfold()
-
-label_to_predict = "quaternions"
-saving_folder = "/Users/jakehirst/Desktop/sfx/regression/2in_2out_regression_QUATERNIONS_all_feats"
 lossfunc = 'mean_squared_error'
 saving_folder = saving_folder + "_" + lossfunc
-run_kfold()
+run_kfold(simple_df_1D, saving_folder, lossfunc, label_to_predict, pca)
 
-label_to_predict = "quaternions"
-saving_folder = "/Users/jakehirst/Desktop/sfx/regression/2in_2out_regression_QUATERNIONS_all_feats"
 lossfunc = 'mean_squared_logarithmic_error'
 saving_folder = saving_folder + "_" + lossfunc
-run_kfold()
+run_kfold(simple_df_1D, saving_folder, lossfunc, label_to_predict, pca)
+
+
+lossfunc = tf.keras.losses.CosineSimilarity(axis=1)
+saving_folder = saving_folder + "_CosineSimilarity"
+run_kfold(simple_df_1D, saving_folder, lossfunc, label_to_predict, pca)
+
+
+lossfunc = tf.keras.losses.Huber()
+saving_folder = saving_folder + "_Huber"
+run_kfold(simple_df_1D, saving_folder, lossfunc, label_to_predict, pca)
+
+
+lossfunc = tf.keras.losses.LogCosh()
+saving_folder = saving_folder + "_LogCosh"
+run_kfold(simple_df_1D, saving_folder, lossfunc, label_to_predict, pca)
 
 
 
