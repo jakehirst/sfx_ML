@@ -96,7 +96,7 @@ def sync_image_and_1D_inputs(df_1D, df_images):
         phi = img_row[1]["phi"]
         theta = img_row[1]["theta"]
         row_1D = df_1D.query(f"height == {height} and phi == {phi} and theta == {theta}")
-        if(row_1D.shape == (0, 11)): 
+        if(row_1D.shape[0] == 0): 
             df_images = df_images.drop(img_row[0], axis=0)
             continue
         
@@ -372,7 +372,7 @@ def plot_things(history, y_train, training_predictions, y_test, test_predictions
     #plt.ylim([0, 4])
     plt.xlabel(f'Train R^2 = {str(training_result.numpy())}, Test R^2 = {str(test_result.numpy())}')
     plt.ylabel('loss')
-    plt.title("theta")
+    plt.title(f"parody plot for predicting {label_to_predict}")
     plt.legend()
     plt.grid(True)
     # plt.text(.5, .0001, f"Train R^2 = {str(training_result.numpy())}, Test R^2 = {str(test_result.numpy())}")
@@ -441,44 +441,81 @@ def principal_component_analysis(df_1D, label_to_predict , pca):
     finalDf = pd.concat([principalDf, labels], axis = 1)
     return finalDf
 
-def get_model_metrics(true_y, predictions):
+def get_model_metrics(true_y, predictions, num_features):
     y_test = true_y
     test_predictions = predictions
     mae = mean_absolute_error(y_test, test_predictions)
     mse = mean_squared_error(y_test, test_predictions)
-    msle = mean_squared_log_error(y_test, test_predictions)
+    if(np.any(test_predictions < 0)): #if there are any negative numbers, you cannot calculate msle
+        msle = None
+    else:
+        msle = mean_squared_log_error(y_test, test_predictions)
     r2 = r2_score(y_test, test_predictions)
     n = len(y_test)
-    p = test_predictions.shape[1] # assuming test_predictions is a 2D array
+    p = num_features # assuming test_predictions is a 2D array
     adj_r2 = 1 - ((1 - r2) * (n - 1) / (n - p - 1))
     return {'mae': mae, 'mse':mse, 'msloge':msle, 'r^2':r2, 'adj_r^2':adj_r2}
 
-def save_model_metrics(y_train, y_val, y_test, training_predictions, val_predictions, test_predictions, folder_path, fold_no):
-    train_metrics = get_model_metrics(y_train, training_predictions)
-    train_metrics = {'train_' + key: value for key, value in train_metrics.items()}
-    val_metrics = get_model_metrics(y_val, val_predictions)
-    val_metrics = {'val_' + key: value for key, value in val_metrics.items()}
-    test_metrics = get_model_metrics(y_test, test_predictions)
-    test_metrics = {'test_' + key: value for key, value in test_metrics.items()}
-    # Append the dictionaries together
-    model_stats = {'included_features': df_1D.columns.to_list(), 
-                    'date_created': date.today(),
-                    'pca':pca,
-                    'loss_func': lossfunc,
-                    'label_to_predict':label_to_predict,
-                    **train_metrics, 
-                    **val_metrics, 
-                    **test_metrics}
-    # Write the merged dictionary to a CSV file
-    with open(folder_path + f'/fold{fold_no}_model_stats.csv', 'w', newline='') as file:
-        writer = csv.writer(file)
-        writer.writerow(['metric', 'value'])
-        for key, value in model_stats.items():
-            writer.writerow([key, value])
+def save_model_metrics(y_train, y_val, y_test, training_predictions, val_predictions, test_predictions, label_to_predict, folder_path, fold_no, num_features):
+    if(label_to_predict == "quaternions"):
+        phi_train_metrics = get_model_metrics(y_train[:,0], training_predictions[:,0], num_features)
+        phi_train_metrics = {'phi_train_' + key: value for key, value in phi_train_metrics.items()}
+        phi_val_metrics = get_model_metrics(y_val[:,0], val_predictions[:,0], num_features)
+        phi_val_metrics = {'phi_val_' + key: value for key, value in phi_val_metrics.items()}
+        phi_test_metrics = get_model_metrics(y_test[:,0], test_predictions[:,0], num_features)
+        phi_test_metrics = {'phi_test_' + key: value for key, value in phi_test_metrics.items()}
+        
+        theta_train_metrics = get_model_metrics(y_train[:,1], training_predictions[:,1], num_features)
+        theta_train_metrics = {'theta_train_' + key: value for key, value in theta_train_metrics.items()}
+        theta_val_metrics = get_model_metrics(y_val[:,1], val_predictions[:,1], num_features)
+        theta_val_metrics = {'theta_val_' + key: value for key, value in theta_val_metrics.items()}
+        theta_test_metrics = get_model_metrics(y_test[:,1], test_predictions[:,1], num_features)
+        theta_test_metrics = {'theta_test_' + key: value for key, value in theta_test_metrics.items()}
+        # Append the dictionaries together
+        model_stats = {'included_features': df_1D.columns.to_list(), 
+                        'date_created': date.today(),
+                        'pca':pca,
+                        'loss_func': lossfunc,
+                        'label_to_predict':label_to_predict,
+                        **phi_train_metrics, 
+                        **phi_val_metrics, 
+                        **phi_test_metrics, 
+                        **theta_train_metrics,
+                        **theta_val_metrics,
+                        **theta_test_metrics}
+        # Write the merged dictionary to a CSV file
+        with open(folder_path + f'/fold{fold_no}_model_stats.csv', 'w', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow(['metric', 'value'])
+            for key, value in model_stats.items():
+                writer.writerow([key, value])
+        
+    else:
+        train_metrics = get_model_metrics(y_train, training_predictions, num_features)
+        train_metrics = {'train_' + key: value for key, value in train_metrics.items()}
+        val_metrics = get_model_metrics(y_val, val_predictions, num_features)
+        val_metrics = {'val_' + key: value for key, value in val_metrics.items()}
+        test_metrics = get_model_metrics(y_test, test_predictions, num_features)
+        test_metrics = {'test_' + key: value for key, value in test_metrics.items()}
+        # Append the dictionaries together
+        model_stats = {'included_features': df_1D.columns.to_list(), 
+                        'date_created': date.today(),
+                        'pca':pca,
+                        'loss_func': lossfunc,
+                        'label_to_predict':label_to_predict,
+                        **train_metrics, 
+                        **val_metrics, 
+                        **test_metrics}
+        # Write the merged dictionary to a CSV file
+        with open(folder_path + f'/fold{fold_no}_model_stats.csv', 'w', newline='') as file:
+            writer = csv.writer(file)
+            writer.writerow(['metric', 'value'])
+            for key, value in model_stats.items():
+                writer.writerow([key, value])
         
 
 
-def run_kfold(simple_df_1D, saving_folder, lossfunc, label_to_predict, pca=False):
+def run_kfold(simple_df_1D, saving_folder, lossfunc, label_to_predict, parent_folder_name, pca=False):
 
     print("getting image data... ")
     args = prepare_data(parent_folder_name, ["OG"])
@@ -598,13 +635,15 @@ def run_kfold(simple_df_1D, saving_folder, lossfunc, label_to_predict, pca=False
         if(label_to_predict == 'quaternions'):
             test_predictions = quaternions_back_to_sphereical(test_predictions)
             training_predictions = quaternions_back_to_sphereical(training_predictions)
+            val_predictions = quaternions_back_to_sphereical(val_predictions)
             y_test = quaternions_back_to_sphereical(y_test)
+            y_val = quaternions_back_to_sphereical(y_val)
             y_train = quaternions_back_to_sphereical(y_train)
             plot_things(history, y_train, training_predictions, y_test, test_predictions, folder_path, fold_no, label_to_predict)
         else:
             plot_things(history, y_train, training_predictions, y_test, test_predictions, folder_path, fold_no, label_to_predict)
 
-        save_model_metrics(y_train, y_val, y_test, training_predictions, val_predictions, test_predictions, folder_path, fold_no)
+        save_model_metrics(y_train, y_val, y_test, training_predictions, val_predictions, test_predictions, label_to_predict, folder_path, fold_no, num_features=len(X_test_B.columns))
         
         fold_no +=1
         print("done")
@@ -612,74 +651,84 @@ def run_kfold(simple_df_1D, saving_folder, lossfunc, label_to_predict, pca=False
 
 
     
-"""   ********* phi and theta **********   """
-folder = "/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Feature_gathering/"
-dataset = "OG_dataframe.csv"
-label_to_predict = "phi_and_theta"
-patience = 250
-max_epochs = 3
+# """   ********* phi and theta **********   """
+# folder = "/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Feature_gathering/"
+# dataset = "OG_dataframe.csv"
+# patience = 250
+# max_epochs = 3000
 
 
-""" getting 1D features """
-print("getting 1D data... ")
-df_1D = get_1D_inputs(folder, dataset, label_to_predict)          
-height_p_less_point5 = ["init y", "crack len", "linearity", "max thickness", "max_kink", "abs_val_mean_kink", "abs_val_sum_kink"]    
-phi_p_less_point5 = ["front 0 x", "front 0 z", "front 1 y", "front 1 z", "init y", "linearity", "angle_btw"]
-theta_p_less_point5 = ["front 0 y", "front 0 z", "init y", "init z", "angle_btw"]
-phi_and_theta_p_less_point5 = set(phi_p_less_point5) | set(theta_p_less_point5)
-# simple_df_1D = remove_features(df_1D, features_to_keep=phi_and_theta_p_less_point5)
-simple_df_1D = remove_features(df_1D, features_to_remove=[])
+# label_to_predict = "quaternions"
+# # label_to_predict = "height"
+# # label_to_predict = "phi"
+# # label_to_predict = "theta"
+# # label_to_predict = "phi_and_theta"
+
+
+# """ getting 1D features """
+# print("getting 1D data... ")
+# df_1D = get_1D_inputs(folder, dataset, label_to_predict)          
+# height_p_less_point5 = ["init y", "crack len", "linearity", "max thickness", "max_kink", "abs_val_mean_kink", "abs_val_sum_kink"]    
+# phi_p_less_point5 = ["front 0 x", "front 0 z", "front 1 y", "front 1 z", "init y", "linearity", "angle_btw"]
+# theta_p_less_point5 = ["front 0 y", "front 0 z", "init y", "init z", "angle_btw"]
+# phi_and_theta_p_less_point5 = set(phi_p_less_point5) | set(theta_p_less_point5)
+# # simple_df_1D = remove_features(df_1D, features_to_keep=phi_and_theta_p_less_point5)
 # simple_df_1D = remove_features(df_1D, features_to_remove=[])
+# # simple_df_1D = remove_features(df_1D, features_to_remove=[])
 
-parent_folder_name = "new_dataset/Original"
-parent_folder_name = "new_dataset/Visible_cracks"
-parent_folder_name = "new_dataset/Visible_cracks_new_dataset_2"
+# parent_folder_name = "new_dataset/Original"
+# parent_folder_name = "new_dataset/Visible_cracks"
+# parent_folder_name = "new_dataset/Visible_cracks_new_dataset_2"
 
-""" loss function options """
-# lossfunc = 'mean_distance_error_phi_theta',
-# lossfunc = 'mean_absolute_error', 
-# lossfunc = 'mean_squared_error',
-# lossfunc = 'mean_squared_logarithmic_error', - BAD FOR [phi]
-# lossfunc = tf.keras.losses.CosineSimilarity(axis=1) - BAD FOR [phi, theta]
+# """ loss function options """
+# # lossfunc = 'mean_distance_error_phi_theta',
+# # lossfunc = 'mean_absolute_error', 
+# # lossfunc = 'mean_squared_error',
+# # lossfunc = 'mean_squared_logarithmic_error', - BAD FOR [phi]
+# # lossfunc = tf.keras.losses.CosineSimilarity(axis=1) - BAD FOR [phi, theta]
+# # lossfunc = tf.keras.losses.Huber()
+# # lossfunc = tf.keras.losses.LogCosh()
+
+# # pca = 5
+# pca = False
+
+
+
+
+
+
+
+
+# general_saving_folder = f"/Users/jakehirst/Desktop/sfx/regression_for_ensembling/2in_regression_{label_to_predict.upper()}_all_feats_PCA_{str(pca)}"
+# # saving_folder = f"/Users/jakehirst/Desktop/sfx/regression/TEST_SAVING_MODELS"
+
+
+# # lossfunc = 'mean_absolute_error'
+# # saving_folder = general_saving_folder + "_" + lossfunc
+# # run_kfold(simple_df_1D, saving_folder, lossfunc, label_to_predict, parent_folder_name, pca)
+
+# # lossfunc = 'mean_squared_error'
+# # saving_folder = general_saving_folder + "_" + lossfunc
+# # run_kfold(simple_df_1D, saving_folder, lossfunc, label_to_predict, parent_folder_name, pca)
+
+# # lossfunc = 'mean_squared_logarithmic_error'
+# # saving_folder = general_saving_folder + "_" + lossfunc
+# # run_kfold(simple_df_1D, saving_folder, lossfunc, label_to_predict, parent_folder_name, pca)
+
+
+# # lossfunc = tf.keras.losses.CosineSimilarity(axis=1)
+# # saving_folder = general_saving_folder + "_CosineSimilarity"
+# # run_kfold(simple_df_1D, saving_folder, lossfunc, label_to_predict, parent_folder_name, pca)
+
+
 # lossfunc = tf.keras.losses.Huber()
+# saving_folder = general_saving_folder + "_Huber"
+# run_kfold(simple_df_1D, saving_folder, lossfunc, label_to_predict, parent_folder_name, pca)
+
+
 # lossfunc = tf.keras.losses.LogCosh()
-
-# pca = 5
-pca = False
-
-
-
-label_to_predict = "theta"
-# saving_folder = f"/Users/jakehirst/Desktop/sfx/regression/2in_regression_{label_to_predict.upper()}_all_feats_PCA_{str(pca)}"
-saving_folder = f"/Users/jakehirst/Desktop/sfx/regression/TEST_SAVING_MODELS"
-
-
-lossfunc = 'mean_absolute_error'
-saving_folder = saving_folder + "_" + lossfunc
-run_kfold(simple_df_1D, saving_folder, lossfunc, label_to_predict, pca)
-
-lossfunc = 'mean_squared_error'
-saving_folder = saving_folder + "_" + lossfunc
-run_kfold(simple_df_1D, saving_folder, lossfunc, label_to_predict, pca)
-
-lossfunc = 'mean_squared_logarithmic_error'
-saving_folder = saving_folder + "_" + lossfunc
-run_kfold(simple_df_1D, saving_folder, lossfunc, label_to_predict, pca)
-
-
-lossfunc = tf.keras.losses.CosineSimilarity(axis=1)
-saving_folder = saving_folder + "_CosineSimilarity"
-run_kfold(simple_df_1D, saving_folder, lossfunc, label_to_predict, pca)
-
-
-lossfunc = tf.keras.losses.Huber()
-saving_folder = saving_folder + "_Huber"
-run_kfold(simple_df_1D, saving_folder, lossfunc, label_to_predict, pca)
-
-
-lossfunc = tf.keras.losses.LogCosh()
-saving_folder = saving_folder + "_LogCosh"
-run_kfold(simple_df_1D, saving_folder, lossfunc, label_to_predict, pca)
+# saving_folder = general_saving_folder + "_LogCosh"
+# run_kfold(simple_df_1D, saving_folder, lossfunc, label_to_predict, parent_folder_name, pca)
 
 
 
