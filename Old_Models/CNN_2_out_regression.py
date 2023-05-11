@@ -52,10 +52,14 @@ def get_model(model_no):
         ])
     elif(model_no == 3):
         model = tf.keras.Sequential([
+            tf.keras.layers.Conv2D(16, 3, activation='relu'),
+            tf.keras.layers.MaxPooling2D(2),
             tf.keras.layers.Conv2D(32, 3, activation='relu'),
             tf.keras.layers.MaxPooling2D(2),
+            tf.keras.layers.Conv2D(64, 3, activation='relu'),
+            tf.keras.layers.MaxPooling2D(2),
             tf.keras.layers.Flatten(),
-            tf.keras.layers.Dense(units=128, activation='relu'),
+            tf.keras.layers.Dense(units=64, activation='relu'),
             tf.keras.layers.Dense(units=2)
         ])
     elif(model_no == 4):
@@ -193,7 +197,7 @@ def make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=1000,
             dataframe=train_df,
             x_col = 'Filepath',
             y_col = y_col,
-            target_size=args[4][:2],  #can reduce the images to a certain size to reduce training time. 120x120 for example here
+            # target_size=args[4][:2],  #can reduce the images to a certain size to reduce training time. 120x120 for example here
             color_mode='rgb',
             class_mode = 'raw', #keeps the classes of our labels the same after flowing
             batch_size=batch_size, #can increase this to up to like 10 or so for how much data we have
@@ -205,7 +209,7 @@ def make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=1000,
             dataframe=val_df,
             x_col = 'Filepath',
             y_col = y_col,
-            target_size=args[4][:2], #can reduce the images to a certain size to reduce training time. 120x120 for example here
+            # target_size=args[4][:2], #can reduce the images to a certain size to reduce training time. 120x120 for example here
             color_mode='rgb',
             class_mode = 'raw', #keeps the classes of our labels the same after flowing
             batch_size=batch_size, #can increase this to up to like 10 or so for how much data we have
@@ -217,7 +221,7 @@ def make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=1000,
             dataframe=test_df,
             x_col = 'Filepath',
             y_col = y_col,
-            target_size=args[4][:2],  #can reduce the images to a certain size to reduce training time. 120x120 for example here
+            # target_size=args[4][:2],  #can reduce the images to a certain size to reduce training time. 120x120 for example here
             color_mode='rgb',
             class_mode = 'raw', #keeps the classes of our labels the same after flowing
             batch_size=batch_size, #can increase this to up to like 10 or so for how much data we have
@@ -269,8 +273,8 @@ def make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=1000,
             #this callback makes the learning stop if the validation loss stops improving for 'patience' epochs in a row. very useful tool should use in other models
             callbacks=[
                 tf.keras.callbacks.EarlyStopping(
-                    monitor='loss',
-                    # monitor='val_loss',
+                    # monitor='loss',
+                    monitor='val_loss',
                     patience=patience,
                     restore_best_weights=True
                 )
@@ -417,7 +421,7 @@ args = prepare_data(parent_folder_name, augmentation_list)
 # result = make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=100, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, model_no=2) 
 # result = make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=100, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, model_no=3) 
 # result = make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=100, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, model_no=4) 
-result = make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=25, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, model_no=3) 
+result = make_CNN(args, label_to_predict, batch_size=5, patience=50, max_epochs=1000, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, model_no=3) 
 result = make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=25, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, model_no=2) 
 
 

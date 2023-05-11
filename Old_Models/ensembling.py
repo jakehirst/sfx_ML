@@ -123,9 +123,11 @@ def parody_plot(y_, ensemble_predictions, metric, label_to_predict):
     plt.xlim(lims)
     plt.ylim(lims)
     _ = plt.plot(lims, lims)
-    plt.savefig('/Users/jakehirst/Desktop/sfx/regression_for_ensembling' + f'/{metric}')
-    # plt.show()
+    # plt.savefig('/Users/jakehirst/Desktop/sfx/regression_for_ensembling' + f'/{metric}_{LOSS}')
+    plt.show()
     plt.close()
+    
+
 
 ''' ensembles based on a single metric '''
 def ensemble_with_single_metric(df_1D, df_images, path_to_model_folders, model_folders, metric, label_to_predict, threshold=None):
@@ -152,6 +154,14 @@ def ensemble_with_single_metric(df_1D, df_images, path_to_model_folders, model_f
             
             model_predictions = model.predict((X__Images, X__1D))
             predictions[model_name] = model_predictions
+            print('\n'+ str(model_name))
+            # metrics = get_model_metrics(y_, model_predictions, len(included_features))
+            # print(metrics)
+            # parody_plot(y_, model_predictions, 'test_r^2', label_to_predict)
+
+
+
+
           
     # translating all of the preditions made by quaternions back into phi/theta
     for key in predictions.keys():
@@ -217,26 +227,37 @@ metrics to choose to ensemble from as of now:
 path_to_model_folders = '/Users/jakehirst/Desktop/sfx/regression_for_ensembling/'   
 
 
-model_folders = [#'2in_regression_THETA_all_feats_PCA_False_Huber',
-# '2in_regression_THETA_all_feats_PCA_False_Huber_LogCosh',
+model_folders = [
+# '2in_regression_THETA_all_feats_PCA_False_Huber',
+# '2in_regression_THETA_all_feats_PCA_False_LogCosh',
 # '2in_regression_THETA_all_feats_PCA_False_mean_absolute_error',
-# '2in_regression_THETA_all_feats_PCA_False_mean_absolute_error_mean_squared_error',
+# '2in_regression_THETA_all_feats_PCA_False_mean_squared_error',
 # '2in_regression_THETA_all_feats_PCA_False_mean_squared_logarithmic_error',
-'2in_regression_QUATERNIONS_all_feats_PCA_False_CosineSimilarity',
+# '2in_regression_QUATERNIONS_all_feats_PCA_False_CosineSimilarity',
 # '2in_regression_QUATERNIONS_all_feats_PCA_False_mean_absolute_error',
 # '2in_regression_QUATERNIONS_all_feats_PCA_False_mean_squared_error',
 # '2in_regression_QUATERNIONS_all_feats_PCA_False_mean_squared_logarithmic_error'
+# '2in_regression_PHI_all_feats_PCA_False_Huber',
+# '2in_regression_PHI_all_feats_PCA_False_LogCosh',
+# '2in_regression_PHI_all_feats_PCA_False_mean_absolute_error',
+# '2in_regression_PHI_all_feats_PCA_False_mean_squared_error',
+'2in_regression_PHI_all_feats_PCA_False_mean_squared_logarithmic_error',
 ]
 
-label_to_predict = 'theta'
+LOSS = 'ALL_with_quats'
+
+label_to_predict = 'phi'
 
 #loading the 1D dataset that we need to test the ensemble on
 folder_1D_data = "/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Feature_gathering/"
 dataset_name = "OG_dataframe.csv"
+dataset_name = "TEST_OG_dataframe.csv"
+
 print("getting 1D data... ")
 
 #loading the image dataset that we need to test the ensemble on
 folder_image_data = "new_dataset/Visible_cracks_new_dataset_2"
+folder_image_data = "new_dataset/Visible_cracks_new_dataset_3"
 
 
 

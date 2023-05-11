@@ -651,84 +651,113 @@ def run_kfold(simple_df_1D, saving_folder, lossfunc, label_to_predict, parent_fo
 
 
     
-# """   ********* phi and theta **********   """
-# folder = "/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Feature_gathering/"
-# dataset = "OG_dataframe.csv"
-# patience = 250
-# max_epochs = 3000
+"""   ********* phi and theta **********   """
+folder = "/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Feature_gathering/"
+dataset = "OG_dataframe.csv"
+dataset = "TRAIN_OG_dataframe.csv"
+patience = 250
+max_epochs = 3000
 
 
 # label_to_predict = "quaternions"
-# # label_to_predict = "height"
-# # label_to_predict = "phi"
-# # label_to_predict = "theta"
-# # label_to_predict = "phi_and_theta"
+label_to_predict = "height"
+# label_to_predict = "phi"
+# label_to_predict = "theta"
+# label_to_predict = "phi_and_theta"
 
 
-# """ getting 1D features """
-# print("getting 1D data... ")
-# df_1D = get_1D_inputs(folder, dataset, label_to_predict)          
-# height_p_less_point5 = ["init y", "crack len", "linearity", "max thickness", "max_kink", "abs_val_mean_kink", "abs_val_sum_kink"]    
-# phi_p_less_point5 = ["front 0 x", "front 0 z", "front 1 y", "front 1 z", "init y", "linearity", "angle_btw"]
-# theta_p_less_point5 = ["front 0 y", "front 0 z", "init y", "init z", "angle_btw"]
-# phi_and_theta_p_less_point5 = set(phi_p_less_point5) | set(theta_p_less_point5)
-# # simple_df_1D = remove_features(df_1D, features_to_keep=phi_and_theta_p_less_point5)
+""" getting 1D features """
+print("getting 1D data... ")
+df_1D = get_1D_inputs(folder, dataset, label_to_predict)          
+height_p_less_point5 = ["init y", "crack len", "linearity", "max thickness", "max_kink", "abs_val_sum_kink"]    
+phi_p_less_point5 = ["front 0 x", "front 0 z", "front 1 y", "front 1 z", "init y", "linearity"]
+theta_p_less_point5 = ["front 0 y", "front 0 z", "front 1 y", "front 1 z", "init y", "init z", "max_kink", "angle_btw"]
+phi_and_theta_p_less_point5 = set(phi_p_less_point5) | set(theta_p_less_point5)
+simple_df_1D = remove_features(df_1D, features_to_keep=height_p_less_point5)
 # simple_df_1D = remove_features(df_1D, features_to_remove=[])
-# # simple_df_1D = remove_features(df_1D, features_to_remove=[])
+# simple_df_1D = remove_features(df_1D, features_to_remove=[])
 
-# parent_folder_name = "new_dataset/Original"
-# parent_folder_name = "new_dataset/Visible_cracks"
-# parent_folder_name = "new_dataset/Visible_cracks_new_dataset_2"
+parent_folder_name = "new_dataset/Original"
+parent_folder_name = "new_dataset/Visible_cracks"
+parent_folder_name = "new_dataset/Visible_cracks_new_dataset_2"
+parent_folder_name = "new_dataset/Visible_cracks_new_dataset_3"
 
-# """ loss function options """
-# # lossfunc = 'mean_distance_error_phi_theta',
-# # lossfunc = 'mean_absolute_error', 
-# # lossfunc = 'mean_squared_error',
-# # lossfunc = 'mean_squared_logarithmic_error', - BAD FOR [phi]
-# # lossfunc = tf.keras.losses.CosineSimilarity(axis=1) - BAD FOR [phi, theta]
-# # lossfunc = tf.keras.losses.Huber()
-# # lossfunc = tf.keras.losses.LogCosh()
+""" loss function options """
+# lossfunc = 'mean_distance_error_phi_theta',
+# lossfunc = 'mean_absolute_error', 
+# lossfunc = 'mean_squared_error',
+# lossfunc = 'mean_squared_logarithmic_error', - BAD FOR [phi]
+# lossfunc = tf.keras.losses.CosineSimilarity(axis=1) - BAD FOR [phi, theta]
+# lossfunc = tf.keras.losses.Huber()
+# lossfunc = tf.keras.losses.LogCosh()
 
-# # pca = 5
-# pca = False
-
-
-
+# pca = 5
+pca = False
 
 
 
 
 
+
+
+
+general_saving_folder = f"/Users/jakehirst/Desktop/sfx/regression_for_ensembling/2in_regression_{label_to_predict.upper()}_all_feats_PCA_{str(pca)}"
+# saving_folder = f"/Users/jakehirst/Desktop/sfx/regression/TEST_SAVING_MODELS"
+
+
+lossfunc = 'mean_absolute_error'
+saving_folder = general_saving_folder + "_" + lossfunc
+run_kfold(simple_df_1D, saving_folder, lossfunc, label_to_predict, parent_folder_name, pca)
+
+lossfunc = 'mean_squared_error'
+saving_folder = general_saving_folder + "_" + lossfunc
+run_kfold(simple_df_1D, saving_folder, lossfunc, label_to_predict, parent_folder_name, pca)
+
+lossfunc = 'mean_squared_logarithmic_error'
+saving_folder = general_saving_folder + "_" + lossfunc
+run_kfold(simple_df_1D, saving_folder, lossfunc, label_to_predict, parent_folder_name, pca)
+
+
+lossfunc = tf.keras.losses.CosineSimilarity(axis=1)
+saving_folder = general_saving_folder + "_CosineSimilarity"
+run_kfold(simple_df_1D, saving_folder, lossfunc, label_to_predict, parent_folder_name, pca)
+
+
+lossfunc = tf.keras.losses.Huber()
+saving_folder = general_saving_folder + "_Huber"
+run_kfold(simple_df_1D, saving_folder, lossfunc, label_to_predict, parent_folder_name, pca)
+
+
+lossfunc = tf.keras.losses.LogCosh()
+saving_folder = general_saving_folder + "_LogCosh"
+run_kfold(simple_df_1D, saving_folder, lossfunc, label_to_predict, parent_folder_name, pca)
+
+
+# label_to_predict = 'theta'
 # general_saving_folder = f"/Users/jakehirst/Desktop/sfx/regression_for_ensembling/2in_regression_{label_to_predict.upper()}_all_feats_PCA_{str(pca)}"
-# # saving_folder = f"/Users/jakehirst/Desktop/sfx/regression/TEST_SAVING_MODELS"
 
 
-# # lossfunc = 'mean_absolute_error'
-# # saving_folder = general_saving_folder + "_" + lossfunc
-# # run_kfold(simple_df_1D, saving_folder, lossfunc, label_to_predict, parent_folder_name, pca)
+# lossfunc = 'mean_absolute_error'
+# saving_folder = general_saving_folder + "_" + lossfunc
+# run_kfold(simple_df_1D, saving_folder, lossfunc, label_to_predict, parent_folder_name, pca)
 
-# # lossfunc = 'mean_squared_error'
-# # saving_folder = general_saving_folder + "_" + lossfunc
-# # run_kfold(simple_df_1D, saving_folder, lossfunc, label_to_predict, parent_folder_name, pca)
+# lossfunc = 'mean_squared_error'
+# saving_folder = general_saving_folder + "_" + lossfunc
+# run_kfold(simple_df_1D, saving_folder, lossfunc, label_to_predict, parent_folder_name, pca)
 
-# # lossfunc = 'mean_squared_logarithmic_error'
-# # saving_folder = general_saving_folder + "_" + lossfunc
-# # run_kfold(simple_df_1D, saving_folder, lossfunc, label_to_predict, parent_folder_name, pca)
-
-
-# # lossfunc = tf.keras.losses.CosineSimilarity(axis=1)
-# # saving_folder = general_saving_folder + "_CosineSimilarity"
-# # run_kfold(simple_df_1D, saving_folder, lossfunc, label_to_predict, parent_folder_name, pca)
-
+# lossfunc = 'mean_squared_logarithmic_error'
+# saving_folder = general_saving_folder + "_" + lossfunc
+# run_kfold(simple_df_1D, saving_folder, lossfunc, label_to_predict, parent_folder_name, pca)
 
 # lossfunc = tf.keras.losses.Huber()
 # saving_folder = general_saving_folder + "_Huber"
 # run_kfold(simple_df_1D, saving_folder, lossfunc, label_to_predict, parent_folder_name, pca)
 
-
 # lossfunc = tf.keras.losses.LogCosh()
 # saving_folder = general_saving_folder + "_LogCosh"
 # run_kfold(simple_df_1D, saving_folder, lossfunc, label_to_predict, parent_folder_name, pca)
 
-
+# lossfunc = tf.keras.losses.CosineSimilarity(axis=1)
+# saving_folder = general_saving_folder + "_CosineSimilarity"
+# run_kfold(simple_df_1D, saving_folder, lossfunc, label_to_predict, parent_folder_name, pca)
 
