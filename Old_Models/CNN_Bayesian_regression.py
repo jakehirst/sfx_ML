@@ -364,11 +364,13 @@ def plot_stuff(test_images, train_images, history, trainr2, testr2, test_predict
 # augmentation_list = ["OG", "autoContrast", "Brightness Manipulation", "Color", "Contrast", "Equalize", "Flipping", "Gaussian Noise", "Identity", "Posterize", "Rotation", "Sharpness", "Shearing", "Shifting", "Solarize", "Zooming"]
 
 
-parent_folder_name = "Original"
+dataset = "old_dataset/Original"
+dataset = "new_dataset/Original"
+dataset = "new_dataset/Visible_cracks"
 augmentation_list = ["OG", "Posterize", "Color", "Flipping", "Rotation", "Solarize"]
 
 label_to_predict = "phi"
-args = prepare_data(parent_folder_name, augmentation_list)
+args = prepare_data(dataset, augmentation_list)
 phi_result = make_CNN(args, label_to_predict, batch_size=5, patience=20, max_epochs=500, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True) 
 
 # parent_folder_name = "Original_from_test_matrix"

@@ -222,8 +222,8 @@ def make_ANN(train_features, train_labels, test_features, test_labels, epochs, s
     model.compile(
         optimizer = tf.keras.optimizers.Adam(),
         # loss=mean_distance_error_phi_theta)
-        # loss='mean_absolute_error')
-        loss='mean_squared_error')
+        loss='mean_absolute_error')
+        # loss='mean_squared_error')
         # loss='mean_squared_logarithmic_error')
     
     history = model.fit(tf.expand_dims(train_features, axis=-1), 
@@ -366,6 +366,6 @@ phi_p_less_point5 = ["front 0 x", "front 0 z", "front 1 z"]
 # simple_df = remove_features(Full_df, features_to_keep=theta_p_less_point5)
 simple_df = remove_features(Full_df, features_to_keep=["front 0 x", "front 0 y", "front 0 z", "front 1 z", "init y", "init z", "dist btw frts", "angle_btw"])
 simple_df = remove_features(Full_df, features_to_remove=[])
-args = prepare_data_Kfold(folder, dataset, ["phi", "theta"], epochs=5000)
+args = prepare_data_Kfold(folder, dataset, ["phi", "theta"], epochs=100)
 run_Kfold_ANN(args, simple_df, activation="relu", saving_folder=saving_folder)
 

@@ -307,7 +307,7 @@ def make_CNN(args, label_to_predict, batch_size=5, patience=25, max_epochs=1000,
         tf.keras.layers.Flatten(),
         #tf.keras.layers.Dense(units=1024, activation='relu'),
         # tf.keras.layers.Dense(units=512, activation='relu'),
-        tf.keras.layers.Dense(units=256, activation='relu'),
+        # tf.keras.layers.Dense(units=256, activation='relu'),
         tf.keras.layers.Dense(units=128, activation='relu'),
         # tf.keras.layers.Dropout(rate=0.1),
         tf.keras.layers.Dense(units=64, activation='relu'),
@@ -487,7 +487,7 @@ args = prepare_data(augmentation_list, dataset)
 #at home
 results_folder = "/Users/jakehirst/Desktop/sfx/clustering_new_dataset"
 results_folder = "/Users/jakehirst/Desktop/sfx/clustering_new_dataset_visible_cracks"
-num_tries = 50
+num_tries = 2000
 
 make_CNN(args, label_to_predict, batch_size=5, patience=50, max_epochs=500, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, k=2, folder=results_folder, num_tries=num_tries, dataset=dataset)
 make_CNN(args, label_to_predict, batch_size=5, patience=50, max_epochs=500, optimizer="Nadam", activation="relu", kernel_size=(3,3), augmentation_list=augmentation_list, plot=True, k=3, folder=results_folder, num_tries=num_tries, dataset=dataset)

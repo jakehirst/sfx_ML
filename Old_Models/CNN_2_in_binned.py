@@ -25,6 +25,11 @@ from CNN_function_library import *
 import tensorflow.keras.backend as K
 from PIL import Image
 from Binning_phi_and_theta import *
+import csv
+from keras.losses import categorical_crossentropy
+import sys
+from k_means_clustering import *
+
 
 """ This code was made while referencing https://towardsdatascience.com/neural-networks-with-multiple-data-sources-ef91d7b4ad5a """
 
@@ -85,7 +90,7 @@ def sync_image_and_1D_inputs(df_1D, df_images):
         phi = img_row[1]["phi"]
         theta = img_row[1]["theta"]
         row_1D = df_1D.query(f"height == {height} and phi == {phi} and theta == {theta}")
-        if(row_1D.shape == (0, 11)): 
+        if(row_1D.shape[0] == 0): 
             df_images = df_images.drop(img_row[0], axis=0)
             continue
         
@@ -254,6 +259,8 @@ def organize_test_data(test_1D, test_images, label_to_predict):
         y_col = ["phi", "theta"]
     elif(label_to_predict == "x_and_y"):
         y_col = ["x", "y"]
+    else:
+        y_col = ['phi']
         
     #flow the images through the generators
     flow_test_images = test_generator.flow_from_dataframe(
@@ -281,29 +288,102 @@ def organize_test_data(test_1D, test_images, label_to_predict):
     
     return X_test_A, X_test_B, y_test
 
-def run_kfold(bin_type, image_folder_name, simple_df_1D, num_phi_bins=2, num_theta_bins=2):
+def write_csv_data(bin_type, included_features, num_phi_bins, num_theta_bins, val_predictions, test_predictions, train_predictions, y_train, y_val, y_test, saving_folder, fold_no):
+    def get_accuracy(true_labels, sigmoid_preds):
+        binary_preds = (sigmoid_preds >= 0.5).astype(int)
+        accuracy = np.mean(binary_preds == np.asarray(true_labels))
+        return accuracy
+    
+    def get_categorical_cross_entropy(true_labels, sigmoid_preds):
+        crossentropy = categorical_crossentropy(np.asarray(true_labels), sigmoid_preds)
+        return np.average(crossentropy)
+    
+    data = {'bin_type': bin_type,
+            'included_features': included_features,
+            'num_phi_bins': num_phi_bins,
+            'num_theta_bins': num_theta_bins,
+            'train_cat_cross': get_categorical_cross_entropy(y_train, train_predictions),
+            'train_accuracy': get_accuracy(y_train, train_predictions),
+            'val_cat_cross': get_categorical_cross_entropy(y_val, val_predictions),
+            'val_accuracy': get_accuracy(y_val, val_predictions),
+            'test_cat_cross': get_categorical_cross_entropy(y_test, test_predictions),
+            'test_accuracy': get_accuracy(y_test, test_predictions),
+            }
+    csv_file_path = saving_folder + f'/fold{fold_no}_model_stats.csv'
+    fieldnames = list(data.keys())
+    with open(csv_file_path, 'w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(['metric', 'value'])
+        for key, value in data.items():
+            writer.writerow([key, value])
+    
+def conf_mtx(y_true, y_pred, figname=None, folder=None):
+    cm = metrics.confusion_matrix(y_true, y_pred)
+    axes = np.arange(cm.shape[0])
+    
+    # Creating a dataframe for a array-formatted Confusion matrix,so it will be easy for plotting.
+    cm_df = pd.DataFrame(cm,
+                        index = axes, 
+                        columns = axes)
+    #Plotting the confusion matrix
+    plt.figure(figsize=(9,9))
+    sns.heatmap(cm_df, annot=True)
+    plt.title('Confusion Matrix')
+    plt.ylabel('Actal Values')
+    plt.xlabel('Predicted Values')
+    if(folder == None):
+        plt.show()
+    else:
+        plt.savefig(folder + f"/{figname}")
+    plt.close()
+
+def run_kfold(bin_type, parent_folder_name, simple_df_1D, lossfunc, saving_folder, num_phi_bins=None, num_theta_bins=None, num_clusters=None):
+    if(not os.path.exists(saving_folder)):
+        os.mkdir(saving_folder)    
     print("getting image data... ")
     args = prepare_data(parent_folder_name, ["OG"])
     df_images = get_image_inputs(args[0], args[1], args[2], args[3])
     print("syncing data...")
     phiandtheta_df, df_images = sync_image_and_1D_inputs(simple_df_1D, df_images)
-    
+    df_images['index'] = phiandtheta_df['index'] #making the index column the same for clustering purposes
+
     if(bin_type == "solid center phi and theta"):
+        if(num_phi_bins == None or num_theta_bins == None): 
+            print('\nmust specify number of phi and theta bins')
+            sys.exit()
         phiandtheta_df = phiandtheta_df.drop("height", axis=1)
         df_1D, y_col_values, bins_and_values = Bin_phi_and_theta_center_target(phiandtheta_df, num_phi_bins, num_theta_bins)
         folder = f"/Users/jakehirst/Desktop/sfx/captain_america_plots_new_data/center_circle_phi_{num_phi_bins}_theta_{num_theta_bins}_bins/"
     elif(bin_type == "phi and theta"):
+        if(num_phi_bins == None or num_theta_bins == None): 
+            print('\nmust specify number of phi and theta bins')
+            sys.exit()
         phiandtheta_df = phiandtheta_df.drop("height", axis=1)
         df_1D, y_col_values, bins_and_values = Bin_phi_and_theta(phiandtheta_df, num_phi_bins, num_theta_bins)
         folder = f"/Users/jakehirst/Desktop/sfx/captain_america_plots_new_data/phi_{num_phi_bins}_theta_{num_theta_bins}_bins/"
     elif(bin_type == "theta"):
+        if(num_theta_bins == None): 
+            print('\nmust specify number of theta bins')
+            sys.exit()
         phiandtheta_df = phiandtheta_df.drop("height", axis=1)
         df_1D, y_col_values, bins_and_values = Bin_just_theta(phiandtheta_df, num_theta_bins)
         folder = f"/Users/jakehirst/Desktop/sfx/captain_america_plots_new_data/JustTheta_{num_theta_bins}_bins/"
     elif(bin_type == "phi"):
+        if(num_phi_bins == None): 
+            print('\nmust specify number of phi bins')
+            sys.exit()
         phiandtheta_df = phiandtheta_df.drop("height", axis=1)
         df_1D, y_col_values, bins_and_values = Bin_just_phi(phiandtheta_df, num_phi_bins)
         folder = f"/Users/jakehirst/Desktop/sfx/captain_america_plots_new_data/JustPhi_{num_phi_bins}_bins/"
+    elif(bin_type == 'clusters'):
+        if(num_clusters == None): 
+            print('\nmust specify number of clusters bins')
+            sys.exit()
+        phiandtheta_df = phiandtheta_df.drop("height", axis=1)
+        df_1D, clusters, y_col_values = main_clustering_call(phiandtheta_df, num_clusters, 1000, saving_folder)
+        df_images = df_images.sort_values('index').reset_index(drop=True)
+        df_1D = df_1D.sort_values('index').reset_index(drop=True)
+        print("done clustering")
 
     df_1D = df_1D.drop("index", axis=1)
     rnge = range(1, len(df_1D)+1)
@@ -311,7 +391,7 @@ def run_kfold(bin_type, image_folder_name, simple_df_1D, num_phi_bins=2, num_the
     
     fold_no = 1
     all_test_predictions = [] #test predictions from each of the folds
-
+    all_test_labels = []
     """ running CNN for each kfold """
     for train_index, test_index in kf5.split(rnge):
         train_1D = df_1D.loc[train_index]
@@ -337,7 +417,7 @@ def run_kfold(bin_type, image_folder_name, simple_df_1D, num_phi_bins=2, num_the
 
         model.compile(
             optimizer=tf.keras.optimizers.Adam(),#can define learning rate here
-        loss = 'categorical_crossentropy',
+        loss = lossfunc,
         metrics = ['acc'],
         )
 
@@ -371,6 +451,13 @@ def run_kfold(bin_type, image_folder_name, simple_df_1D, num_phi_bins=2, num_the
                             )
         
         X_test_A, X_test_B, y_test = organize_test_data(test_1D, test_images, label_to_predict)
+        model.save(saving_folder + f"/trained_model_fold_{fold_no}.h5")
+        val_predictions = model.predict((X_val_A, X_val_B))
+        test_predictions = model.predict((X_test_A, X_test_B))
+        train_predicitons = model.predict((X_train_A, X_train_B))
+        included_features = X_train_B.columns.to_list()
+        write_csv_data(bin_type, included_features, num_phi_bins, num_theta_bins, val_predictions, test_predictions, train_predicitons, y_train, y_val, y_test, saving_folder, fold_no)
+
         
         print("minimum MAE: ")
         print(min(history.history['loss']))
@@ -386,6 +473,7 @@ def run_kfold(bin_type, image_folder_name, simple_df_1D, num_phi_bins=2, num_the
         test_predictions = np.squeeze(model.predict((X_test_A, X_test_B)))
         training_predictions = np.squeeze(model.predict((X_train_A, X_train_B)))
         all_test_predictions.append((test_predictions, test_images["image_path"].to_list()))
+
         
         """ gets r^2 value of the test dataset with the predictions made from above ^ """
         metric = tfa.metrics.r_square.RSquare()
@@ -417,126 +505,103 @@ def run_kfold(bin_type, image_folder_name, simple_df_1D, num_phi_bins=2, num_the
         plt.savefig(folder_path + "/loss_vs_epochs")
         plt.close()
 
-        # a = plt.axes(aspect='equal')
-        # plt.scatter(y_test[:,0], test_predictions[:,0])
-        # plt.xlabel('True labels')
-        # plt.ylabel('Predicted labels')
-        # plt.title("phi")
-        # lims = [0, max(y_test[:,0])]
-        # plt.xlim(lims)
-        # plt.ylim(lims)
-        # _ = plt.plot(lims, lims)
-        # plt.savefig(folder_path + "/phi_predictions")
-        # plt.close()
-
-        # a = plt.axes(aspect='equal')
-        # plt.scatter(y_test[:,1], test_predictions[:,1])
-        # plt.xlabel('True labels')
-        # plt.ylabel('Predicted labels')
-        # plt.title("theta")
-        # lims = [0, max(y_test[:,1])]
-        # plt.xlim(lims)
-        # plt.ylim(lims)
-        # _ = plt.plot(lims, lims)
-        # plt.savefig(folder_path + "/theta_predictions")
-        # plt.close()
-        
-        for i in range(len(test_predictions)):
-            make_circle(bins_and_values, test_predictions[i], test_images['image_path'].tolist()[i], fold_folder+"/")
+        if(bin_type == 'clusters'):
+            print("do somethig here")
+        else:
+            for i in range(len(test_predictions)):
+                make_circle(bins_and_values, test_predictions[i], test_images['image_path'].tolist()[i], fold_folder+"/")
         
         fold_no +=1
         print("done")
-    df = Plot_Bins_and_misses(bins_and_values, all_test_predictions, df_images, saving_folder)
-    confusion_matrix(all_test_predictions, df, saving_folder)
+    with open(saving_folder + "/clusters_means.csv", 'w', newline='') as file:
+        writer = csv.writer(file)
+        writer.writerow(['clusters'])
+        writer.writerow([str(clusters[2])])
+
+
         
 
 
 
 
     
-"""   ********* phi and theta **********   """
-folder = "/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Feature_gathering/"
-dataset = "OG_dataframe.csv"
-label_to_predict = "phi_and_theta"
-patience = 100
-max_epochs = 3000
+# """   ********* phi and theta **********   """
+# folder = "/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Feature_gathering/"
+# dataset = "TRAIN_OG_dataframe.csv"
+# label_to_predict = "phi_and_theta"
+# patience = 100
+# max_epochs = 2000
 
-"""
-HEIGHT:
-init y
-crack Len
-linearity
-max thickness
-max_kink
-abs val mean kink
+# """
+# HEIGHT:
+# init y
+# crack Len
+# linearity
+# max thickness
+# max_kink
+# abs val mean kink
 
-PHI:
-front 0 x
-front 0 z
-front 1 y
-front 1 z
-init y
-linearity
-angle_btw
+# PHI:
+# front 0 x
+# front 0 z
+# front 1 y
+# front 1 z
+# init y
+# linearity
+# angle_btw
 
-THETA:
-front 0 y
-front 0 z
-init y
-init z
-angle btw
-"""
+# THETA:
+# front 0 y
+# front 0 z
+# init y
+# init z
+# angle btw
+# """
 
-""" getting 1D features """
-print("getting 1D data... ")
-df_1D = get_1D_inputs(folder, dataset, label_to_predict)      
-height_p_less_point5 = ["init y", "crack len", "linearity", "max thickness", "max_kink", "abs_val_mean_kink"]    
-phi_p_less_point5 = ["front 0 x", "front 0 z", "front 1 y", "front 1 z", "init y", "linearity", "angle_btw"]
-theta_p_less_point5 = ["front 0 y", "front 0 z", "init y", "init z", "angle_btw"]
-phi_and_theta_p_less_point5 = phi_p_less_point5
-phi_and_theta_p_less_point5 = phi_and_theta_p_less_point5.extend(x for x in theta_p_less_point5 if x not in phi_and_theta_p_less_point5)
+# """ getting 1D features """
+# print("getting 1D data... ")
+# df_1D = get_1D_inputs(folder, dataset, label_to_predict)      
+# height_p_less_point5 = ["init y", "crack len", "linearity", "max thickness", "max_kink", "abs_val_mean_kink", "abs_val_sum_kink"]    
+# phi_p_less_point5 = ["front 0 x", "front 0 z", "front 1 y", "front 1 z", "init y", "linearity"]
+# theta_p_less_point5 = ["front 0 y", "front 0 z", "front 1 y", "front 1 z", "init y", "init z", "max_kink", "angle_btw"]
+# phi_and_theta_p_less_point5 = ["front 0 x", "front 0 y", "front 0 z", "front 1 y", "front 1 z", "init y", "init z", "linearity", "max_kink", "angle_btw"]
 
-simple_df_1D = remove_features(df_1D, features_to_keep=phi_and_theta_p_less_point5)
-# simple_df_1D = remove_features(df_1D, features_to_remove=[])
+# simple_df_1D = remove_features(df_1D, features_to_keep=phi_and_theta_p_less_point5)
+# # simple_df_1D = remove_features(df_1D, features_to_remove=[])
 
-parent_folder_name = "new_dataset/Original"
-parent_folder_name = "new_dataset/Visible_cracks"
+# parent_folder_name = "new_dataset/Original"
+# parent_folder_name = "new_dataset/Visible_cracks_new_dataset_3"
 
-# lossfunc = 'mean_distance_error_phi_theta',
-# lossfunc = 'mean_absolute_error',
-# lossfunc = 'mean_squared_error',
-# lossfunc = 'mean_squared_logarithmic_error',
-bin_type = "phi and theta"
-bin_type = "theta"
-bin_type = "phi"
-bin_type = "solid center phi and theta"
+# # lossfunc = 'mean_distance_error_phi_theta',
+# # lossfunc = 'mean_absolute_error',
+# # lossfunc = 'mean_squared_error',
+# # lossfunc = 'mean_squared_logarithmic_error',
+# # lossfunc = 'categorical_crossentropy'
 
-bin_type = "phi"
-bin_type_no_space = bin_type.replace(" ", "_")
-num_theta_bins = 0
-num_phi_bins = 2
-saving_folder = f"/Users/jakehirst/Desktop/sfx/binning/2in_2out_BINNED_{bin_type_no_space}_phi{num_phi_bins}_theta{num_theta_bins}"
-run_kfold(bin_type, parent_folder_name, simple_df_1D, num_phi_bins=num_phi_bins, num_theta_bins=num_theta_bins)
-
+# bin_type = "phi and theta"
+# bin_type = "theta"
 # bin_type = "phi"
+# bin_type = "solid center phi and theta"
+# bin_type = "clusters"
+
+
+
+
+# bin_type = "clusters"
 # bin_type_no_space = bin_type.replace(" ", "_")
-# num_theta_bins = 0
-# num_phi_bins = 3
-# saving_folder = f"/Users/jakehirst/Desktop/sfx/binning/2in_2out_BINNED_{bin_type_no_space}_phi{num_phi_bins}_theta{num_theta_bins}"
-# run_kfold(bin_type, parent_folder_name, simple_df_1D, num_phi_bins=num_phi_bins, num_theta_bins=num_theta_bins)
-
-bin_type = "phi"
-bin_type_no_space = bin_type.replace(" ", "_")
-num_theta_bins = 0
-num_phi_bins = 3
-saving_folder = f"/Users/jakehirst/Desktop/sfx/binning/2in_2out_BINNED_{bin_type_no_space}_phi{num_phi_bins}_theta{num_theta_bins}"
-run_kfold(bin_type, parent_folder_name, simple_df_1D, num_phi_bins=num_phi_bins, num_theta_bins=num_theta_bins)
-
-bin_type = "phi"
-bin_type_no_space = bin_type.replace(" ", "_")
-num_theta_bins = 0
-num_phi_bins = 4
-saving_folder = f"/Users/jakehirst/Desktop/sfx/binning/2in_2out_BINNED_{bin_type_no_space}_phi{num_phi_bins}_theta{num_theta_bins}"
-run_kfold(bin_type, parent_folder_name, simple_df_1D, num_phi_bins=num_phi_bins, num_theta_bins=num_theta_bins)
+# num_theta_bins = None
+# num_phi_bins = None
+# num_clusters = 2
+# lossfunc = 'categorical_crossentropy'
+# saving_folder = f"/Users/jakehirst/Desktop/sfx/binning/2in_2out_BINNED_{bin_type_no_space}_phi{num_phi_bins}_theta{num_theta_bins}_{lossfunc}"
+# run_kfold(bin_type, parent_folder_name, simple_df_1D, lossfunc, saving_folder, num_phi_bins=num_phi_bins, num_theta_bins=num_theta_bins, num_clusters=num_clusters)
 
 
+# bin_type = "theta"
+# bin_type_no_space = bin_type.replace(" ", "_")
+# num_theta_bins = 3
+# num_phi_bins = 0
+# num_clusters = None
+# lossfunc = 'categorical_crossentropy'
+# saving_folder = f"/Users/jakehirst/Desktop/sfx/binning/test"
+# run_kfold(bin_type, parent_folder_name, simple_df_1D, lossfunc, saving_folder, num_phi_bins=num_phi_bins, num_theta_bins=num_theta_bins)

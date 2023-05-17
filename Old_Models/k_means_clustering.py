@@ -70,15 +70,16 @@ def main_clustering_call(df, k, num_tries, folder):
     df = pd.concat([df, cluster_assignment_df], axis=1)
     #df = df.reset_index(drop=True)
     
-    for key in best_clusters[0].keys():
-        for row in best_clusters[0][key].iterrows():
-            filepath = row[1]["Filepath"]
-            correct_cluster = row[1]["Cluster"]
-            df_row = df.loc[df["Filepath"] == filepath]
-            if(not float(df_row[str(correct_cluster)])== 1.0):
-                print("wrong")
+    # for key in best_clusters[0].keys():
+    #     for row in best_clusters[0][key].iterrows():
+    #         filepath = row[1]["Filepath"]
+    #         correct_cluster = row[1]["Cluster"]
+    #         df_row = df.loc[df["Filepath"] == filepath]
+    #         if(not float(df_row[str(correct_cluster)])== 1.0):
+    #             print("wrong")
 
-            
+    
+    
             
     
     
@@ -356,7 +357,7 @@ def confusion_matrix(test_predictions, df, folder):
 
 
 """ shows a bar chart of the nubmer of examples per bin and the number of misses per bin. """
-def Plot_Bins_and_misses(clusters, test_predictions, df, folder):
+def Plot_Bins_and_misses(clusters, test_predictions, df,folder, path_col="Filepath"):
     if(not os.path.isdir(folder + "/hits_and_misses")):
         os.mkdir(folder + "/hits_and_misses")
     if(not os.path.isdir(folder + "/right_clusters_and_predictions")):
@@ -379,13 +380,13 @@ def Plot_Bins_and_misses(clusters, test_predictions, df, folder):
             prediction = test_predictions[kfold][0][test_example]
             Filepath = test_predictions[kfold][1][test_example]
             predicted_bin = np.where(prediction == np.max(prediction))[0][0]
-            row = df.loc[df["Filepath"] == Filepath]
+            row = df.loc[df[path_col] == Filepath]
             #print(row)
             true_bin = np.where(np.delete(row.to_numpy(), 0) == 1.0)[0][0]
             #print("true bin = " + str(true_bin))
             totals[true_bin] = totals[true_bin] + 1
             #print(f"predicted bin = {predicted_bin}")
-            example = clusters[0][true_bin].loc[clusters[0][true_bin]['Filepath'] == Filepath]
+            example = clusters[0][true_bin].loc[clusters[0][true_bin][path_col] == Filepath]
             if(len(example) == 0):
                 print("wtf")
             elif(predicted_bin != true_bin):
