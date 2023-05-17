@@ -11,6 +11,8 @@ FOLDER = ""
 SIMULATION = ""    
 MAX_STEP = ""
 MAX_UCI = ""
+CRACK_TYPE = None
+
 
 def get_reference_vector(folder, simulation):
     reference_vector = np.array([-10,0,0])
@@ -43,18 +45,34 @@ def find_average_orientation(reference_vector, crack_vectors, centroid):
     # plot_vectors(cv0, cv1, reference_vector)
 
     if(np.equal(cv1, np.zeros(3)).all()):
-        # if(orientation_0 > 90):
-        #     orientation_0  = 180 - orientation_0
+        if(orientation_0 > 90):
+            orientation_0  = 180 - orientation_0
         return orientation_0
-    # if(orientation_0 > 90):
-    #     orientation_0  = 180 - orientation_0
-    # if(orientation_1 > 90):
-    #     orientation_1 = 180 - orientation_1
+    if(orientation_0 > 90):
+        orientation_0  = 180 - orientation_0
+    if(orientation_1 > 90):
+        orientation_1 = 180 - orientation_1
 
-    print(f"orientation_0 = {orientation_0}")
-    print(f"orientation_1 = {orientation_1}")
+    #print(f"orientation_0 = {orientation_0}")
+    #print(f"orientation_1 = {orientation_1}")
 
     return orientation_0 + orientation_1 / 2
+
+def find_orientation_edge_crack(final_front_locations, reference_vector, centroid):
+    centroid_vector = centroid / np.linalg.norm(centroid)
+    initial_crack_vector = final_front_locations[0] - final_front_locations[1]
+    cv0, cv1, reference_vector, plane_normal = project_vectors_onto_plane(initial_crack_vector, np.array([0,0,0]), reference_vector, centroid_vector)
+
+    norm_crack_vector = cv0 / np.linalg.norm(cv0)
+    norm_reference = reference_vector / np.linalg.norm(reference_vector)
+    orientation = m.acos(np.vdot(norm_crack_vector, norm_reference)) * 180 /m.pi
+    if(orientation > 90):
+        orientation = 180 - orientation
+    #print(f"orientation = {orientation}")
+    crack_vectors = [cv0, cv1]
+    return orientation, crack_vectors
+
+        
 
 #TODO need to fix this... probably the wrong plane_normal
 def project_vectors_onto_plane(cv0, cv1, reference_vector, plane_normal):
@@ -80,20 +98,31 @@ def project_vectors_onto_plane(cv0, cv1, reference_vector, plane_normal):
 
 """ finds the angle between the two crack vectors. THIS WORKS DONT MESS WITH IT"""
 def find_diff_crack_vectors(crack_vectors, reference_vector ,plane_normal):
+    global CRACK_TYPE
+    if(CRACK_TYPE == 0):
+        hi , bye, reference_vector, plane_normal = project_vectors_onto_plane(crack_vectors[0], crack_vectors[1], reference_vector,plane_normal)
+        cv0 = crack_vectors[0]
+        cv1 = crack_vectors[1]
+        cv0 = cv0 / np.linalg.norm(cv0)
+        cv1 = cv1 / np.linalg.norm(cv1)
+        #plot_vectors(cv0, cv1, reference_vector / np.linalg.norm(reference_vector), plane_normal)
 
-    cv0 , cv1, reference_vector, plane_normal = project_vectors_onto_plane(crack_vectors[0], crack_vectors[1], reference_vector,plane_normal)
+        return 0.0
+    else:
+        cv0 , cv1, reference_vector, plane_normal = project_vectors_onto_plane(crack_vectors[0], crack_vectors[1], reference_vector,plane_normal)
 
-    cv0 = cv0 / np.linalg.norm(cv0)
-    cv1 = cv1 / np.linalg.norm(cv1)
+        cv0 = cv0 / np.linalg.norm(cv0)
+        cv1 = cv1 / np.linalg.norm(cv1)
 
-    """ printing angle between crack vectors"""
-    angle = np.arccos(np.clip(np.dot(cv0, cv1), -1.0, 1.0)) * 180 / m.pi
-    print(f"angle between = {angle}")
+        """ printing angle between crack vectors"""
+        angle = np.arccos(np.clip(np.dot(cv0, cv1), -1.0, 1.0)) * 180 / m.pi
+        #print(f"angle between = {angle}")
 
-    plot_vectors(cv0, cv1, reference_vector / np.linalg.norm(reference_vector), plane_normal)
+        """ plots the vectors in 3d space, as well as a picture of the actual crack"""
+        #plot_vectors(cv0, cv1, reference_vector / np.linalg.norm(reference_vector), plane_normal)
 
 
-    return angle
+        return angle
 
 def plot_vectors(cv0, cv1, reference_vector, normal_vector):
     global FOLDER
@@ -192,12 +221,14 @@ def get_centroid_of_outer_surface_nodes(folder_path, simulation, max_step_uci):
     return centroid
 
 
-def find_orientation(folder, simulation, final_front_locations, initiation_cite):
+def find_orientation(folder, simulation, final_front_locations, initiation_cite, crack_type):
     global FOLDER
     global SIMULATION
     global MAX_STEP
     global MAX_UCI
+    global CRACK_TYPE
 
+    CRACK_TYPE = crack_type
     FOLDER = folder
     SIMULATION = simulation
     max_step_uci = get_max_dynamic_step(folder, simulation)
@@ -209,6 +240,17 @@ def find_orientation(folder, simulation, final_front_locations, initiation_cite)
 
     reference_vector = get_reference_vector(folder, simulation)
     crack_vectors = get_crack_vectors(final_front_locations, centroid)
-    average_orientation = find_average_orientation(reference_vector, crack_vectors, centroid)
+    if(crack_type == 1):
+        average_orientation = find_average_orientation(reference_vector, crack_vectors, centroid)
+    elif(crack_type == 0):
+        average_orientation, crack_vectors = find_orientation_edge_crack(final_front_locations, reference_vector, centroid)
     angle_between_crack_vectors = find_diff_crack_vectors(crack_vectors, reference_vector, norm_centroid)
-    return angle_between_crack_vectors
+    return average_orientation, angle_between_crack_vectors
+
+""" 1 is interior crack, 0 is an edge crack """
+def get_crack_type(folder, simulation):
+    filepath = folder + simulation + "\\Analyze_Crack_Package.json"
+    f = open(filepath)
+    data = json.load(f)
+    crack_type = data["NUM_CRACKS"]-1
+    return crack_type

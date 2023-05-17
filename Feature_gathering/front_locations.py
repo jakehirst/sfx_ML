@@ -5,6 +5,7 @@ import json
 import numpy as np
 import math as m
 from initiation_sites import *
+import matplotlib.pyplot as plt
 
 
 
@@ -189,19 +190,73 @@ def get_unique_front_locations(simulation_folder, simulation):
     return unique_front_0, unique_front_1
 
 """ gets the total crack length based on euclidean distance between each front location """
-def get_crack_len(simulation_folder, simulation):
-    f = open(simulation_folder + simulation + "\\" + simulation + "_history.log")
+def get_crack_len(outer_surface_nodes, main_side_nodes, node_locations, front_nodes):
+
+    main_side_surface_nodes = {}
+    for node in main_side_nodes: #get all of the node locations of the surface nodes that are on the main side of crack
+        if(outer_surface_nodes.__contains__(node)):
+            main_side_surface_nodes[node] = node_locations[node]
     
-    #replaces "crack_len_line" with the line with crack lengths in the log file all the way until the 
-    # end of the log file to capture the final crack length line
-    crack_len_line = ""
-    for line in f.readlines():
-        if(line.startswith("INFO:root:crack_length :")):
-            crack_len_line = line
+    #ordering the nodes in order of euclidean distance from eachother, starting from one of the crack fronts. 
+    ordered_main_side_surface_nodes = []
+    current_node = front_nodes[0]
+    min_distance_and_node = None
+    min_distance = np.inf
+    while(len(main_side_surface_nodes.keys()) > 0):
+        for node in main_side_surface_nodes.keys():
+            distance = get_euclidean_distance(main_side_surface_nodes[node], current_node)
+            if(min_distance_and_node == None or distance < min_distance):
+                min_distance_and_node = [distance, node, np.array(main_side_surface_nodes[node])]
+                min_distance = distance
+        
+        ordered_main_side_surface_nodes.append(np.array(min_distance_and_node))
+        current_node = main_side_surface_nodes[min_distance_and_node[1]]
+        main_side_surface_nodes.pop(min_distance_and_node[1])
+        min_distance = np.inf
 
-    crack_len = float(crack_len_line.split(",")[-1].replace("]]\n", "").replace("INFO:root:crack_length :  [[", ""))
+    # node_locations = np.array(ordered_main_side_surface_nodes)[:,2]
+    # x = []
+    # y =[]
+    # z = []
+    # for location in node_locations: 
+    #     x.append(location[0]); y.append(location[1]); z.append(location[2])
 
-    return crack_len
+    # for i in range(len(x)):
+    # Create a figure and an Axes3D object
+    # fig = plt.figure()
+    # ax = fig.add_subplot(111, projection='3d')
+
+    # # Plot the connected arrows
+    # ax.quiver(x[:-1], y[:-1], z[:-1], np.diff(x), np.diff(y), np.diff(z), arrow_length_ratio=0.1)
+
+    # # ax.scatter(x[:i], y[:i], z[:i])
+    # # Set labels and title
+    # ax.set_xlabel('X')
+    # ax.set_ylabel('Y')
+    # ax.set_zlabel('Z')
+    # # Set plot limits
+    # ax.set_xlim([32, 170])
+    # ax.set_ylim([18, 129])
+    # ax.set_zlim([6, 107])
+    # ax.set_title('3D Connected Arrows')
+    # ax.view_init(elev=90, azim=90)  # Adjust the elevation and azimuth angles
+    # plt.show()
+    # plt.close()
+
+
+
+    # f = open(simulation_folder + simulation + "\\" + simulation + "_history.log")
+    
+    # #replaces "crack_len_line" with the line with crack lengths in the log file all the way until the 
+    # # end of the log file to capture the final crack length line
+    # crack_len_line = ""
+    # for line in f.readlines():
+    #     if(line.startswith("INFO:root:crack_length :")):
+    #         crack_len_line = line
+
+    # crack_len = float(crack_len_line.split(",")[-1].replace("]]\n", "").replace("INFO:root:crack_length :  [[", ""))
+
+    return np.sum(np.array(ordered_main_side_surface_nodes)[:,0])
 
 
 
