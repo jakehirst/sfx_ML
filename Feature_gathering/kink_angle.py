@@ -33,10 +33,15 @@ def get_all_kink_angles(folder_path, key):
 def get_max_kink(kinks):
     if(len(kinks["front 1"]) == 0 and len(kinks['front 0']) == 0):
         return 0
-    max0 = np.max(np.abs(np.fromiter(kinks["front 0"].values(), dtype=float)))
     if(len(kinks["front 1"]) == 0):
+        max0 = np.max(np.abs(np.fromiter(kinks["front 0"].values(), dtype=float)))
         return max0
+    if(len(kinks["front 0"]) == 0):
+        max1 = np.max(np.abs(np.fromiter(kinks["front 1"].values(), dtype=float)))
+        return max1
+
     else:
+        max0 = np.max(np.abs(np.fromiter(kinks["front 0"].values(), dtype=float)))
         max1 = np.max(np.abs(np.fromiter(kinks["front 1"].values(), dtype=float)))
         themax = np.max([max0, max1])
         return themax
@@ -45,10 +50,14 @@ def get_max_kink(kinks):
 def get_abs_value_mean_kink(kinks):
     if(len(kinks["front 1"]) == 0 and len(kinks['front 0']) == 0):
         return 0
-    mean0 = np.mean(np.abs(np.fromiter(kinks["front 0"].values(), dtype=float)))
     if(len(kinks["front 1"]) == 0):
+        mean0 = np.mean(np.abs(np.fromiter(kinks["front 0"].values(), dtype=float)))
         return mean0
+    if(len(kinks['front 0']) == 0):
+        mean1 = np.mean(np.abs(np.fromiter(kinks["front 1"].values(), dtype=float)))
+        return mean1
     else:
+        mean0 = np.mean(np.abs(np.fromiter(kinks["front 0"].values(), dtype=float)))
         mean1 = np.mean(np.abs(np.fromiter(kinks["front 1"].values(), dtype=float)))
         return np.mean([mean0, mean1])
 
@@ -56,10 +65,14 @@ def get_abs_value_mean_kink(kinks):
 def get_mean_kink(kinks):
     if(len(kinks["front 1"]) == 0 and len(kinks['front 0']) == 0):
         return 0
-    mean0 = np.mean(np.fromiter(kinks["front 0"].values(), dtype=float))
     if(len(kinks["front 1"]) == 0):
+        mean0 = np.mean(np.fromiter(kinks["front 0"].values(), dtype=float))
         return mean0
+    if(len(kinks['front 0']) == 0):
+        mean1 = np.mean(np.fromiter(kinks["front 1"].values(), dtype=float))
+        return mean1
     else:
+        mean0 = np.mean(np.fromiter(kinks["front 0"].values(), dtype=float))
         mean1 = np.mean(np.fromiter(kinks["front 1"].values(), dtype=float))
         return np.mean([mean0, mean1])
 
@@ -67,10 +80,14 @@ def get_mean_kink(kinks):
 def get_sum_of_abs_kink(kinks):
     if(len(kinks["front 1"]) == 0 and len(kinks['front 0']) == 0):
         return 0
-    sum0 = np.sum(np.abs(np.fromiter(kinks["front 0"].values(), dtype=float)))
     if(len(kinks["front 1"]) == 0):
+        sum0 = np.sum(np.abs(np.fromiter(kinks["front 0"].values(), dtype=float)))
         return sum0
+    if(len(kinks["front 0"]) == 0):
+        sum1 = np.sum(np.abs(np.fromiter(kinks["front 1"].values(), dtype=float)))
+        return sum1
     else:
+        sum0 = np.sum(np.abs(np.fromiter(kinks["front 0"].values(), dtype=float)))
         sum1 = np.sum(np.abs(np.fromiter(kinks["front 1"].values(), dtype=float)))
         return sum0 + sum1
 
@@ -78,10 +95,14 @@ def get_sum_of_abs_kink(kinks):
 def get_sum_of_kink(kinks):
     if(len(kinks["front 1"]) == 0 and len(kinks['front 0']) == 0):
         return 0
-    sum0 = np.sum(np.fromiter(kinks["front 0"].values(), dtype=float))
     if(len(kinks["front 1"]) == 0):
+        sum0 = np.sum(np.fromiter(kinks["front 0"].values(), dtype=float))
         return sum0
+    if(len(kinks["front 0"]) == 0):
+        sum1 = np.sum(np.fromiter(kinks["front 1"].values(), dtype=float))
+        return sum1
     else:
+        sum0 = np.sum(np.fromiter(kinks["front 0"].values(), dtype=float))
         sum1 = np.sum(np.fromiter(kinks["front 1"].values(), dtype=float))
         return sum0 + sum1
 

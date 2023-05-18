@@ -10,11 +10,15 @@ import scipy.stats
 from thickness import *
 from orientation import *
 from kink_angle import *
+import random 
 
 FOLDER_PATH = "F:\\Jake\\good_simies\\"
+# FOLDER_PATH = "Z:\\bjornssimies\\correcthistory\\"
+# FOLDER_PATH = "Z:\\Brian_simies\\k_diff_simmies\\"
 # FOLDER_PATH = "F:\\Jake\\new_good_simies\\"
 # FOLDER_PATH = "Z:\\bjornssimies\\delta_k\\"
 # FOLDER_PATH = "Z:\\Brian_simies\\k_diff_simmies\\"
+# FOLDER_PATH = "C:\\Users\\u1056\\sfx\\simulation_results\\"
 
 #gets the maximum steps and UCIs from the simulation_results folder
 def get_max_step_and_max_UCIs(folder_path):
@@ -23,17 +27,19 @@ def get_max_step_and_max_UCIs(folder_path):
     dic = {}
     for root, dirs, files in os.walk(folder_path):
         # select file name
-            for file in files:
-                # check the extension of files
-                if (file.startswith('Para') and file.__contains__("original") and file.endswith(".frt")):
-                    simulation = file.split("_Stp")[0]
-                    step = file.split("_")[-4].split("p")[1]
-                    uci = file.split("_")[-2]
-                    if(dic.keys().__contains__(simulation)):
-                        if((int(step) > int(dic[simulation][0])) or (int(uci) > int(dic[simulation][1]))):
-                            dic[simulation] = [step, uci]
-                    else:
+        for file in files:
+            # check the extension of files
+            if (file.startswith('Para') and file.__contains__("original") and file.endswith(".frt")):
+                simulation = file.split("_Stp")[0]
+                step = file.split("_")[-4].split("p")[1]
+                uci = file.split("_")[-2]
+
+                if(dic.keys().__contains__(simulation)):
+                    if((int(step) > int(dic[simulation][0])) or (int(uci) > int(dic[simulation][1]))):
                         dic[simulation] = [step, uci]
+                else:
+                    dic[simulation] = [step, uci]
+
     return dic
 
 #turns a filename like Para_1-5ft_PHI_30_THETA_230 into [height, phi, theta]
@@ -165,7 +171,7 @@ def create_df():
     #goes through each of the simulations and gathers features for the dataframe
     for key in maxes.keys():
         print(i)
-        print(key)
+        # print(key)
         #TODO: add feature gathering functions as necessary here
 
         #TODO: delete this below
@@ -189,7 +195,9 @@ def create_df():
         average_orientation, angle_between_cracks = find_orientation(folder_path, key, final_front_locations, initiation_cite, crack_type)
         
         d = get_euclidean_distance(final_front_locations[0], final_front_locations[1])
-        len = get_crack_len(folder_path, key)
+
+        inner_surface_nodes, outer_surface_nodes, main_side_nodes, node_locations = get_main_side_outer_and_inner_surface_nodes(folder_path, key, get_max_dynamic_step(folder_path, key))
+        len = get_crack_len(outer_surface_nodes, main_side_nodes, node_locations, final_front_locations)
         linearity = get_linearity(folder_path, key)
         max_kink, abs_val_mean_kink, mean_kink, sum_kink, abs_val_sum_kink = kink_angle_call(folder_path, key)
         max_thickness, mean_thickness = get_max_and_mean_thickness(folder_path, key)
@@ -258,15 +266,22 @@ def create_df():
 
 
 df = create_df()
+random_indicies = random.sample(range(1, len(df)), 30)
+test_df = df.iloc[random_indicies]
+train_df = df.drop(random_indicies, axis=0)
 print(df)
 Pearson_Correlations_for_df(df, "height")
 Pearson_Correlations_for_df(df, "phi")
 Pearson_Correlations_for_df(df, "theta")
-save_df(df, "C:\\Users\\u1056\\sfx\\sfx_ML\\sfx_ML\\Feature_gathering\\OG_dataframe.csv")
+save_df(test_df, "C:\\Users\\u1056\\sfx\\sfx_ML\\sfx_ML\\Feature_gathering\\TEST_OG_dataframe.csv")
+save_df(train_df, "C:\\Users\\u1056\\sfx\\sfx_ML\\sfx_ML\\Feature_gathering\\TRAIN_OG_dataframe.csv")
+save_df(df, "C:\\Users\\u1056\\sfx\\sfx_ML\\sfx_ML\\Feature_gathering\\FULL_OG_dataframe.csv")
 df = PhiTheta_to_cartesian(df)
 save_df(df, "C:\\Users\\u1056\\sfx\\sfx_ML\\sfx_ML\\Feature_gathering\\OG_dataframe_cartesian.csv")
 Pearson_Correlations_for_df(df, "x")
 Pearson_Correlations_for_df(df, "y")
 Pearson_Correlations_for_df(df, "z")
 print("done")
+
+
 
