@@ -82,8 +82,65 @@ def CNN_image(image_shape):
     img_output = tf.keras.layers.Dense(8, activation='relu')(flat)
     return input, img_output
 
+def prepare_dataset_Kmeans_cluster(full_dataset_pathname, image_folder, label_to_predict, cluster='impact_sites', num_clusters=None, saving_folder=None):
+    dataset = read_dataset(full_dataset_pathname)
+    #adding images to the dataset
+    raw_images = get_images_from_dataset(dataset, image_folder)
+    print(dataset)
+    # label_to_predict = 'height'
+    if(not num_clusters == None):
+        dataset, cluster_centroids = Kmeans_cluster_cartesian_coordinates(dataset, num_clusters, cluster, label_to_predict, saving_folder=saving_folder)
+    # removing any labels that are not the label we are predicting
+    labels = ['height', 'phi', 'theta', 'impact_sites']
+    dataset = remove_unwanted_labels(dataset, label_to_predict, labels)
+    full_dataset_labels = dataset[label_to_predict].to_numpy()
+    # only using the well correlated features
+    corr_matrix, p_matrix, important_features = Pearson_correlation(dataset, label_to_predict, minimum_p_value=0.01)
+    correlated_featureset = dataset[important_features]
+    print(corr_matrix[important_features])
+    print(p_matrix[important_features])
+        
+    return correlated_featureset, raw_images, full_dataset_labels
 
-def run_kfold_CNN(full_dataset, raw_images, full_dataset_labels, patience, max_epochs, saving_folder='/Users/jakehirst/Desktop/model_results'):
+def prepare_dataset_discrete_Binning(full_dataset_pathname, image_folder, label_to_predict, num_bins=2, saving_folder=None):
+    dataset = read_dataset(full_dataset_pathname)
+    #adding images to the dataset
+    raw_images = get_images_from_dataset(dataset, image_folder)
+    new_label_to_predict = 'binned_' + label_to_predict
+    dataset, bin_edges, counts = Discretely_bin_height(dataset, num_bins, new_label_to_predict, label_to_predict, saving_folder=None)
+    corr_matrix, p_matrix, important_features = Pearson_correlation(dataset, label_to_predict, minimum_p_value=0.01)
+    labels = ['height', 'phi', 'theta', 'impact_sites', new_label_to_predict]
+    dataset = remove_unwanted_labels(dataset, new_label_to_predict, labels)
+    full_dataset_labels = dataset[new_label_to_predict].to_numpy()
+    for label in labels: 
+        if(important_features.__contains__(label)): important_features.remove(label)
+
+    correlated_featureset = dataset[important_features]
+    print(corr_matrix[important_features])
+    print(p_matrix[important_features])
+    return correlated_featureset, raw_images, full_dataset_labels
+
+def prepare_dataset_Single_Output_Regression(full_dataset_pathname, image_folder, label_to_predict, all_labels, saving_folder=None):
+    dataset = read_dataset(full_dataset_pathname)
+    #adding images to the dataset
+    raw_images = get_images_from_dataset(dataset, image_folder)
+    corr_matrix, p_matrix, important_features = Pearson_correlation(dataset, label_to_predict, minimum_p_value=0.05)
+    dataset = remove_unwanted_labels(dataset, label_to_predict, all_labels)
+    full_dataset_labels = dataset[label_to_predict].to_numpy()
+    for label in all_labels: 
+        if(important_features.__contains__(label)): important_features.remove(label)
+
+    correlated_featureset = dataset[important_features]
+    print(corr_matrix[important_features])
+    print(p_matrix[important_features])
+    return correlated_featureset, raw_images, full_dataset_labels
+
+def adjusted_r2(true_values, predictions, num_samples, num_features):
+    r2 = r2_score(true_values, predictions)
+    adjusted_r2 = 1 - ((1 - r2) * (num_samples - 1) / (num_samples - num_features - 1))
+    return adjusted_r2
+
+def run_kfold_Categorical_CNN(full_dataset, raw_images, full_dataset_labels, patience, max_epochs, saving_folder='/Users/jakehirst/Desktop/model_results'):
     #turning labels into one-hot vectors
     full_dataset_labels = to_categorical(full_dataset_labels)
 
@@ -187,45 +244,108 @@ def run_kfold_CNN(full_dataset, raw_images, full_dataset_labels, patience, max_e
     
     return models
 
-def prepare_dataset_Kmeans_cluster(full_dataset_pathname, image_folder, label_to_predict, cluster='impact_sites', num_clusters=None, saving_folder=None):
-    dataset = read_dataset(full_dataset_pathname)
-    #adding images to the dataset
-    raw_images = get_images_from_dataset(dataset, image_folder)
-    print(dataset)
-    # label_to_predict = 'height'
-    if(not num_clusters == None):
-        dataset, cluster_centroids = Kmeans_cluster_cartesian_coordinates(dataset, num_clusters, cluster, label_to_predict, saving_folder=saving_folder)
-    # removing any labels that are not the label we are predicting
-    labels = ['height', 'phi', 'theta', 'impact_sites']
-    dataset = remove_unwanted_labels(dataset, label_to_predict, labels)
-    full_dataset_labels = dataset[label_to_predict].to_numpy()
-    # only using the well correlated features
-    corr_matrix, p_matrix, important_features = Pearson_correlation(dataset, label_to_predict, minimum_p_value=0.01)
-    correlated_featureset = dataset[important_features]
-    print(corr_matrix[important_features])
-    print(p_matrix[important_features])
-        
-    return correlated_featureset, raw_images, full_dataset_labels
+def run_kfold_Regression_CNN(full_dataset, raw_images, full_dataset_labels, patience, max_epochs, num_outputs=1, lossfunc='mae', saving_folder='/Users/jakehirst/Desktop/model_results'):
 
-def prepare_dataset_discrete_Binning(full_dataset_pathname, image_folder, label_to_predict, num_bins=2, saving_folder=None):
-    dataset = read_dataset(full_dataset_pathname)
-    #adding images to the dataset
-    raw_images = get_images_from_dataset(dataset, image_folder)
-    new_label_to_predict = 'binned_' + label_to_predict
-    dataset, bin_edges, counts = Discretely_bin_height(dataset, num_bins, new_label_to_predict, label_to_predict, saving_folder=None)
-    corr_matrix, p_matrix, important_features = Pearson_correlation(dataset, label_to_predict, minimum_p_value=0.01)
-    labels = ['height', 'phi', 'theta', 'impact_sites', new_label_to_predict]
-    dataset = remove_unwanted_labels(dataset, new_label_to_predict, labels)
-    full_dataset_labels = dataset[new_label_to_predict].to_numpy()
-    for label in labels: 
-        if(important_features.__contains__(label)): important_features.remove(label)
+    #setting aside a test dataset
+    np.random.seed(6) #this should reset the randomness to the same randomness so that the test_indicies are the same throughout the tests
+    test_indicies = np.random.choice(np.arange(0, len(full_dataset)), size=30, replace=False) #30 for the test dataset
+    test_df = full_dataset.iloc[test_indicies]
+    test_images = raw_images[test_indicies]
+    y_test = full_dataset_labels[test_indicies]
+    full_dataset = full_dataset.drop(test_indicies, axis=0)
+    raw_images = np.delete(raw_images, test_indicies, axis=0)
+    full_dataset_labels = np.delete(full_dataset_labels, test_indicies, axis=0)
 
-    correlated_featureset = dataset[important_features]
-    print(corr_matrix[important_features])
-    print(p_matrix[important_features])
-    return correlated_featureset, raw_images, full_dataset_labels
-
+    models = []
     
+    rnge = range(1, len(full_dataset)+1)
+    kf5 = KFold(n_splits=5, shuffle=True)
+    fold_no = 1
+    for train_index, val_index in kf5.split(rnge):
+        train_df = full_dataset.iloc[train_index]
+        train_images = raw_images[train_index]
+        y_train = full_dataset_labels[train_index]
+        val_df = full_dataset.iloc[val_index]
+        val_images = raw_images[val_index]
+        y_val = full_dataset_labels[val_index]
+        
+        csv_output, csv_input = CNN_1D(train_df)
+        image_input, image_output= CNN_image(val_images[0].shape)
+        x = tf.keras.layers.concatenate([image_output, csv_output], name="concat_csv_img")
+        # x = tf.keras.layers.Dense(units= 32, activation='relu')(x)
+        predictions = tf.keras.layers.Dense(units=num_outputs)(x) 
+        model = tf.keras.Model(inputs = [image_input, csv_input], outputs = [predictions])
+
+        model.compile(
+            optimizer=tf.keras.optimizers.Adam(),#can define learning rate here
+        loss = lossfunc,
+        )
+    
+        history = model.fit((train_images, train_df), 
+                        y_train, 
+                        epochs=max_epochs, 
+                        callbacks=[
+                            tf.keras.callbacks.EarlyStopping(
+                                # monitor='loss',
+                                monitor='val_loss',
+                                patience=patience,
+                                restore_best_weights=True
+                            )
+                        ],
+                        validation_data=((val_images, val_df), y_val),
+                        verbose=1,
+                        )
+
+        model.save(saving_folder + f"/trained_model_fold_{fold_no}.h5")        
+        print("here")
+        val_pred = model.predict([val_images, val_df])
+        test_pred = model.predict([test_images, test_df])
+        
+        val_r2 = r2_score(y_val, val_pred)
+        val_adj_r2 = adjusted_r2(y_val, val_pred, len(full_dataset), len(full_dataset.columns))
+        val_mae = mean_absolute_error(y_val, val_pred)
+        val_mse = mean_squared_error(y_val, val_pred)
+        val_rmse = np.sqrt(val_mse)
+        test_r2 = r2_score(y_test, test_pred)
+        test_adj_r2 = adjusted_r2(y_test, test_pred, len(full_dataset), len(full_dataset.columns))
+        test_mae = mean_absolute_error(y_test, test_pred)
+        test_mse = mean_squared_error(y_test, test_pred)
+        test_rmse = np.sqrt(test_mse)
+        
+        def parody_plot(true_values, predictions, file_to_save=None):
+            true_values = true_values.reshape(predictions.shape)
+            # Plot the parody plot
+            plt.scatter(true_values, predictions, color='blue', label='True vs. Predicted')
+            plt.plot(true_values, true_values, color='red', linestyle='--', label='Parity Line')
+            # Add labels and title
+            plt.ylabel('Predictions')
+            plt.xlabel('True Values')
+            plt.title('Parody Plot')
+
+            # Add legend
+            plt.legend()
+            if(file_to_save == None):
+                plt.show()
+            else:
+                plt.savefig(file_to_save)
+            plt.close()
+            
+        parody_plot(y_test, test_pred, saving_folder + f'/parody_plot_test_fold{fold_no}.png')
+        parody_plot(y_val, val_pred, saving_folder + f'/parody_plot_val_fold{fold_no}.png')
+        
+        # open the file for writing
+        with open(saving_folder + f"/model_metrics_fold_{fold_no}.csv", 'w', newline='') as file:
+            writer = csv.writer(file)
+
+            #write the header row
+            writer.writerow(['dataset', 'r^2', 'adj_r^2', 'MAE', 'MSE', 'RMSE'])
+            writer.writerow(['test', test_r2, test_adj_r2, test_mae, test_mse, test_rmse])
+            writer.writerow(['validation', val_r2, val_adj_r2, val_mae, val_mse, val_rmse])
+
+            
+        fold_no += 1
+    
+    return models
 
 
 full_dataset_pathname = "/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Feature_gathering/FULL_OG_dataframe_with_impact_sites.csv"
@@ -238,12 +358,69 @@ image_folder = '/Users/jakehirst/Desktop/sfx/sfx_pics/jake/images_sfx/new_datase
 # saving_folder=f'/Users/jakehirst/Desktop/model_results/impact_site_logi_reg_{num_clusters}_clusters/'
 # if(not os.path.exists(saving_folder)): os.mkdir(saving_folder)
 # correlated_featureset, raw_images, full_dataset_labels = prepare_dataset_Kmeans_cluster(full_dataset_pathname, image_folder, label_to_predict, cluster='impact_sites', num_clusters=num_clusters, saving_folder=saving_folder)
-# run_kfold_CNN(correlated_featureset, raw_images, full_dataset_labels, patience=100, max_epochs=1000, saving_folder=saving_folder)
+# run_kfold_Categorical_CNN(correlated_featureset, raw_images, full_dataset_labels, patience=100, max_epochs=1000, saving_folder=saving_folder)
 
 # ''' preparing data for logistic regression on height using discrete binning '''
 # num_bins = 2
 # saving_folder=f'/Users/jakehirst/Desktop/model_results/height_logi_reg_{num_bins}_bins/'
 # if(not os.path.exists(saving_folder)): os.mkdir(saving_folder)
 # correlated_featureset, raw_images, full_dataset_labels = prepare_dataset_discrete_Binning(full_dataset_pathname, image_folder, 'height', num_bins=num_bins, saving_folder=None)
-# run_kfold_CNN(correlated_featureset, raw_images, full_dataset_labels, patience=100, max_epochs=1000, saving_folder=saving_folder)
+# run_kfold_Categorical_CNN(correlated_featureset, raw_images, full_dataset_labels, patience=100, max_epochs=1000, saving_folder=saving_folder)
+
+
+full_dataset_pathname = "/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Feature_gathering/FULL_OG_dataframe_with_impact_sites_and_Jimmy_RF.csv"
+image_folder = '/Users/jakehirst/Desktop/sfx/sfx_pics/jake/images_sfx/new_dataset/Visible_cracks'
+
+all_labels = ['height', 'phi', 'theta', 'impact site x', 'impact site y', 'impact site z', 'Jimmy_impact site x', 'Jimmy_impact site y', 
+              'Jimmy_impact site z', 'Jimmy_impact site r', 'Jimmy_impact site phi', 'Jimmy_impact site theta']
+
+# lossfunc = 'mean_distance_error_phi_theta',
+# lossfunc = 'mean_absolute_error', 
+# lossfunc = 'mean_squared_error',
+# lossfunc = 'mean_squared_logarithmic_error', - BAD FOR [phi]
+# lossfunc = tf.keras.losses.CosineSimilarity(axis=1) - BAD FOR [phi, theta]
+# lossfunc = tf.keras.losses.Huber()
+# lossfunc = tf.keras.losses.LogCosh()
+
+label_to_predict = 'Jimmy_impact site x'
+saving_folder=f'/Users/jakehirst/Desktop/model_results/Single_output_regression_{label_to_predict}/'
+correlated_featureset, raw_images, full_dataset_labels = prepare_dataset_Single_Output_Regression(full_dataset_pathname, image_folder, label_to_predict, all_labels, saving_folder=None)
+run_kfold_Regression_CNN(correlated_featureset, raw_images, full_dataset_labels, patience=100, max_epochs=2000, num_outputs=1, lossfunc='mean_absolute_error', saving_folder=saving_folder)
+
+label_to_predict = 'Jimmy_impact site y'
+saving_folder=f'/Users/jakehirst/Desktop/model_results/Single_output_regression_{label_to_predict}/'
+correlated_featureset, raw_images, full_dataset_labels = prepare_dataset_Single_Output_Regression(full_dataset_pathname, image_folder, label_to_predict, all_labels, saving_folder=None)
+run_kfold_Regression_CNN(correlated_featureset, raw_images, full_dataset_labels, patience=100, max_epochs=2000, num_outputs=1, lossfunc='mean_absolute_error', saving_folder=saving_folder)
+
+
+label_to_predict = 'Jimmy_impact site z'
+saving_folder=f'/Users/jakehirst/Desktop/model_results/Single_output_regression_{label_to_predict}/'
+correlated_featureset, raw_images, full_dataset_labels = prepare_dataset_Single_Output_Regression(full_dataset_pathname, image_folder, label_to_predict, all_labels, saving_folder=None)
+run_kfold_Regression_CNN(correlated_featureset, raw_images, full_dataset_labels, patience=100, max_epochs=2000, num_outputs=1, lossfunc='mean_absolute_error', saving_folder=saving_folder)
+
+
+label_to_predict = 'Jimmy_impact site x'
+saving_folder=f'/Users/jakehirst/Desktop/model_results/Single_output_regression_REMOVED_ABAQUS_REFERENCES_{label_to_predict}/'
+correlated_featureset, raw_images, full_dataset_labels = prepare_dataset_Single_Output_Regression(full_dataset_pathname, image_folder, label_to_predict, all_labels, saving_folder=None)
+features_to_remove = ['init x', 'init y', 'init z', 'front 0 x', 'front 0 y', 'front 0 z', 'front 1 x', 'front 1 y', 'front 1 z']
+for feature in features_to_remove:
+    if(correlated_featureset.columns.__contains__(feature)): correlated_featureset = correlated_featureset.drop(feature, axis=1)
+run_kfold_Regression_CNN(correlated_featureset, raw_images, full_dataset_labels, patience=100, max_epochs=2000, num_outputs=1, lossfunc='mean_absolute_error', saving_folder=saving_folder)
+
+label_to_predict = 'Jimmy_impact site y'
+saving_folder=f'/Users/jakehirst/Desktop/model_results/Single_output_regression_REMOVED_ABAQUS_REFERENCES_{label_to_predict}/'
+correlated_featureset, raw_images, full_dataset_labels = prepare_dataset_Single_Output_Regression(full_dataset_pathname, image_folder, label_to_predict, all_labels, saving_folder=None)
+features_to_remove = ['init x', 'init y', 'init z', 'front 0 x', 'front 0 y', 'front 0 z', 'front 1 x', 'front 1 y', 'front 1 z']
+for feature in features_to_remove:
+    if(correlated_featureset.columns.__contains__(feature)): correlated_featureset = correlated_featureset.drop(feature, axis=1)
+run_kfold_Regression_CNN(correlated_featureset, raw_images, full_dataset_labels, patience=100, max_epochs=2000, num_outputs=1, lossfunc='mean_absolute_error', saving_folder=saving_folder)
+
+label_to_predict = 'Jimmy_impact site z'
+saving_folder=f'/Users/jakehirst/Desktop/model_results/Single_output_regression_REMOVED_ABAQUS_REFERENCES_{label_to_predict}/'
+correlated_featureset, raw_images, full_dataset_labels = prepare_dataset_Single_Output_Regression(full_dataset_pathname, image_folder, label_to_predict, all_labels, saving_folder=None)
+features_to_remove = ['init x', 'init y', 'init z', 'front 0 x', 'front 0 y', 'front 0 z', 'front 1 x', 'front 1 y', 'front 1 z']
+for feature in features_to_remove:
+    if(correlated_featureset.columns.__contains__(feature)): correlated_featureset = correlated_featureset.drop(feature, axis=1)
+run_kfold_Regression_CNN(correlated_featureset, raw_images, full_dataset_labels, patience=100, max_epochs=2000, num_outputs=1, lossfunc='mean_absolute_error', saving_folder=saving_folder)
+
 
