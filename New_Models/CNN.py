@@ -82,64 +82,17 @@ def CNN_image(image_shape):
     img_output = tf.keras.layers.Dense(8, activation='relu')(flat)
     return input, img_output
 
-def prepare_dataset_Kmeans_cluster(full_dataset_pathname, image_folder, label_to_predict, cluster='impact_sites', num_clusters=None, saving_folder=None):
-    dataset = read_dataset(full_dataset_pathname)
-    #adding images to the dataset
-    raw_images = get_images_from_dataset(dataset, image_folder)
-    print(dataset)
-    # label_to_predict = 'height'
-    if(not num_clusters == None):
-        dataset, cluster_centroids = Kmeans_cluster_cartesian_coordinates(dataset, num_clusters, cluster, label_to_predict, saving_folder=saving_folder)
-    # removing any labels that are not the label we are predicting
-    labels = ['height', 'phi', 'theta', 'impact_sites']
-    dataset = remove_unwanted_labels(dataset, label_to_predict, labels)
-    full_dataset_labels = dataset[label_to_predict].to_numpy()
-    # only using the well correlated features
-    corr_matrix, p_matrix, important_features = Pearson_correlation(dataset, label_to_predict, minimum_p_value=0.01)
-    correlated_featureset = dataset[important_features]
-    print(corr_matrix[important_features])
-    print(p_matrix[important_features])
-        
-    return correlated_featureset, raw_images, full_dataset_labels
-
-def prepare_dataset_discrete_Binning(full_dataset_pathname, image_folder, label_to_predict, num_bins=2, saving_folder=None):
-    dataset = read_dataset(full_dataset_pathname)
-    #adding images to the dataset
-    raw_images = get_images_from_dataset(dataset, image_folder)
-    new_label_to_predict = 'binned_' + label_to_predict
-    dataset, bin_edges, counts = Discretely_bin_height(dataset, num_bins, new_label_to_predict, label_to_predict, saving_folder=None)
-    corr_matrix, p_matrix, important_features = Pearson_correlation(dataset, label_to_predict, minimum_p_value=0.01)
-    labels = ['height', 'phi', 'theta', 'impact_sites', new_label_to_predict]
-    dataset = remove_unwanted_labels(dataset, new_label_to_predict, labels)
-    full_dataset_labels = dataset[new_label_to_predict].to_numpy()
-    for label in labels: 
-        if(important_features.__contains__(label)): important_features.remove(label)
-
-    correlated_featureset = dataset[important_features]
-    print(corr_matrix[important_features])
-    print(p_matrix[important_features])
-    return correlated_featureset, raw_images, full_dataset_labels
-
-def prepare_dataset_Single_Output_Regression(full_dataset_pathname, image_folder, label_to_predict, all_labels, saving_folder=None):
-    dataset = read_dataset(full_dataset_pathname)
-    #adding images to the dataset
-    raw_images = get_images_from_dataset(dataset, image_folder)
-    corr_matrix, p_matrix, important_features = Pearson_correlation(dataset, label_to_predict, minimum_p_value=0.05)
-    dataset = remove_unwanted_labels(dataset, label_to_predict, all_labels)
-    full_dataset_labels = dataset[label_to_predict].to_numpy()
-    for label in all_labels: 
-        if(important_features.__contains__(label)): important_features.remove(label)
-
-    correlated_featureset = dataset[important_features]
-    print(corr_matrix[important_features])
-    print(p_matrix[important_features])
-    return correlated_featureset, raw_images, full_dataset_labels
-
+''' 
+returns the adjusted r^2 value of the given predictions
+'''
 def adjusted_r2(true_values, predictions, num_samples, num_features):
     r2 = r2_score(true_values, predictions)
     adjusted_r2 = 1 - ((1 - r2) * (num_samples - 1) / (num_samples - num_features - 1))
     return adjusted_r2
 
+'''
+runs a Classification CNN on the given dataset, doing a 5 fold cross validation and testing it on a test dataset pulled from the full_dataset
+'''
 def run_kfold_Categorical_CNN(full_dataset, raw_images, full_dataset_labels, patience, max_epochs, saving_folder='/Users/jakehirst/Desktop/model_results'):
     #turning labels into one-hot vectors
     full_dataset_labels = to_categorical(full_dataset_labels)
@@ -244,6 +197,9 @@ def run_kfold_Categorical_CNN(full_dataset, raw_images, full_dataset_labels, pat
     
     return models
 
+'''
+runs a Regression CNN on the given dataset, doing a 5 fold cross validation and testing it on a test dataset pulled from the full_dataset
+'''
 def run_kfold_Regression_CNN(full_dataset, raw_images, full_dataset_labels, patience, max_epochs, num_outputs=1, lossfunc='mae', saving_folder='/Users/jakehirst/Desktop/model_results'):
 
     #setting aside a test dataset

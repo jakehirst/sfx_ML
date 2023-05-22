@@ -17,9 +17,9 @@ CM = np.array([106.55,72.79,56.64])
 OC = np.array([130.395996,46.6063,98.649696])
 
 """ Returns the correlation matrix, p matrix, and the features that have a p value less than the minimum_p_value """
-def Pearson_correlation(df, label_to_predict, minimum_p_value):
+def Pearson_correlation(df, label_to_predict, maximum_p_value):
     corr_matrix, p_matrix = df.corr(method=lambda x, y: pearsonr(x, y)[0]), df.corr(method=lambda x, y: pearsonr(x, y)[1])
-    important_features = p_matrix[p_matrix[label_to_predict] < minimum_p_value].index
+    important_features = p_matrix[p_matrix[label_to_predict] < maximum_p_value].index
     return corr_matrix, p_matrix, list(important_features)
 
 ''' 
@@ -80,22 +80,22 @@ full_df = insert_column_into_df(full_df, 'impact_sites', 'impact site z', impact
 labels = ['height', 'phi', 'theta', 'impact site x', 'impact site y', 'impact site z']
 
 """ correlation study before everything is converted to Jimmy's reference frame """
-corr_matrix, p_matrix, important_features = Pearson_correlation(full_df, 'height', minimum_p_value=0.05)
+corr_matrix, p_matrix, important_features = Pearson_correlation(full_df, 'height', maximum_p_value=0.05)
 important_features  = [x for x in important_features if x not in labels]
 print(corr_matrix['height'][important_features])
-corr_matrix, p_matrix, important_features = Pearson_correlation(full_df, 'phi', minimum_p_value=0.05)
+corr_matrix, p_matrix, important_features = Pearson_correlation(full_df, 'phi', maximum_p_value=0.05)
 important_features  = [x for x in important_features if x not in labels]
 print(corr_matrix['phi'][important_features])
-corr_matrix, p_matrix, important_features = Pearson_correlation(full_df, 'theta', minimum_p_value=0.05)
+corr_matrix, p_matrix, important_features = Pearson_correlation(full_df, 'theta', maximum_p_value=0.05)
 important_features  = [x for x in important_features if x not in labels]
 print(corr_matrix['theta'][important_features])
-corr_matrix, p_matrix, important_features = Pearson_correlation(full_df, 'impact site x', minimum_p_value=0.05)
+corr_matrix, p_matrix, important_features = Pearson_correlation(full_df, 'impact site x', maximum_p_value=0.05)
 important_features  = [x for x in important_features if x not in labels]
 print(corr_matrix['impact site x'][important_features])
-corr_matrix, p_matrix, important_features = Pearson_correlation(full_df, 'impact site y', minimum_p_value=0.05)
+corr_matrix, p_matrix, important_features = Pearson_correlation(full_df, 'impact site y', maximum_p_value=0.05)
 important_features  = [x for x in important_features if x not in labels]
 print(corr_matrix['impact site y'][important_features])
-corr_matrix, p_matrix, important_features = Pearson_correlation(full_df, 'impact site z', minimum_p_value=0.05)
+corr_matrix, p_matrix, important_features = Pearson_correlation(full_df, 'impact site z', maximum_p_value=0.05)
 important_features  = [x for x in important_features if x not in labels]
 print(corr_matrix['impact site z'][important_features])
 
@@ -148,43 +148,43 @@ labels = ['height', 'phi', 'theta', 'impact site x', 'impact site y', 'impact si
           'Jimmy_impact site z', 'Jimmy_impact site r', 'Jimmy_impact site phi', 'Jimmy_impact site theta']
 
 """ correlation study after everything is converted to Jimmy's reference frame """
-corr_matrix, p_matrix, important_features = Pearson_correlation(full_df, 'height', minimum_p_value=0.05)
+corr_matrix, p_matrix, important_features = Pearson_correlation(full_df, 'height', maximum_p_value=0.05)
 important_features  = [x for x in important_features if x not in labels]
 print(corr_matrix['height'][important_features])
-corr_matrix, p_matrix, important_features = Pearson_correlation(full_df, 'phi', minimum_p_value=0.05)
+corr_matrix, p_matrix, important_features = Pearson_correlation(full_df, 'phi', maximum_p_value=0.05)
 important_features  = [x for x in important_features if x not in labels]
 print(corr_matrix['phi'][important_features])
-corr_matrix, p_matrix, important_features = Pearson_correlation(full_df, 'theta', minimum_p_value=0.05)
+corr_matrix, p_matrix, important_features = Pearson_correlation(full_df, 'theta', maximum_p_value=0.05)
 important_features  = [x for x in important_features if x not in labels]
 print(corr_matrix['theta'][important_features])
 
-corr_matrix, p_matrix, important_features = Pearson_correlation(full_df, 'impact site x', minimum_p_value=0.05)
+corr_matrix, p_matrix, important_features = Pearson_correlation(full_df, 'impact site x', maximum_p_value=0.05)
 important_features  = [x for x in important_features if x not in labels]
 print(corr_matrix['impact site x'][important_features])
-corr_matrix, p_matrix, important_features = Pearson_correlation(full_df, 'impact site y', minimum_p_value=0.05)
+corr_matrix, p_matrix, important_features = Pearson_correlation(full_df, 'impact site y', maximum_p_value=0.05)
 important_features  = [x for x in important_features if x not in labels]
 print(corr_matrix['impact site y'][important_features])
-corr_matrix, p_matrix, important_features = Pearson_correlation(full_df, 'impact site z', minimum_p_value=0.05)
+corr_matrix, p_matrix, important_features = Pearson_correlation(full_df, 'impact site z', maximum_p_value=0.05)
 important_features  = [x for x in important_features if x not in labels]
 print(corr_matrix['impact site z'][important_features])
 
-corr_matrix, p_matrix, important_features = Pearson_correlation(full_df, 'Jimmy_impact site x', minimum_p_value=0.05)
+corr_matrix, p_matrix, important_features = Pearson_correlation(full_df, 'Jimmy_impact site x', maximum_p_value=0.05)
 important_features  = [x for x in important_features if x not in labels]
 print(corr_matrix['Jimmy_impact site x'][important_features])
-corr_matrix, p_matrix, important_features = Pearson_correlation(full_df, 'Jimmy_impact site y', minimum_p_value=0.05)
+corr_matrix, p_matrix, important_features = Pearson_correlation(full_df, 'Jimmy_impact site y', maximum_p_value=0.05)
 important_features  = [x for x in important_features if x not in labels]
 print(corr_matrix['Jimmy_impact site y'][important_features])
-corr_matrix, p_matrix, important_features = Pearson_correlation(full_df, 'Jimmy_impact site z', minimum_p_value=0.05)
+corr_matrix, p_matrix, important_features = Pearson_correlation(full_df, 'Jimmy_impact site z', maximum_p_value=0.05)
 important_features  = [x for x in important_features if x not in labels]
 print(corr_matrix['Jimmy_impact site z'][important_features])
 
-corr_matrix, p_matrix, important_features = Pearson_correlation(full_df, 'Jimmy_impact site r', minimum_p_value=0.05)
+corr_matrix, p_matrix, important_features = Pearson_correlation(full_df, 'Jimmy_impact site r', maximum_p_value=0.05)
 important_features  = [x for x in important_features if x not in labels]
 print(corr_matrix['Jimmy_impact site r'][important_features])
-corr_matrix, p_matrix, important_features = Pearson_correlation(full_df, 'Jimmy_impact site phi', minimum_p_value=0.05)
+corr_matrix, p_matrix, important_features = Pearson_correlation(full_df, 'Jimmy_impact site phi', maximum_p_value=0.05)
 important_features  = [x for x in important_features if x not in labels]
 print(corr_matrix['Jimmy_impact site phi'][important_features])
-corr_matrix, p_matrix, important_features = Pearson_correlation(full_df, 'Jimmy_impact site theta', minimum_p_value=0.05)
+corr_matrix, p_matrix, important_features = Pearson_correlation(full_df, 'Jimmy_impact site theta', maximum_p_value=0.05)
 important_features  = [x for x in important_features if x not in labels]
 print(corr_matrix['Jimmy_impact site theta'][important_features])
 

@@ -24,7 +24,10 @@ def read_dataset(dataset_filepath):
     dataset['impact_sites'] = impact_points
     return dataset
 
-def Discretely_bin_height(df, num_bins, column_name, label_to_predict, saving_folder=None):
+''' 
+Discretely binning based on height label
+'''
+def Discretely_bin(df, num_bins, column_name, label_to_predict, saving_folder=None):
     # Compute the bin edges based on equal spacing
     bin_edges = np.linspace(1.0, 4.0, num_bins+1)
     # Bin the data using numpy.histogram()
@@ -80,9 +83,9 @@ def plot_points_and_clusters(df, cluster_column_name, coordinate_column_name, ce
 performs pearson correlation on all features with and labels. 
 returns the whole correlation matrix, p-value matrix, and the features that have a p-value less than the threshold
 '''    
-def Pearson_correlation(df, label_to_predict, minimum_p_value):
+def Pearson_correlation(df, label_to_predict, maximum_p_value):
     corr_matrix, p_matrix = df.corr(method=lambda x, y: pearsonr(x, y)[0]), df.corr(method=lambda x, y: pearsonr(x, y)[1])
-    important_features = p_matrix[p_matrix[label_to_predict] < minimum_p_value].index
+    important_features = p_matrix[p_matrix[label_to_predict] < maximum_p_value].index
     return corr_matrix, p_matrix, list(important_features)
 
 '''
@@ -121,6 +124,85 @@ def find_max_step_and_uci(image_folder, height, phi, theta):
     sorted_list = sorted(Step_UCI_list, key=lambda x: (x[0], x[1])) #sorts the Step/UCI list by step and then uci 
     return sorted_list[-1]
 
+'''
+prepares the full dataset for regression with a single output from the given pathname, returning...
+    - Correlated features from 1D dataset
+    - raw images from image datset
+    - the labels in the same order as the dataset
+'''
+def prepare_dataset_Single_Output_Regression(full_dataset_pathname, image_folder, label_to_predict, all_labels, saving_folder=None, maximum_p_value=0.05):
+    dataset = read_dataset(full_dataset_pathname)
+    #adding images to the dataset
+    raw_images = get_images_from_dataset(dataset, image_folder)
+    corr_matrix, p_matrix, important_features = Pearson_correlation(dataset, label_to_predict, maximum_p_value=maximum_p_value) #changed this from .05 to .01 on 5/22/23
+    dataset = remove_unwanted_labels(dataset, label_to_predict, all_labels)
+    full_dataset_labels = dataset[label_to_predict].to_numpy()
+    for label in all_labels: 
+        if(important_features.__contains__(label)): important_features.remove(label)
+
+    correlated_featureset = dataset[important_features]
+    print(corr_matrix[important_features])
+    print(p_matrix[important_features])
+    return correlated_featureset, raw_images, full_dataset_labels
+
+'''
+prepares the full dataset for classification using k-means clustering from the given pathname, returning...
+    - Correlated features from 1D dataset
+    - raw images from image datset
+    - the labels in the same order as the dataset (not one hot vectors, but rather bin 1 - num_clusters)
+'''
+def prepare_dataset_Kmeans_cluster(full_dataset_pathname, image_folder, label_to_predict, cluster='impact_sites', num_clusters=None, saving_folder=None):
+    dataset = read_dataset(full_dataset_pathname)
+    #adding images to the dataset
+    raw_images = get_images_from_dataset(dataset, image_folder)
+    print(dataset)
+    # label_to_predict = 'height'
+    if(not num_clusters == None):
+        dataset, cluster_centroids = Kmeans_cluster_cartesian_coordinates(dataset, num_clusters, cluster, label_to_predict, saving_folder=saving_folder)
+    # removing any labels that are not the label we are predicting
+    labels = ['height', 'phi', 'theta', 'impact_sites']
+    dataset = remove_unwanted_labels(dataset, label_to_predict, labels)
+    full_dataset_labels = dataset[label_to_predict].to_numpy()
+    # only using the well correlated features
+    corr_matrix, p_matrix, important_features = Pearson_correlation(dataset, label_to_predict, maximum_p_value=0.01)
+    correlated_featureset = dataset[important_features]
+    print(corr_matrix[important_features])
+    print(p_matrix[important_features])
+        
+    return correlated_featureset, raw_images, full_dataset_labels
+
+'''
+prepares the full dataset for classification using discrete binning for a single label from the given pathname, returning...
+    - Correlated features from 1D dataset
+    - raw images from image datset
+    - the labels in the same order as the dataset (not one hot vectors, but rather bin 1 - num_bins)
+'''
+def prepare_dataset_discrete_Binning(full_dataset_pathname, image_folder, label_to_predict, num_bins=2, saving_folder=None):
+    dataset = read_dataset(full_dataset_pathname)
+    #adding images to the dataset
+    raw_images = get_images_from_dataset(dataset, image_folder)
+    new_label_to_predict = 'binned_' + label_to_predict
+    dataset, bin_edges, counts = Discretely_bin(dataset, num_bins, new_label_to_predict, label_to_predict, saving_folder=None)
+    corr_matrix, p_matrix, important_features = Pearson_correlation(dataset, label_to_predict, maximum_p_value=0.01)
+    labels = ['height', 'phi', 'theta', 'impact_sites', new_label_to_predict]
+    dataset = remove_unwanted_labels(dataset, new_label_to_predict, labels)
+    full_dataset_labels = dataset[new_label_to_predict].to_numpy()
+    for label in labels: 
+        if(important_features.__contains__(label)): important_features.remove(label)
+
+    correlated_featureset = dataset[important_features]
+    print(corr_matrix[important_features])
+    print(p_matrix[important_features])
+    return correlated_featureset, raw_images, full_dataset_labels
+
+''' 
+removes all of the spacial features that are in the ABAQUS reference frame
+'''
+def remove_ABAQUS_features(df):
+    features_to_remove = ['init x', 'init y', 'init z', 'front 0 x', 'front 0 y', 'front 0 z', 'front 1 x', 'front 1 y', 'front 1 z']
+    for feature in features_to_remove:
+        if(df.columns.__contains__(feature)): df = df.drop(feature, axis=1)
+    return df
 
 # dataset = read_dataset("/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Feature_gathering/FULL_OG_dataframe_with_impact_sites.csv")
 # dataset, cluster_centroids = Kmeans_cluster_cartesian_coordinates(dataset, 10, 'impact_sites')
