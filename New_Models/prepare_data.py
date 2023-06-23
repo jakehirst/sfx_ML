@@ -143,7 +143,7 @@ def prepare_dataset_Single_Output_Regression(full_dataset_pathname, image_folder
     correlated_featureset = dataset[important_features]
     print(corr_matrix[important_features])
     print(p_matrix[important_features])
-    return correlated_featureset, raw_images, full_dataset_labels
+    return correlated_featureset, raw_images, full_dataset_labels, important_features
 
 '''
 prepares the full dataset for classification using k-means clustering from the given pathname, returning...

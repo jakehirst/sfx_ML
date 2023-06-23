@@ -198,7 +198,8 @@ def run_kfold_Categorical_CNN(full_dataset, raw_images, full_dataset_labels, pat
     return models
 
 '''
-runs a Regression CNN on the given dataset, doing a 5 fold cross validation and testing it on a test dataset pulled from the full_dataset
+runs a dual input (image and 1D features) Regression CNN on the given dataset, doing a 5 fold cross validation and testing it 
+on a test dataset pulled from the full_dataset
 '''
 def run_kfold_Regression_CNN(full_dataset, raw_images, full_dataset_labels, patience, max_epochs, num_outputs=1, lossfunc='mae', saving_folder='/Users/jakehirst/Desktop/model_results'):
 

@@ -198,8 +198,13 @@ def plot_F1score_histograms(parent_folder, folder_list, Title=None, x_label='num
         plt.close()
     return
         
-def plot_regression_metrics(parent_folder, folder_list, Title=None, x_label='fold_no',y_label='r^2',  saving_filename=None):
-    plt.figure(figsize=(20,8))
+def plot_regression_metrics(parent_folder, folder_list, Dataset=None, Title=None, x_label='fold_no',y_label='r^2',  saving_filename=None):
+    if(Dataset == 'Test vs Validation'):
+        plt.figure(figsize=(20,8))
+    else:
+        plt.figure(figsize=(10,8))
+
+
     for folder in folder_list:
         test_metrics = []
         val_metrics = []
@@ -207,7 +212,8 @@ def plot_regression_metrics(parent_folder, folder_list, Title=None, x_label='fol
         for fold_no in range(1,6):
             csv = pd.read_csv(parent_folder + folder + f'/model_metrics_fold_{fold_no}.csv')
             test_metrics.append(csv[y_label][0])
-            val_metrics.append(csv[y_label][1])
+            if(Dataset == 'Test vs Validation'):
+                val_metrics.append(csv[y_label][1])
             fold_nos.append(fold_no)
         
         if(folder.__contains__('site x')): color = 'g';label = 'x'
@@ -217,18 +223,26 @@ def plot_regression_metrics(parent_folder, folder_list, Title=None, x_label='fol
         if(folder.__contains__('REMOVED_ABAQUS_REFERENCES')): linestyle ='--'; label = label + ' no ABAQUS feats'
         else: linestyle ='-'
         
-        plt.subplot(1, 2, 1)  # 1 row, 2 columns, subplot 1
-        plt.plot(fold_nos, test_metrics, c=color, linestyle=linestyle, linewidth=2, label=label)
-        plt.title("Test " + y_label + ' ' + Title)
-        plt.xlabel(x_label)
-        # plt.ylim((0,1))
-        plt.ylabel(y_label)
-        plt.subplot(1, 2, 2)  # 1 row, 2 columns, subplot 2
-        plt.plot(fold_nos, val_metrics, c=color, linestyle=linestyle, linewidth=2, label=label)
-        # plt.ylim((0,1))
-        plt.title("Validation " + y_label + ' ' + Title)
-        plt.xlabel(x_label)
-        plt.ylabel(y_label)
+        if(Dataset == 'Test vs Validation'):
+            plt.subplot(1, 2, 1)  # 1 row, 2 columns, subplot 1
+            plt.plot(fold_nos, test_metrics, c=color, linestyle=linestyle, linewidth=2, label=label)
+            plt.title("Test " + y_label + ' ' + Title)
+            plt.xlabel(x_label)
+            plt.ylim((0,1))
+            plt.ylabel(y_label)
+            plt.subplot(1, 2, 2)  # 1 row, 2 columns, subplot 2
+            plt.plot(fold_nos, val_metrics, c=color, linestyle=linestyle, linewidth=2, label=label)
+            plt.ylim((0,1))
+            plt.title("Validation " + y_label + ' ' + Title)
+            plt.xlabel(x_label)
+            plt.ylabel(y_label)
+        elif(Dataset == None):
+            plt.plot(fold_nos, test_metrics, c=color, linestyle=linestyle, linewidth=2, label=label)
+            # plt.ylim((0,1))
+            plt.title("Test " + y_label + ' ' + Title)
+            plt.xlabel(x_label)
+            plt.ylabel(y_label)
+
 
 
     plt.legend()
@@ -261,15 +275,27 @@ def plot_regression_metrics(parent_folder, folder_list, Title=None, x_label='fol
 #                'height_logi_reg_9_bins',
 #                'height_logi_reg_10_bins']
 
-folder_list = ['Single_output_regression_Jimmy_impact site x',
-                'Single_output_regression_Jimmy_impact site y',
-                'Single_output_regression_Jimmy_impact site z',
-                'Single_output_regression_REMOVED_ABAQUS_REFERENCES_Jimmy_impact site x',
-                'Single_output_regression_REMOVED_ABAQUS_REFERENCES_Jimmy_impact site y',
-                'Single_output_regression_REMOVED_ABAQUS_REFERENCES_Jimmy_impact site z'
+# folder_list = ['Single_output_regression_Jimmy_impact site x',
+#                 'Single_output_regression_Jimmy_impact site y',
+#                 'Single_output_regression_Jimmy_impact site z',
+#                 'Single_output_regression_REMOVED_ABAQUS_REFERENCES_Jimmy_impact site x',
+#                 'Single_output_regression_REMOVED_ABAQUS_REFERENCES_Jimmy_impact site y',
+#                 'Single_output_regression_REMOVED_ABAQUS_REFERENCES_Jimmy_impact site z'
+#                 ]
+
+folder_list = ['GPR_Jimmy_impact site x',
+                'GPR_Jimmy_impact site y',
+                'GPR_Jimmy_impact site z',
                 ]
 
 parent_folder = '/Users/jakehirst/Desktop/model_results/'
+
+# plot_regression_metrics(parent_folder, folder_list, Dataset='Test vs Validation', Title='metrics across all k folds', x_label='fold_no',y_label='r^2' , saving_filename=None)
+# plot_regression_metrics(parent_folder, folder_list, Dataset='Test vs Validation', Title='metrics across all k folds', x_label='fold_no',y_label='adj_r^2' , saving_filename=None)
+# plot_regression_metrics(parent_folder, folder_list, Dataset='Test vs Validation', Title='metrics across all k folds', x_label='fold_no',y_label='MAE' , saving_filename=None)
+# plot_regression_metrics(parent_folder, folder_list, Dataset='Test vs Validation', Title='metrics across all k folds', x_label='fold_no',y_label='MSE' , saving_filename=None)
+# plot_regression_metrics(parent_folder, folder_list, Dataset='Test vs Validation', Title='metrics across all k folds', x_label='fold_no',y_label='RMSE' , saving_filename=None)
+
 
 plot_regression_metrics(parent_folder, folder_list, Title='metrics across all k folds', x_label='fold_no',y_label='r^2' , saving_filename=None)
 plot_regression_metrics(parent_folder, folder_list, Title='metrics across all k folds', x_label='fold_no',y_label='adj_r^2' , saving_filename=None)
