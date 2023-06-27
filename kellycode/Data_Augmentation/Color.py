@@ -42,6 +42,10 @@ def color_image_and_save(image_name, pathname1, pathname2):
 if __name__ == "__main__":
     pathname1 = 'C:\\Users\\u1056\\sfx\\images_sfx\\Original\\OG'
     pathname2 = 'C:\\Users\\u1056\\sfx\\images_sfx\\Original\\' 
+    pathname1 = 'C:\\Users\\u1056\\sfx\\images_sfx\\Original_new_dataset\\OG'
+    pathname2 = 'C:\\Users\\u1056\\sfx\\images_sfx\\Original_new_dataset\\' 
+    pathname1 = 'C:\\Users\\u1056\\sfx\\images_sfx\\Visible_cracks_new_dataset_\\OG'
+    pathname2 = 'C:\\Users\\u1056\\sfx\\images_sfx\\Visible_cracks_new_dataset_\\'
     image_name_list = []
     for root, dirs, files in os.walk(pathname1):
         # select file name

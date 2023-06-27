@@ -178,12 +178,9 @@ def create_df():
         #max_crack_width(folder_path, key, maxes[key][0], maxes[key][1])
         #mean_crack_width(folder_path, key)
         #TODO: delete this above
-        # if(key == 'Para_1-03ft_PHI_42_THETA_334'):
+        # if(key != 'Para_1-2175ft_PHI_4_THETA_99'):
         #     continue
-        # if(key == 'Para_1-1725ft_PHI_8_THETA_162'):
-        #     print("here")
-        # if(key == 'Para_1-2775ft_PHI_10_THETA_74'):
-        #     print("here")
+
 
         good_history = check_history_output(folder_path, key)
  
@@ -273,9 +270,9 @@ print(df)
 Pearson_Correlations_for_df(df, "height")
 Pearson_Correlations_for_df(df, "phi")
 Pearson_Correlations_for_df(df, "theta")
-save_df(test_df, "C:\\Users\\u1056\\sfx\\sfx_ML\\sfx_ML\\Feature_gathering\\TEST_OG_dataframe.csv")
-save_df(train_df, "C:\\Users\\u1056\\sfx\\sfx_ML\\sfx_ML\\Feature_gathering\\TRAIN_OG_dataframe.csv")
-save_df(df, "C:\\Users\\u1056\\sfx\\sfx_ML\\sfx_ML\\Feature_gathering\\FULL_OG_dataframe.csv")
+save_df(test_df, "C:\\Users\\u1056\\sfx\\sfx_ML\\sfx_ML\\Feature_gathering\\New_Crack_Len_TEST_OG_dataframe.csv")
+save_df(train_df, "C:\\Users\\u1056\\sfx\\sfx_ML\\sfx_ML\\Feature_gathering\\New_Crack_Len_TRAIN_OG_dataframe.csv")
+save_df(df, "C:\\Users\\u1056\\sfx\\sfx_ML\\sfx_ML\\Feature_gathering\\New_Crack_Len_FULL_OG_dataframe.csv")
 df = PhiTheta_to_cartesian(df)
 save_df(df, "C:\\Users\\u1056\\sfx\\sfx_ML\\sfx_ML\\Feature_gathering\\OG_dataframe_cartesian.csv")
 Pearson_Correlations_for_df(df, "x")

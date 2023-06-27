@@ -4,9 +4,12 @@ import time
 
 #Input = sys.argv[-1]
 origin_file = "F:\\Jake\\good_simies"
-#origin_file = "F:\\Jake\\good_simies_coats"
-origin_file = "C:\\Users\\u1056\\sfx\\simulation_results"
-origin_file = "Z:\\bjornssimies\\delta_k"
+# #origin_file = "F:\\Jake\\good_simies_coats"
+# origin_file = "C:\\Users\\u1056\\sfx\\simulation_results"
+# origin_file = "C:\\Users\\u1056\\sfx\\simulation_results2"
+# origin_file = "C:\\Users\\u1056\\sfx\\simulations_new_crack_len"
+
+# origin_file = "Z:\\bjornssimies\\delta_k"
 # origin_file = "Z:\\Brian_simies\\k_diff_simmies"
 # origin_file = "C:\\Users\\u1056\\sfx\\Jimmy_cases_validation\\Weber_1"
 # origin_file = "C:\\Users\\u1056\\sfx\\Jimmy_cases_validation\\deltaK_simulation_results"
@@ -17,8 +20,9 @@ origin_file = "Z:\\bjornssimies\\delta_k"
 wireframe = False
 #destination_file = "C:\\Users\\u1056\\sfx\\images_sfx\\Original\\OG"
 #destination_file = "C:\\Users\\u1056\\sfx\\images_sfx\\Original_from_test_matrix\\OG"
-destination_file = "C:\\Users\\u1056\\OneDrive\\Desktop\\test_images"
-# destination_file = "C:\\Users\\u1056\\sfx\\images_sfx\\Visible_cracks_new_dataset_\\OG"
+# destination_file = "C:\\Users\\u1056\\OneDrive\\Desktop\\test_images"
+destination_file = "C:\\Users\\u1056\\sfx\\images_sfx\\Visible_cracks_new_dataset_\\OG"
+# destination_file = "C:\\Users\\u1056\\sfx\\simulations_new_crack_len"
 # destination_file = "C:\\Users\\u1056\\sfx\\images_sfx\\Original_new_dataset\\OG"
 #destination_file = "C:\\Users\\u1056\\OneDrive\\Desktop\\bad_simie_images"
 
@@ -49,6 +53,7 @@ session.viewports['Viewport: 1'].setValues(displayedObject=a)
 session.journalOptions.setValues(replayGeometry=COORDINATE, recoverGeometry=COORDINATE)
 
 for filepath in file_name_list:
+    print(filepath)
     Input = os.path.basename(filepath)
     dir = os.path.dirname(filepath)
     new_dir = dir.split(origin_file,1)[1]

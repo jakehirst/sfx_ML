@@ -19,6 +19,13 @@ from Color import *
 pathname1 = 'C:\\Users\\u1056\\sfx\\images_sfx\\Original\\OG'
 pathname2 = 'C:\\Users\\u1056\\sfx\\images_sfx\\Original\\' 
 
+pathname1 = 'C:\\Users\\u1056\\sfx\\images_sfx\\Original_new_dataset\\OG'
+pathname2 = 'C:\\Users\\u1056\\sfx\\images_sfx\\Original_new_dataset\\' 
+
+pathname1 = 'C:\\Users\\u1056\\sfx\\images_sfx\\Visible_cracks_new_dataset_\\OG'
+pathname2 = 'C:\\Users\\u1056\\sfx\\images_sfx\\Visible_cracks_new_dataset_\\'
+
+
 # pathname1 = 'C:\\Users\\u1056\\sfx\\images_sfx\\Original_from_test_matrix\\OG'
 # pathname2 = 'C:\\Users\\u1056\\sfx\\images_sfx\\Original_from_test_matrix\\' 
 
