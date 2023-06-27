@@ -4,17 +4,17 @@ import matplotlib.pyplot as plt
 import seaborn as sns
 
 
-# case_study_df = pd.read_excel('/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Coats_case_study_code/Coats_case_studies.xlsx')
-# kdiff_df = pd.read_csv('/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Coats_case_study_code/Coats_kdiff_dataframe.csv')
-kdiff_df = pd.read_csv('C:\\Users\\u1056\\sfx\\sfx_ML\\sfx_ML\\Feature_gathering\\New_Crack_Len_FULL_OG_dataframe.csv')
-# """ Limiting the study to cases with only one fracture """
-# case_study_df = case_study_df[case_study_df['Num of Fx'] == 1]
+case_study_df = pd.read_excel('/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Coats_case_study_code/Coats_case_studies.xlsx')
+kdiff_df = pd.read_csv('/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Coats_case_study_code/Coats_kdiff_dataframe.csv')
 
 # """ Limiting the study to cases with 2 or less crack fronts """
 # case_study_df = case_study_df[case_study_df['Num of Crack Fronts'] <= 2]
 
-# """ Limiting the study to cases where fracture is on parietal """
-# case_study_df = case_study_df[case_study_df['Location - Stats'] == "parietal"]
+""" Limiting the study to cases with 2 or less crack fronts """
+case_study_df = case_study_df[case_study_df['Num of Crack Fronts'] <= 2]
+
+""" Limiting the study to cases where fracture is on parietal """
+case_study_df = case_study_df[case_study_df['Location - Stats'] == "parietal"]
 
 """gets the number of occurances in df where the column "column_name" is equal to "value_to_count" """
 def get_number_of_occurances(df, column_name, value_to_count):
@@ -57,15 +57,15 @@ kdiff_df = kdiff_df.drop(['Unnamed: 0', 'front 0 x', 'front 0 y', 'front 0 z', '
        'abs_val_mean_kink', 'mean_kink', 'sum_kink', 'abs_val_sum_kink',
        'avg_ori', 'angle_btw', 'phi', 'theta'], axis=1)
 
-# case_study_df = case_study_df.drop(['Image', 'Num of Fx', 'Num of Crack Fronts', 'Branching ', 
-#                                     'Unnamed: 36','Unnamed: 37','Unnamed: 38','Unnamed: 39',
-#                                     'Cross-Suture', 'Final Straight Line Length (mm)',
-#                                     'Gender', 'Ethnicity', 'Age Bin', 'Age (mo)', 'Description',
-#                                     'BC category', 'subcatgory', 'sub-subcategory', 'BC Notes',
-#                                     'Surface', 'Surface COR', 'Surface Code', 'Location - Stats',
-#                                     'Location - Descriptive', 'Fx Notes', 'SS', 'CAP', 'Category',
-#                                     'Witness', 'Witness Notes', 'STS Location', 'ICH/ICI',
-#                                     'ICH/ICI Notes (small unless O/W)', 'General Notes', 'STAT PLAN'], axis=1)
+case_study_df = case_study_df.drop(['Image', 'Num of Fx', 'Num of Crack Fronts', 'Branching ', 
+                                    'Unnamed: 36','Unnamed: 37','Unnamed: 38','Unnamed: 39',
+                                    'Cross-Suture', 'Final Straight Line Length (mm)',
+                                    'Gender', 'Ethnicity', 'Age Bin', 'Age (mo)', 'Description',
+                                    'BC category', 'subcatgory', 'sub-subcategory', 'BC Notes',
+                                    'Surface', 'Surface COR', 'Surface Code', 'Location - Stats',
+                                    'Location - Descriptive', 'Fx Notes', 'SS', 'CAP', 'Category',
+                                    'Witness', 'Witness Notes', 'STS Location', 'ICH/ICI',
+                                    'ICH/ICI Notes (small unless O/W)', 'General Notes', 'STAT PLAN'], axis=1)
 
 def get_mins_and_maxes(df):
     mean = df.mean()
@@ -106,9 +106,9 @@ def histogram(df1, column_name_df1, mean_1, std_1, what_are_we_comparing, x_limi
     plt.legend()
     plt.show()
     image_name = f"{title}.png".replace(" ", "_")
-    # plt.savefig(f"/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Coats_case_study_code/{image_name}")
+    plt.savefig(f"/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Coats_case_study_code/{image_name}")
     plt.close()
-        
+
 def boxplot(df, column_name, max, min):# Plotting boxplot with maximum and minimum values
     sns.boxplot(data=df, x=column_name)
     plt.text(0.9, max[column_name], f"Max: {max[column_name]}")
@@ -135,24 +135,24 @@ def scatter_plot(df, column_name, median, mode, what_are_we_comparing):
 
 
 # Histograms comparing crack len
-xlimits = (0, 250)
-# histogram(case_study_df, 'Final True Line Length (mm)', mean_1, std_1, 'crack length', x_limits=xlimits)
+xlimits = (0, 140)
+histogram(case_study_df, 'Final True Line Length (mm)', mean_1, std_1, 'crack length', x_limits=xlimits)
 histogram(kdiff_df, 'crack len', mean_2, std_2, 'crack length', x_limits=xlimits)
 
-# # Histograms comparing Linearity
-# xlimits = (0.75, 2.1)
-# histogram(case_study_df, 'Linearity', mean_1, std_1, 'Linearity', x_limits=xlimits)
-# histogram(kdiff_df, 'coats_linearity', mean_2, std_2, 'Linearity', x_limits=xlimits)
+# Histograms comparing Linearity
+xlimits = (0.75, 2.1)
+histogram(case_study_df, 'Linearity', mean_1, std_1, 'Linearity', x_limits=xlimits)
+histogram(kdiff_df, 'coats_linearity', mean_2, std_2, 'Linearity', x_limits=xlimits)
 
 # # Histograms comparing Orientation
 # xlimits = (0, 100)
 # histogram(case_study_df, 'Final Orient', mean_1, std_1, 'Orientation', x_limits=xlimits)
 # histogram(kdiff_df, 'coats_orientation', mean_2, std_2, 'Orientation', x_limits=xlimits)
 
-# # Histograms comparing Height
-# xlimits = (0,4)
-# histogram(case_study_df, 'BC height', mean_1, std_1, 'Height', x_limits=xlimits)
-# histogram(kdiff_df, 'height', mean_2, std_2, 'Height', x_limits=xlimits)
+# Histograms comparing Height
+xlimits = (0,4)
+histogram(case_study_df, 'BC height', mean_1, std_1, 'Height', x_limits=xlimits)
+histogram(kdiff_df, 'height', mean_2, std_2, 'Height', x_limits=xlimits)
 
 
 # side_by_side_plot(case_study_df, kdiff_df, kdiff_col='coats_orientation', coats_col="Final Orient", title="Orient vs height", ylim=(0,100))
@@ -166,6 +166,10 @@ num_suture_to_suture_Coats = get_number_of_occurances(case_study_df, "Suture to 
 
 print(f"Total k-diff S2S = {num_suture_to_suture_kdiff}. percentage = {num_suture_to_suture_kdiff / len(kdiff_df)}")
 print(f"Total Case_study S2S = {num_suture_to_suture_Coats}. percentage = {num_suture_to_suture_Coats / len(case_study_df)}")
+full_case_study_df.to_csv(f"/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Coats_case_study_code/Filtered_cases_for_Yousef.csv")
 
-
+"""getting cases where the final crack len is greater than 100mm for yousef """
+long_crack_len_cases = full_case_study_df[full_case_study_df['Final True Line Length (mm)'] > 100]
+print('all image ID\'s used in this analysis: \n' + str(full_case_study_df['Image'].to_list()))
+print('long crack len cases = \n' + str(long_crack_len_cases['Image'].to_list()))
 print("done")
