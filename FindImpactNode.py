@@ -150,13 +150,15 @@ def get_all_impact_node_sites(folder_name):
         print(f"num ties for min distance = {min_distance[4]}")
         print("moving on...")
 
+    save_impact_sites(min_distance_locations)#just added this to see if thats why some of the impact sites are nan
+
     return min_distance_locations, Skull_nodes['RPA1_5#PART-1\n'], impact_bones
 
 def plot_impact_sites(parietal_nodes, min_distance_locations):
     fig = plt.figure(figsize=(8,8))
     ax = fig.add_subplot(111, projection='3d')
     # Plot the parietal points lightly
-    ax.scatter(parietal_node_locations[:,0], parietal_node_locations[:,1], parietal_node_locations[:,2], color='blue', alpha=0.1, label='parietal_nodes')
+    ax.scatter(parietal_nodes[:,0], parietal_nodes[:,1], parietal_nodes[:,2], color='blue', alpha=0.1, label='parietal_nodes')
 
     # Plot the impact points more heavily
     ax.scatter(min_distance_locations[:,0], min_distance_locations[:,1], min_distance_locations[:,2], color='red', alpha=0.3, label='impact_sites')
@@ -206,11 +208,11 @@ folder_name = "F:\\Jake\\good_simies\\"
 
 min_distance_locations, parietal_nodes, impact_bones = get_all_impact_node_sites(folder_name)
 parietal_nodes = np.asarray(parietal_nodes)
-parietal_node_locations = parietal_nodes[:,1:]
+parietal_node_locations = parietal_nodes[:,1:] #parietal_node_locations doesnt include the node number, parietal_nodes does include the node number
 impact_nodes = np.array(list(min_distance_locations.values()))
-plot_impact_sites(parietal_nodes, impact_nodes)
+plot_impact_sites(parietal_node_locations, impact_nodes)
 
-df = add_impact_sites_to_df('C:\\Users\\u1056\\sfx\\sfx_ML\\sfx_ML\\Feature_gathering\\', 'FULL_OG_dataframe.csv','C:\\Users\\u1056\\sfx\\sfx_ML\\sfx_ML\\Feature_gathering\\','impact_sites.json')
+df = add_impact_sites_to_df('C:\\Users\\u1056\\sfx\\sfx_ML\\sfx_ML\\Feature_gathering\\', 'New_Crack_Len_FULL_OG_dataframe.csv','C:\\Users\\u1056\\sfx\\sfx_ML\\sfx_ML\\Feature_gathering\\','impact_sites.json')
 
 print(df)
 print("done")
