@@ -189,7 +189,7 @@ def get_unique_front_locations(simulation_folder, simulation):
 
     return unique_front_0, unique_front_1
 
-""" gets the total crack length based on euclidean distance between each front location """
+""" gets the total crack length based on euclidean distance between each crack node location """
 def get_crack_len(outer_surface_nodes, main_side_nodes, node_locations, front_nodes):
 
     main_side_surface_nodes = {}
@@ -255,7 +255,10 @@ def get_crack_len(outer_surface_nodes, main_side_nodes, node_locations, front_no
     #         crack_len_line = line
 
     # crack_len = float(crack_len_line.split(",")[-1].replace("]]\n", "").replace("INFO:root:crack_length :  [[", ""))
-
+    ''' remove all of the outliers - i think this happens when it jumps from one end of the crack to the other end. '''
+    for node in ordered_main_side_surface_nodes:    
+        if(node[0] > 3):
+            ordered_main_side_surface_nodes.remove(node)
     return np.sum(np.array(ordered_main_side_surface_nodes)[:,0])
 
 
