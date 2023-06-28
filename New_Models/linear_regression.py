@@ -23,7 +23,7 @@ def parody_plot(y_test, y_pred_test, fold_no, saving_folder, label_to_predict, m
 
 '''
 splits the data into 5 different k-folds of test and training sets
-then runs GPR on each of the training sets
+then runs Linear Regression on each of the training sets
 then evaluates the models based on their respective test sets.
 '''
 def Kfold_Linear_Regression(full_dataset, raw_images, full_dataset_labels, important_features, saving_folder, label_to_predict, save_data=True): #TODO change title for different models
