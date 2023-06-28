@@ -18,10 +18,10 @@ it also turns the 'impact_sites' column from strings into the actual arrays.
 def read_dataset(dataset_filepath):
     dataset = pd.read_csv(dataset_filepath)
     dataset = dataset[dataset.filter(regex='^(?!Unnamed)').columns] #filtering out the "Unnamed" columns that pandas adds to the dataframes when it is read from a csv.
-    impact_site_strings = dataset['impact_sites'].to_numpy()
-    impact_points = []
-    for point in impact_site_strings: impact_points.append(eval(point)) #turning the string that looks like an array into an actual array 
-    dataset['impact_sites'] = impact_points
+    # impact_site_strings = dataset['impact_sites'].to_numpy()
+    # impact_points = []
+    # for point in impact_site_strings: impact_points.append(eval(point)) #turning the string that looks like an array into an actual array 
+    # dataset['impact_sites'] = impact_points
     return dataset
 
 ''' 
@@ -133,7 +133,7 @@ prepares the full dataset for regression with a single output from the given pat
 def prepare_dataset_Single_Output_Regression(full_dataset_pathname, image_folder, label_to_predict, all_labels, saving_folder=None, maximum_p_value=0.05):
     dataset = read_dataset(full_dataset_pathname)
     #adding images to the dataset
-    raw_images = get_images_from_dataset(dataset, image_folder)
+    # raw_images = get_images_from_dataset(dataset, image_folder)
     corr_matrix, p_matrix, important_features = Pearson_correlation(dataset, label_to_predict, maximum_p_value=maximum_p_value) #changed this from .05 to .01 on 5/22/23
     dataset = remove_unwanted_labels(dataset, label_to_predict, all_labels)
     full_dataset_labels = dataset[label_to_predict].to_numpy()
@@ -143,7 +143,8 @@ def prepare_dataset_Single_Output_Regression(full_dataset_pathname, image_folder
     correlated_featureset = dataset[important_features]
     print(corr_matrix[important_features])
     print(p_matrix[important_features])
-    return correlated_featureset, raw_images, full_dataset_labels, important_features
+    # return correlated_featureset, raw_images, full_dataset_labels, important_features
+    return correlated_featureset, full_dataset_labels, important_features
 
 '''
 prepares the full dataset for classification using k-means clustering from the given pathname, returning...

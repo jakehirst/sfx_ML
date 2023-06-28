@@ -214,13 +214,13 @@ def Kfold_Gaussian_Process_Regression(full_dataset, raw_images, full_dataset_lab
     fold_no = 1
     for train_index, test_index in kf5.split(rnge):
         train_df = full_dataset.iloc[train_index]
-        train_images = raw_images[train_index]
+        # train_images = raw_images[train_index]
         y_train = full_dataset_labels[train_index]
         test_df = full_dataset.iloc[test_index]
-        test_images = raw_images[test_index]
+        # test_images = raw_images[test_index]
         y_test = full_dataset_labels[test_index]
         
-        kernel = ConstantKernel(1.0) + ConstantKernel(1.0) * RBF(10)  + WhiteKernel(5) #TODO experiment with the kernel... but this one seems to work.
+        kernel = ConstantKernel(1.0) + ConstantKernel(1.0) * RBF(length_scale=1e1, length_scale_bounds=(1e-2, 1e3))  + WhiteKernel(noise_level=5, noise_level_bounds=(1e-2, 1e3)) #TODO experiment with the kernel... but this one seems to work.
         model = GaussianProcessRegressor(kernel=kernel)
         model.fit(train_df.to_numpy(), y_train)
         y_pred_train, y_pred_train_std = model.predict(train_df.to_numpy(), return_std=True)

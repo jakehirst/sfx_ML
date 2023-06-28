@@ -1,44 +1,55 @@
 from GPR import *
 
 
-full_dataset_pathname = "/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Feature_gathering/FULL_OG_dataframe_with_impact_sites_and_Jimmy_RF.csv"
+full_dataset_pathname = "/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Feature_gathering/New_Crack_Len_FULL_OG_dataframe.csv"
+# full_dataset_pathname = "/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Feature_gathering/FULL_OG_dataframe_with_impact_sites_and_Jimmy_RF.csv"
 image_folder = '/Users/jakehirst/Desktop/sfx/sfx_pics/jake/images_sfx/new_dataset/Visible_cracks'
-all_labels = ['height', 'phi', 'theta', 'impact site x', 'impact site y', 'impact site z', 'Jimmy_impact site x', 'Jimmy_impact site y', 
-              'Jimmy_impact site z', 'Jimmy_impact site r', 'Jimmy_impact site phi', 'Jimmy_impact site theta']
-
+all_labels = ['height', 'phi', 'theta', 
+              'impact site x', 'impact site y', 'impact site z', 
+              'impact site r', 'impact site phi', 'impact site theta']
 
 
     
-# label_to_predict = 'Jimmy_impact site x'
-# saving_folder=f'/Users/jakehirst/Desktop/model_results/GPR_{label_to_predict}/'
+label_to_predict = 'impact site x'
+saving_folder=f'/Users/jakehirst/Desktop/model_results/NEW_DATASET_GPR_{label_to_predict}/'
+if(not os.path.exists(saving_folder)): os.mkdir(saving_folder)
+correlated_featureset, full_dataset_labels, important_features = prepare_dataset_Single_Output_Regression(full_dataset_pathname, image_folder, label_to_predict, all_labels, saving_folder=None, maximum_p_value=0.05)
+#correlated_featureset = remove_ABAQUS_features(correlated_featureset)
+top_5_features = ['init phi', 'front 1 r', 'avg_ori', 'init r', 'init x']
+correlated_featureset = correlated_featureset[top_5_features]
+raw_images = []
+Kfold_Gaussian_Process_Regression(correlated_featureset, raw_images, full_dataset_labels, important_features, saving_folder, label_to_predict)
+
+
+label_to_predict = 'impact site y'
+saving_folder=f'/Users/jakehirst/Desktop/model_results/NEW_DATASET_GPR_{label_to_predict}/'
+if(not os.path.exists(saving_folder)): os.mkdir(saving_folder)
+correlated_featureset, full_dataset_labels, important_features = prepare_dataset_Single_Output_Regression(full_dataset_pathname, image_folder, label_to_predict, all_labels, saving_folder=None, maximum_p_value=0.05)
+# correlated_featureset = remove_ABAQUS_features(correlated_featureset)
+top_5_features = ['front_0_z', 'max_kink', 'angle_btw', 'init theta', 'init y']
+correlated_featureset = correlated_featureset[top_5_features]
+raw_images = []
+Kfold_Gaussian_Process_Regression(correlated_featureset, raw_images, full_dataset_labels, important_features, saving_folder, label_to_predict)
+
+
+label_to_predict = 'impact site z'
+saving_folder=f'/Users/jakehirst/Desktop/model_results/NEW_DATASET_GPR_{label_to_predict}/'
+if(not os.path.exists(saving_folder)): os.mkdir(saving_folder)
+correlated_featureset, full_dataset_labels, important_features = prepare_dataset_Single_Output_Regression(full_dataset_pathname, image_folder, label_to_predict, all_labels, saving_folder=None, maximum_p_value=0.05)
+# correlated_featureset = remove_ABAQUS_features(correlated_featureset)
+top_5_features = ['front_0_x', 'init phi', 'init y', 'init z', 'init theta']
+correlated_featureset = correlated_featureset[top_5_features]
+raw_images = []
+Kfold_Gaussian_Process_Regression(correlated_featureset, raw_images, full_dataset_labels, important_features, saving_folder, label_to_predict)
+
+# label_to_predict = 'height'
+# saving_folder=f'/Users/jakehirst/Desktop/model_results/NEW_DATASET_GPR_{label_to_predict}/'
 # if(not os.path.exists(saving_folder)): os.mkdir(saving_folder)
 # correlated_featureset, raw_images, full_dataset_labels, important_features = prepare_dataset_Single_Output_Regression(full_dataset_pathname, image_folder, label_to_predict, all_labels, saving_folder=None, maximum_p_value=0.05)
 # correlated_featureset = remove_ABAQUS_features(correlated_featureset)
-# top_5_features = ['Jimmy_init phi', 'Jimmy_front 1 r', 'avg_ori', 'Jimmy_init r', 'Jimmy_init x']
-# correlated_featureset = correlated_featureset[top_5_features]
-# Kfold_Gaussian_Process_Regression(correlated_featureset, raw_images, full_dataset_labels, important_features, saving_folder)
-
-
-# label_to_predict = 'Jimmy_impact site y'
-# saving_folder=f'/Users/jakehirst/Desktop/model_results/GPR_{label_to_predict}/'
-# if(not os.path.exists(saving_folder)): os.mkdir(saving_folder)
-# correlated_featureset, raw_images, full_dataset_labels, important_features = prepare_dataset_Single_Output_Regression(full_dataset_pathname, image_folder, label_to_predict, all_labels, saving_folder=None, maximum_p_value=0.05)
-# correlated_featureset = remove_ABAQUS_features(correlated_featureset)
-# top_5_features = ['Jimmy_front_0_z', 'max_kink', 'angle_btw', 'Jimmy_init theta', 'Jimmy_init y']
-# correlated_featureset = correlated_featureset[top_5_features]
-# Kfold_Gaussian_Process_Regression(correlated_featureset, raw_images, full_dataset_labels, important_features, saving_folder)
-
-
-# label_to_predict = 'Jimmy_impact site z'
-# saving_folder=f'/Users/jakehirst/Desktop/model_results/GPR_{label_to_predict}/'
-# if(not os.path.exists(saving_folder)): os.mkdir(saving_folder)
-# correlated_featureset, raw_images, full_dataset_labels, important_features = prepare_dataset_Single_Output_Regression(full_dataset_pathname, image_folder, label_to_predict, all_labels, saving_folder=None, maximum_p_value=0.05)
-# correlated_featureset = remove_ABAQUS_features(correlated_featureset)
-# top_5_features = ['Jimmy_front_0_x', 'Jimmy_init phi', 'Jimmy_init y', 'Jimmy_init z', 'Jimmy_init theta']
-# correlated_featureset = correlated_featureset[top_5_features]
-# Kfold_Gaussian_Process_Regression(correlated_featureset, raw_images, full_dataset_labels, important_features, saving_folder)
-
-
+# # top_5_features = ['Jimmy_front_0_x', 'Jimmy_init phi', 'Jimmy_init y', 'Jimmy_init z', 'Jimmy_init theta']
+# # correlated_featureset = correlated_featureset[top_5_features]
+# Kfold_Gaussian_Process_Regression(correlated_featureset, raw_images, full_dataset_labels, important_features, saving_folder, label_to_predict)
 
 
 """ plotting all the predictions for specific models """
