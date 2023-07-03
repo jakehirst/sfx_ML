@@ -1,13 +1,13 @@
 from linear_regression import *
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.pipeline import make_pipeline
-
+from sklearn.linear_model import Lasso
 '''
 splits the data into 5 different k-folds of test and training sets
 then runs GPR on each of the training sets
 then evaluates the models based on their respective test sets.
 '''
-def Kfold_Polynomial_Regression(degree, full_dataset, raw_images, full_dataset_labels, important_features, saving_folder, label_to_predict, save_data=True): #TODO change title for different models
+def Kfold_Lasso_Regression(alpha, full_dataset, raw_images, full_dataset_labels, important_features, saving_folder, label_to_predict, save_data=True): #TODO change title for different models
     # correlated_featureset, raw_images, full_dataset_labels = prepare_dataset_Single_Output_Regression(full_dataset_pathname, image_folder, label_to_predict, all_labels, saving_folder=None, maximum_p_value=0.01)
 
     full_dataset = remove_ABAQUS_features(full_dataset)
@@ -24,21 +24,24 @@ def Kfold_Polynomial_Regression(degree, full_dataset, raw_images, full_dataset_l
         # test_images = raw_images[test_index]
         y_test = full_dataset_labels[test_index]
         
-        model = make_pipeline(PolynomialFeatures(degree),LinearRegression())
-        model.fit(train_df.to_numpy(), y_train)
+        # Create the Lasso regression model
+        # alpha = Regularization strength
+        model = Lasso(alpha=alpha)
+        
+        model.fit(train_df.to_numpy(), y_train)        
         
         y_pred_train  = model.predict(train_df.to_numpy())
         y_pred_test = model.predict(test_df.to_numpy())
         
 
         if(save_data):
-            save_model(model, fold_no, saving_folder, model_type=f'poly_reg_degree') #TODO change model type for different models
+            save_model(model, fold_no, saving_folder, model_type=f'lasso_reg_alpha') #TODO change model type for different models
             collect_and_save_metrics(y_test, y_pred_test, train_df.__len__(), len(train_df.columns), full_dataset.columns.to_list(), fold_no, saving_folder)
             #plot_test_predictions_heatmap(y_test, y_pred_test, y_pred_test_std, fold_no, saving_folder)
-            parody_plot(y_test, y_pred_test, fold_no, saving_folder, label_to_predict, model_type=f'Polynomial Regression degree {degree}')
+            parody_plot(y_test, y_pred_test, fold_no, saving_folder, label_to_predict, model_type=f'Lasso Regression alpha={alpha}')
+            
             
         models.append((model, y_test, test_df))
         fold_no += 1
         
         
-

@@ -33,6 +33,7 @@ from datetime import date
 from prepare_data import *
 from keras.utils import to_categorical
 import seaborn as sns
+from Metric_collection import *
 
 
 ''' 
@@ -82,13 +83,6 @@ def CNN_image(image_shape):
     img_output = tf.keras.layers.Dense(8, activation='relu')(flat)
     return input, img_output
 
-''' 
-returns the adjusted r^2 value of the given predictions
-'''
-def adjusted_r2(true_values, predictions, num_samples, num_features):
-    r2 = r2_score(true_values, predictions)
-    adjusted_r2 = 1 - ((1 - r2) * (num_samples - 1) / (num_samples - num_features - 1))
-    return adjusted_r2
 
 '''
 runs a Classification CNN on the given dataset, doing a 5 fold cross validation and testing it on a test dataset pulled from the full_dataset
@@ -201,17 +195,19 @@ def run_kfold_Categorical_CNN(full_dataset, raw_images, full_dataset_labels, pat
 runs a dual input (image and 1D features) Regression CNN on the given dataset, doing a 5 fold cross validation and testing it 
 on a test dataset pulled from the full_dataset
 '''
-def run_kfold_Regression_CNN(full_dataset, raw_images, full_dataset_labels, patience, max_epochs, num_outputs=1, lossfunc='mae', saving_folder='/Users/jakehirst/Desktop/model_results'):
+def run_kfold_Regression_CNN(full_dataset, raw_images, full_dataset_labels, patience, max_epochs, num_outputs=1, lossfunc='mae', saving_folder='/Users/jakehirst/Desktop/model_results', use_images=True):
 
     #setting aside a test dataset
     np.random.seed(6) #this should reset the randomness to the same randomness so that the test_indicies are the same throughout the tests
     test_indicies = np.random.choice(np.arange(0, len(full_dataset)), size=30, replace=False) #30 for the test dataset
     test_df = full_dataset.iloc[test_indicies]
-    test_images = raw_images[test_indicies]
     y_test = full_dataset_labels[test_indicies]
     full_dataset = full_dataset.drop(test_indicies, axis=0)
-    raw_images = np.delete(raw_images, test_indicies, axis=0)
     full_dataset_labels = np.delete(full_dataset_labels, test_indicies, axis=0)
+    
+    if(use_images):
+        test_images = raw_images[test_indicies]
+        raw_images = np.delete(raw_images, test_indicies, axis=0)
 
     models = []
     
@@ -220,44 +216,79 @@ def run_kfold_Regression_CNN(full_dataset, raw_images, full_dataset_labels, pati
     fold_no = 1
     for train_index, val_index in kf5.split(rnge):
         train_df = full_dataset.iloc[train_index]
-        train_images = raw_images[train_index]
         y_train = full_dataset_labels[train_index]
         val_df = full_dataset.iloc[val_index]
-        val_images = raw_images[val_index]
         y_val = full_dataset_labels[val_index]
         
         csv_output, csv_input = CNN_1D(train_df)
-        image_input, image_output= CNN_image(val_images[0].shape)
-        x = tf.keras.layers.concatenate([image_output, csv_output], name="concat_csv_img")
-        # x = tf.keras.layers.Dense(units= 32, activation='relu')(x)
-        predictions = tf.keras.layers.Dense(units=num_outputs)(x) 
-        model = tf.keras.Model(inputs = [image_input, csv_input], outputs = [predictions])
+        
+        #use_images makes the CNN use the images in train_images/val_images as inputs 
+        if(use_images):
+            train_images = raw_images[train_index]
+            val_images = raw_images[val_index]
 
-        model.compile(
-            optimizer=tf.keras.optimizers.Adam(),#can define learning rate here
-        loss = lossfunc,
-        )
-    
-        history = model.fit((train_images, train_df), 
-                        y_train, 
-                        epochs=max_epochs, 
-                        callbacks=[
-                            tf.keras.callbacks.EarlyStopping(
-                                # monitor='loss',
-                                monitor='val_loss',
-                                patience=patience,
-                                restore_best_weights=True
+            
+            image_input, image_output= CNN_image(val_images[0].shape)
+            x = tf.keras.layers.concatenate([image_output, csv_output], name="concat_csv_img")
+            # x = tf.keras.layers.Dense(units= 32, activation='relu')(x)
+            predictions = tf.keras.layers.Dense(units=num_outputs)(x) 
+            model = tf.keras.Model(inputs = [image_input, csv_input], outputs = [predictions])
+            
+            
+            model.compile(
+                optimizer=tf.keras.optimizers.Adam(),#can define learning rate here
+                loss = lossfunc,
+            )
+        
+            history = model.fit((train_images, train_df), 
+                            y_train, 
+                            epochs=max_epochs, 
+                            callbacks=[
+                                tf.keras.callbacks.EarlyStopping(
+                                    # monitor='loss',
+                                    monitor='val_loss',
+                                    patience=patience,
+                                    restore_best_weights=True
+                                )
+                            ],
+                            validation_data=((val_images, val_df), y_val),
+                            verbose=1,
                             )
-                        ],
-                        validation_data=((val_images, val_df), y_val),
-                        verbose=1,
-                        )
+            
+        else:
+            x = csv_output
+            predictions = tf.keras.layers.Dense(units=num_outputs)(x) 
+            model = tf.keras.Model(inputs = [csv_input], outputs = [predictions])
+            model.compile(
+                optimizer=tf.keras.optimizers.Adam(),#can define learning rate here
+                loss = lossfunc,
+            )
+        
+            history = model.fit((train_df), 
+                            y_train, 
+                            epochs=max_epochs, 
+                            callbacks=[
+                                tf.keras.callbacks.EarlyStopping(
+                                    # monitor='loss',
+                                    monitor='val_loss',
+                                    patience=patience,
+                                    restore_best_weights=True
+                                )
+                            ],
+                            validation_data=((val_df), y_val),
+                            verbose=1,
+                            )
+
+
 
         model.save(saving_folder + f"/trained_model_fold_{fold_no}.h5")        
         print("here")
-        val_pred = model.predict([val_images, val_df])
-        test_pred = model.predict([test_images, test_df])
-        
+        if(use_images):
+            val_pred = model.predict([val_images, val_df])
+            test_pred = model.predict([test_images, test_df])
+        else:
+            val_pred = model.predict([val_df])
+            test_pred = model.predict([test_df])
         val_r2 = r2_score(y_val, val_pred)
         val_adj_r2 = adjusted_r2(y_val, val_pred, len(full_dataset), len(full_dataset.columns))
         val_mae = mean_absolute_error(y_val, val_pred)

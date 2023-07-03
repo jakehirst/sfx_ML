@@ -1,6 +1,6 @@
 from CNN import *
 
-full_dataset_pathname = "/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Feature_gathering/FULL_OG_dataframe_with_impact_sites.csv"
+full_dataset_pathname = "/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Feature_gathering/New_Crack_Len_FULL_OG_dataframe.csv"
 image_folder = '/Users/jakehirst/Desktop/sfx/sfx_pics/jake/images_sfx/new_dataset/Visible_cracks'
 
 
@@ -20,11 +20,12 @@ image_folder = '/Users/jakehirst/Desktop/sfx/sfx_pics/jake/images_sfx/new_datase
 # run_kfold_Categorical_CNN(correlated_featureset, raw_images, full_dataset_labels, patience=100, max_epochs=1000, saving_folder=saving_folder)
 
 
-full_dataset_pathname = "/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Feature_gathering/FULL_OG_dataframe_with_impact_sites_and_Jimmy_RF.csv"
+full_dataset_pathname = "/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Feature_gathering/New_Crack_Len_FULL_OG_dataframe.csv"
 image_folder = '/Users/jakehirst/Desktop/sfx/sfx_pics/jake/images_sfx/new_dataset/Visible_cracks'
 
-all_labels = ['height', 'phi', 'theta', 'impact site x', 'impact site y', 'impact site z', 'Jimmy_impact site x', 'Jimmy_impact site y', 
-              'Jimmy_impact site z', 'Jimmy_impact site r', 'Jimmy_impact site phi', 'Jimmy_impact site theta']
+all_labels = ['height', 'phi', 'theta', 
+              'impact site x', 'impact site y', 'impact site z']
+
 
 # lossfunc = 'mean_distance_error_phi_theta',
 # lossfunc = 'mean_absolute_error', 
@@ -34,43 +35,52 @@ all_labels = ['height', 'phi', 'theta', 'impact site x', 'impact site y', 'impac
 # lossfunc = tf.keras.losses.Huber()
 # lossfunc = tf.keras.losses.LogCosh()
 
-label_to_predict = 'Jimmy_impact site x'
-saving_folder=f'/Users/jakehirst/Desktop/model_results/Single_output_regression_{label_to_predict}/'
-correlated_featureset, raw_images, full_dataset_labels = prepare_dataset_Single_Output_Regression(full_dataset_pathname, image_folder, label_to_predict, all_labels, saving_folder=None)
-run_kfold_Regression_CNN(correlated_featureset, raw_images, full_dataset_labels, patience=100, max_epochs=2000, num_outputs=1, lossfunc='mean_absolute_error', saving_folder=saving_folder)
+# label_to_predict = 'impact site x'
+# saving_folder=f'/Users/jakehirst/Desktop/model_results/MODEL_COMPARISONS/CNN_no_images_{label_to_predict}/'
+# correlated_featureset, full_dataset_labels, important_features = prepare_dataset_Single_Output_Regression(full_dataset_pathname, image_folder, label_to_predict, all_labels, saving_folder=None)
+# features_to_keep = ['crack len', 'init phi', 'init x']
+# correlated_featureset = correlated_featureset[features_to_keep]
+# raw_images = []
+# run_kfold_Regression_CNN(correlated_featureset, raw_images, full_dataset_labels, patience=100, max_epochs=2000, num_outputs=1, lossfunc='mean_squared_error', saving_folder=saving_folder, use_images=False)
 
-label_to_predict = 'Jimmy_impact site y'
-saving_folder=f'/Users/jakehirst/Desktop/model_results/Single_output_regression_{label_to_predict}/'
-correlated_featureset, raw_images, full_dataset_labels = prepare_dataset_Single_Output_Regression(full_dataset_pathname, image_folder, label_to_predict, all_labels, saving_folder=None)
-run_kfold_Regression_CNN(correlated_featureset, raw_images, full_dataset_labels, patience=100, max_epochs=2000, num_outputs=1, lossfunc='mean_absolute_error', saving_folder=saving_folder)
+label_to_predict = 'impact site y'
+saving_folder=f'/Users/jakehirst/Desktop/model_results/MODEL_COMPARISONS/CNN_no_images_{label_to_predict}/'
+correlated_featureset, full_dataset_labels, important_features = prepare_dataset_Single_Output_Regression(full_dataset_pathname, image_folder, label_to_predict, all_labels, saving_folder=None)
+features_to_keep = ['max_kink', 'init y']
+correlated_featureset = correlated_featureset[features_to_keep]
+raw_images = []
+run_kfold_Regression_CNN(correlated_featureset, raw_images, full_dataset_labels, patience=100, max_epochs=2000, num_outputs=1, lossfunc='mean_squared_error', saving_folder=saving_folder, use_images=False)
 
 
-label_to_predict = 'Jimmy_impact site z'
-saving_folder=f'/Users/jakehirst/Desktop/model_results/Single_output_regression_{label_to_predict}/'
-correlated_featureset, raw_images, full_dataset_labels = prepare_dataset_Single_Output_Regression(full_dataset_pathname, image_folder, label_to_predict, all_labels, saving_folder=None)
-run_kfold_Regression_CNN(correlated_featureset, raw_images, full_dataset_labels, patience=100, max_epochs=2000, num_outputs=1, lossfunc='mean_absolute_error', saving_folder=saving_folder)
+# label_to_predict = 'impact site z'
+# saving_folder=f'/Users/jakehirst/Desktop/model_results/MODEL_COMPARISONS/CNN_no_images_{label_to_predict}/'
+# correlated_featureset, full_dataset_labels, important_features = prepare_dataset_Single_Output_Regression(full_dataset_pathname, image_folder, label_to_predict, all_labels, saving_folder=None)
+# features_to_keep = ['init theta']
+# correlated_featureset = correlated_featureset[features_to_keep]
+# raw_images = []
+# run_kfold_Regression_CNN(correlated_featureset, raw_images, full_dataset_labels, patience=100, max_epochs=2000, num_outputs=1, lossfunc='mean_squared_error', saving_folder=saving_folder, use_images=False)
 
 
-label_to_predict = 'Jimmy_impact site x'
-saving_folder=f'/Users/jakehirst/Desktop/model_results/Single_output_regression_REMOVED_ABAQUS_REFERENCES_{label_to_predict}/'
-correlated_featureset, raw_images, full_dataset_labels = prepare_dataset_Single_Output_Regression(full_dataset_pathname, image_folder, label_to_predict, all_labels, saving_folder=None)
-features_to_remove = ['init x', 'init y', 'init z', 'front 0 x', 'front 0 y', 'front 0 z', 'front 1 x', 'front 1 y', 'front 1 z']
-for feature in features_to_remove:
-    if(correlated_featureset.columns.__contains__(feature)): correlated_featureset = correlated_featureset.drop(feature, axis=1)
-run_kfold_Regression_CNN(correlated_featureset, raw_images, full_dataset_labels, patience=100, max_epochs=2000, num_outputs=1, lossfunc='mean_absolute_error', saving_folder=saving_folder)
+# label_to_predict = 'Jimmy_impact site x'
+# saving_folder=f'/Users/jakehirst/Desktop/model_results/Single_output_regression_REMOVED_ABAQUS_REFERENCES_{label_to_predict}/'
+# correlated_featureset, raw_images, full_dataset_labels = prepare_dataset_Single_Output_Regression(full_dataset_pathname, image_folder, label_to_predict, all_labels, saving_folder=None)
+# features_to_remove = ['init x', 'init y', 'init z', 'front 0 x', 'front 0 y', 'front 0 z', 'front 1 x', 'front 1 y', 'front 1 z']
+# for feature in features_to_remove:
+#     if(correlated_featureset.columns.__contains__(feature)): correlated_featureset = correlated_featureset.drop(feature, axis=1)
+# run_kfold_Regression_CNN(correlated_featureset, raw_images, full_dataset_labels, patience=100, max_epochs=2000, num_outputs=1, lossfunc='mean_absolute_error', saving_folder=saving_folder)
 
-label_to_predict = 'Jimmy_impact site y'
-saving_folder=f'/Users/jakehirst/Desktop/model_results/Single_output_regression_REMOVED_ABAQUS_REFERENCES_{label_to_predict}/'
-correlated_featureset, raw_images, full_dataset_labels = prepare_dataset_Single_Output_Regression(full_dataset_pathname, image_folder, label_to_predict, all_labels, saving_folder=None)
-features_to_remove = ['init x', 'init y', 'init z', 'front 0 x', 'front 0 y', 'front 0 z', 'front 1 x', 'front 1 y', 'front 1 z']
-for feature in features_to_remove:
-    if(correlated_featureset.columns.__contains__(feature)): correlated_featureset = correlated_featureset.drop(feature, axis=1)
-run_kfold_Regression_CNN(correlated_featureset, raw_images, full_dataset_labels, patience=100, max_epochs=2000, num_outputs=1, lossfunc='mean_absolute_error', saving_folder=saving_folder)
+# label_to_predict = 'Jimmy_impact site y'
+# saving_folder=f'/Users/jakehirst/Desktop/model_results/Single_output_regression_REMOVED_ABAQUS_REFERENCES_{label_to_predict}/'
+# correlated_featureset, raw_images, full_dataset_labels = prepare_dataset_Single_Output_Regression(full_dataset_pathname, image_folder, label_to_predict, all_labels, saving_folder=None)
+# features_to_remove = ['init x', 'init y', 'init z', 'front 0 x', 'front 0 y', 'front 0 z', 'front 1 x', 'front 1 y', 'front 1 z']
+# for feature in features_to_remove:
+#     if(correlated_featureset.columns.__contains__(feature)): correlated_featureset = correlated_featureset.drop(feature, axis=1)
+# run_kfold_Regression_CNN(correlated_featureset, raw_images, full_dataset_labels, patience=100, max_epochs=2000, num_outputs=1, lossfunc='mean_absolute_error', saving_folder=saving_folder)
 
-label_to_predict = 'Jimmy_impact site z'
-saving_folder=f'/Users/jakehirst/Desktop/model_results/Single_output_regression_REMOVED_ABAQUS_REFERENCES_{label_to_predict}/'
-correlated_featureset, raw_images, full_dataset_labels = prepare_dataset_Single_Output_Regression(full_dataset_pathname, image_folder, label_to_predict, all_labels, saving_folder=None)
-features_to_remove = ['init x', 'init y', 'init z', 'front 0 x', 'front 0 y', 'front 0 z', 'front 1 x', 'front 1 y', 'front 1 z']
-for feature in features_to_remove:
-    if(correlated_featureset.columns.__contains__(feature)): correlated_featureset = correlated_featureset.drop(feature, axis=1)
-run_kfold_Regression_CNN(correlated_featureset, raw_images, full_dataset_labels, patience=100, max_epochs=2000, num_outputs=1, lossfunc='mean_absolute_error', saving_folder=saving_folder)
+# label_to_predict = 'Jimmy_impact site z'
+# saving_folder=f'/Users/jakehirst/Desktop/model_results/Single_output_regression_REMOVED_ABAQUS_REFERENCES_{label_to_predict}/'
+# correlated_featureset, raw_images, full_dataset_labels = prepare_dataset_Single_Output_Regression(full_dataset_pathname, image_folder, label_to_predict, all_labels, saving_folder=None)
+# features_to_remove = ['init x', 'init y', 'init z', 'front 0 x', 'front 0 y', 'front 0 z', 'front 1 x', 'front 1 y', 'front 1 z']
+# for feature in features_to_remove:
+#     if(correlated_featureset.columns.__contains__(feature)): correlated_featureset = correlated_featureset.drop(feature, axis=1)
+# run_kfold_Regression_CNN(correlated_featureset, raw_images, full_dataset_labels, patience=100, max_epochs=2000, num_outputs=1, lossfunc='mean_absolute_error', saving_folder=saving_folder)

@@ -3,12 +3,13 @@ from prepare_data import *
 from CNN import *
 from sklearn.model_selection import KFold
 from sklearn.gaussian_process import GaussianProcessRegressor
-from sklearn.gaussian_process.kernels import RBF, ConstantKernel, WhiteKernel
+from sklearn.gaussian_process.kernels import RBF, ConstantKernel, WhiteKernel, ExpSineSquared, DotProduct
 import matplotlib.pyplot as plt
 from sklearn.metrics import r2_score, precision_score, confusion_matrix, recall_score, f1_score
 import os
 import pickle
 import matplotlib.animation as animation
+from Metric_collection import *
 
 
 
@@ -41,22 +42,6 @@ def parody_plot_with_std(y_test, y_pred_test, y_pred_test_std, fold_no, saving_f
     # plt.show()
     plt.close()
 
-'''
-gets regression metrics comparing the predictions to the true values and saves them into the saving_folder
-'''
-def collect_and_save_metrics(y_test, y_pred_test, num_samples, num_features, important_features, fold_no, saving_folder):
-    r2 = r2_score(y_test, y_pred_test)
-    adj_r2 = adjusted_r2(y_test, y_pred_test, num_samples, num_features)
-    mae = mean_absolute_error(y_test, y_pred_test)
-    mse = mean_squared_error(y_test, y_pred_test)
-    rmse = np.sqrt(mse)
-    
-    with open(saving_folder + f'/model_metrics_fold_{fold_no}.csv', 'w', newline='') as file:
-        writer = csv.writer(file)
-        #write the header row
-        writer.writerow(['r^2', 'adj_r^2', 'MAE', 'MSE', 'RMSE', 'features_used'])
-        writer.writerow([r2, adj_r2, mae, mse, rmse, important_features])
-    return
 
 ''' 
 Converts the xs ys and zs from the ABAQUS basis into the basis that is centered at the center of mass of the skull CM, and 
@@ -206,8 +191,9 @@ then evaluates the models based on their respective test sets.
 '''
 def Kfold_Gaussian_Process_Regression(full_dataset, raw_images, full_dataset_labels, important_features, saving_folder, label_to_predict, save_data=True):
     # correlated_featureset, raw_images, full_dataset_labels = prepare_dataset_Single_Output_Regression(full_dataset_pathname, image_folder, label_to_predict, all_labels, saving_folder=None, maximum_p_value=0.01)
-    full_dataset = remove_ABAQUS_features(full_dataset)
+    #full_dataset = remove_ABAQUS_features(full_dataset)
     models = []
+    performances = []
     
     rnge = range(1, len(full_dataset)+1)
     kf5 = KFold(n_splits=5, shuffle=True)
@@ -220,8 +206,11 @@ def Kfold_Gaussian_Process_Regression(full_dataset, raw_images, full_dataset_lab
         # test_images = raw_images[test_index]
         y_test = full_dataset_labels[test_index]
         
-        kernel = ConstantKernel(1.0) + ConstantKernel(1.0) * RBF(length_scale=1e1, length_scale_bounds=(1e-2, 1e3))  + WhiteKernel(noise_level=5, noise_level_bounds=(1e-2, 1e3)) #TODO experiment with the kernel... but this one seems to work.
-        model = GaussianProcessRegressor(kernel=kernel)
+        kernel = ConstantKernel(1.0) + ConstantKernel(1.0) * RBF(length_scale=1e1, length_scale_bounds=(1e-2, 1e3))  + WhiteKernel(noise_level=2, noise_level_bounds=(1e-2, 1e2)) #TODO experiment with the kernel... but this one seems to work.
+        kernel = ConstantKernel(1.0) + ConstantKernel(1.0) * RBF() + WhiteKernel(noise_level=1)
+
+        
+        model = GaussianProcessRegressor(kernel=kernel, random_state=0, alpha=50)
         model.fit(train_df.to_numpy(), y_train)
         y_pred_train, y_pred_train_std = model.predict(train_df.to_numpy(), return_std=True)
         y_pred_test, y_pred_test_std = model.predict(test_df.to_numpy(), return_std=True)
@@ -231,11 +220,16 @@ def Kfold_Gaussian_Process_Regression(full_dataset, raw_images, full_dataset_lab
             collect_and_save_metrics(y_test, y_pred_test, train_df.__len__(), len(train_df.columns), full_dataset.columns.to_list(), fold_no, saving_folder)
             #plot_test_predictions_heatmap(y_test, y_pred_test, y_pred_test_std, fold_no, saving_folder)
             parody_plot_with_std(y_test, y_pred_test, y_pred_test_std, fold_no, saving_folder, label_to_predict)
-            
+        
+        performances.append((r2_score(y_test, y_pred_test), mean_squared_error(y_test, y_pred_test)))
         models.append((model, y_test, test_df))
         fold_no += 1
-    
-    return models
+        
+    r2s = np.array([t[0] for t in performances])
+    mse_s = np.array([t[1] for t in performances])
+    print(f'mean r^2 = {r2s.mean()}')
+    print(f'mean mse = {mse_s.mean()}')
+    return models, performances, r2s, mse_s
 
 
 

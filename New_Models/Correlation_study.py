@@ -40,15 +40,16 @@ def barplot_correlations(corr_matrix, label_to_predict):
     
 
 
-full_dataset_pathname = "/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Feature_gathering/FULL_OG_dataframe_with_impact_sites_and_Jimmy_RF.csv"
-label_to_predict = 'Jimmy_impact site z'
-all_labels = ['Unnamed: 0', 'height', 'phi', 'theta', 'impact site x', 'impact site y', 'impact site z', 'Jimmy_impact site x', 'Jimmy_impact site y', 
-              'Jimmy_impact site z', 'Jimmy_impact site r', 'Jimmy_impact site phi', 'Jimmy_impact site theta']
+full_dataset_pathname = "/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Feature_gathering/New_Crack_Len_FULL_OG_dataframe.csv"
+label_to_predict = 'impact site z'
+all_labels = ['height', 'phi', 'theta', 
+              'impact site x', 'impact site y', 'impact site z', 
+              'impact site r', 'impact site phi', 'impact site theta', 'Unnamed: 0']
 all_labels.remove(label_to_predict)
 
 df = pd.read_csv(full_dataset_pathname)
 df = df.drop(columns=all_labels)
-df = remove_ABAQUS_features(df)
+# df = remove_ABAQUS_features(df)
 corr_matrix, p_matrix, important_features = Pearson_correlation(df, label_to_predict, maximum_p_value=0.05)
 sorted_corr_matrix = corr_matrix.iloc[corr_matrix[label_to_predict].abs().argsort()]
 
@@ -58,6 +59,8 @@ top_5_features = top_5_features[len(top_5_features)-5:]
 print('\n' + str(top_5_features) + '\n')
 barplot_correlations(sorted_corr_matrix, label_to_predict)
 
+top_10 = sorted_corr_matrix[label_to_predict][len(sorted_corr_matrix)-11 : len(sorted_corr_matrix)-1]
+print(f"top 10 = \n{list(top_10._stat_axis)}")
 
 # Set x-axis label
 # plt.xlabel(corr_matrix.axes[0])
