@@ -50,7 +50,8 @@ def Kfold_Linear_Regression(full_dataset, raw_images, full_dataset_labels, impor
         
         if(save_data):
             save_model(model, fold_no, saving_folder, model_type='linear_reg') #TODO change model type for different models
-            collect_and_save_metrics(y_test, y_pred_test, train_df.__len__(), len(train_df.columns), full_dataset.columns.to_list(), fold_no, saving_folder)
+            # collect_and_save_metrics(y_test, y_pred_test, train_df.__len__(), len(train_df.columns), full_dataset.columns.to_list(), fold_no, saving_folder)
+            collect_and_save_metrics(y_train, y_pred_train, y_test, y_pred_test, list(train_df.columns), fold_no, saving_folder)
             #plot_test_predictions_heatmap(y_test, y_pred_test, y_pred_test_std, fold_no, saving_folder)
             parody_plot(y_test, y_pred_test, fold_no, saving_folder, label_to_predict, model_type='Linear Regression')
             

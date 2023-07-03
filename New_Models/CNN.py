@@ -284,21 +284,23 @@ def run_kfold_Regression_CNN(full_dataset, raw_images, full_dataset_labels, pati
         model.save(saving_folder + f"/trained_model_fold_{fold_no}.h5")        
         print("here")
         if(use_images):
+            train_pred = model.predict([train_images, train_df])
             val_pred = model.predict([val_images, val_df])
             test_pred = model.predict([test_images, test_df])
         else:
+            train_pred = model.predict([train_df])
             val_pred = model.predict([val_df])
             test_pred = model.predict([test_df])
-        val_r2 = r2_score(y_val, val_pred)
-        val_adj_r2 = adjusted_r2(y_val, val_pred, len(full_dataset), len(full_dataset.columns))
-        val_mae = mean_absolute_error(y_val, val_pred)
-        val_mse = mean_squared_error(y_val, val_pred)
-        val_rmse = np.sqrt(val_mse)
-        test_r2 = r2_score(y_test, test_pred)
-        test_adj_r2 = adjusted_r2(y_test, test_pred, len(full_dataset), len(full_dataset.columns))
-        test_mae = mean_absolute_error(y_test, test_pred)
-        test_mse = mean_squared_error(y_test, test_pred)
-        test_rmse = np.sqrt(test_mse)
+        # val_r2 = r2_score(y_val, val_pred)
+        # val_adj_r2 = adjusted_r2(y_val, val_pred, len(full_dataset), len(full_dataset.columns))
+        # val_mae = mean_absolute_error(y_val, val_pred)
+        # val_mse = mean_squared_error(y_val, val_pred)
+        # val_rmse = np.sqrt(val_mse)
+        # test_r2 = r2_score(y_test, test_pred)
+        # test_adj_r2 = adjusted_r2(y_test, test_pred, len(full_dataset), len(full_dataset.columns))
+        # test_mae = mean_absolute_error(y_test, test_pred)
+        # test_mse = mean_squared_error(y_test, test_pred)
+        # test_rmse = np.sqrt(test_mse)
         
         def parody_plot(true_values, predictions, file_to_save=None):
             true_values = true_values.reshape(predictions.shape)
@@ -321,14 +323,16 @@ def run_kfold_Regression_CNN(full_dataset, raw_images, full_dataset_labels, pati
         parody_plot(y_test, test_pred, saving_folder + f'/parody_plot_test_fold{fold_no}.png')
         parody_plot(y_val, val_pred, saving_folder + f'/parody_plot_val_fold{fold_no}.png')
         
-        # open the file for writing
-        with open(saving_folder + f"/model_metrics_fold_{fold_no}.csv", 'w', newline='') as file:
-            writer = csv.writer(file)
+        # # open the file for writing
+        # with open(saving_folder + f"/model_metrics_fold_{fold_no}.csv", 'w', newline='') as file:
+        #     writer = csv.writer(file)
 
-            #write the header row
-            writer.writerow(['dataset', 'r^2', 'adj_r^2', 'MAE', 'MSE', 'RMSE'])
-            writer.writerow(['test', test_r2, test_adj_r2, test_mae, test_mse, test_rmse])
-            writer.writerow(['validation', val_r2, val_adj_r2, val_mae, val_mse, val_rmse])
+        #     #write the header row
+        #     writer.writerow(['dataset', 'r^2', 'adj_r^2', 'MAE', 'MSE', 'RMSE'])
+        #     writer.writerow(['test', test_r2, test_adj_r2, test_mae, test_mse, test_rmse])
+        #     writer.writerow(['validation', val_r2, val_adj_r2, val_mae, val_mse, val_rmse])
+            
+        collect_and_save_metrics(y_train, train_pred, y_test, test_pred, list(train_df.columns), fold_no, saving_folder)
 
             
         fold_no += 1
