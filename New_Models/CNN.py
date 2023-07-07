@@ -54,8 +54,8 @@ def CNN_1D(train_features_1D):
     csv_data_shape = train_features_1D.shape[1]
     csv_input = tf.keras.layers.Input(shape=csv_data_shape, name="csv")
     csv_model = normalizer(csv_input)
-    csv_model = tf.keras.layers.Dense(256, activation='relu', name="csv_dense1")(csv_model)
-    csv_model = tf.keras.layers.Dense(128, activation='relu', name="csv_dense2")(csv_model)
+    # csv_model = tf.keras.layers.Dense(256, activation='relu', name="csv_dense1")(csv_model)
+    # csv_model = tf.keras.layers.Dense(128, activation='relu', name="csv_dense2")(csv_model)
     csv_model = tf.keras.layers.Dense(64, activation='relu', name="csv_dense3")(csv_model)
     csv_model = tf.keras.layers.Dense(32, activation='relu', name="csv_dense4")(csv_model)
     csv_model = tf.keras.layers.Dense(16, activation='relu', name="csv_dense5")(csv_model)

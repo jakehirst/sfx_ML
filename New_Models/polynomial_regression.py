@@ -10,7 +10,7 @@ then evaluates the models based on their respective test sets.
 def Kfold_Polynomial_Regression(degree, full_dataset, raw_images, full_dataset_labels, important_features, saving_folder, label_to_predict, save_data=True): #TODO change title for different models
     # correlated_featureset, raw_images, full_dataset_labels = prepare_dataset_Single_Output_Regression(full_dataset_pathname, image_folder, label_to_predict, all_labels, saving_folder=None, maximum_p_value=0.01)
 
-    full_dataset = remove_ABAQUS_features(full_dataset)
+    #full_dataset = remove_ABAQUS_features(full_dataset)
     models = []
     
     rnge = range(1, len(full_dataset)+1)

@@ -177,13 +177,31 @@ def plot_test_predictions_heatmap(full_dataset, labels_to_predict, all_labels, a
 
 def save_GPR_model(model, fold_no, saving_folder):
     # Save the model to a file
-    filename = saving_folder + f'GPR_model_fold{fold_no}.sav'
+    filename = saving_folder + f'/GPR_model_fold{fold_no}.sav'
     pickle.dump(model, open(filename, 'wb'))
 
 def load_GPR_model(filepath):
     loaded_model = pickle.load(open(filepath, 'rb'))
     return loaded_model
     
+''' Evaluates how accurate the uncertainty quantification is based on how many predictions lie within the first, second, and third confidence intervals. '''
+def evaluate_uncertainty(y_pred, y_pred_std, y_true, train_or_test):
+    intervals_and_percentages = {}
+    intervals = [f'{train_or_test} 1 std or 68%', f'{train_or_test} 2 std or 95%', f'{train_or_test} 3 std or 99%']
+    for num_stds in range(1,4):
+        interval = intervals[num_stds-1]
+        num_correct = 0
+        for i in range(len(y_pred)):
+            pred = y_pred[i]; std = y_pred_std[i]; true_value = y_true[i]
+            
+            if(pred + std*num_stds >= true_value and pred - std*num_stds <= true_value):
+                num_correct += 1
+
+        percentage_correct_in_this_interval = num_correct / len(y_true)
+        intervals_and_percentages[interval] = percentage_correct_in_this_interval    
+    
+    return intervals_and_percentages, list(intervals_and_percentages.values())
+
 '''
 splits the data into 5 different k-folds of test and training sets
 then runs GPR on each of the training sets
@@ -212,12 +230,25 @@ def Kfold_Gaussian_Process_Regression(full_dataset, raw_images, full_dataset_lab
         
         model = GaussianProcessRegressor(kernel=kernel, random_state=0, alpha=50)
         model.fit(train_df.to_numpy(), y_train)
+        print(model.get_params())
         y_pred_train, y_pred_train_std = model.predict(train_df.to_numpy(), return_std=True)
         y_pred_test, y_pred_test_std = model.predict(test_df.to_numpy(), return_std=True)
+        
+        train_uncertainty, train_uncertainty_values = evaluate_uncertainty(y_pred_train, y_pred_train_std, y_train, 'Train')
+        print(f'\ntrain uncertainty = \n {train_uncertainty}')
+        test_uncertainty, test_uncertainty_values = evaluate_uncertainty(y_pred_test, y_pred_test_std, y_test, 'Test')
+        print(f'\ntest uncertainty = \n {test_uncertainty}')
+
         
         if(save_data):
             save_GPR_model(model, fold_no, saving_folder)            
             collect_and_save_metrics(y_train, y_pred_train, y_test, y_pred_test, list(train_df.columns), fold_no, saving_folder)
+            
+            # adding the uncertainty metrics to the metric data
+            metric_data = pd.read_csv(saving_folder + f'/model_metrics_fold_{fold_no}.csv')
+            metric_data = metric_data.assign(**train_uncertainty)
+            metric_data = metric_data.assign(**test_uncertainty)
+            metric_data.to_csv(saving_folder + f'/model_metrics_fold_{fold_no}.csv')
             
             #plot_test_predictions_heatmap(y_test, y_pred_test, y_pred_test_std, fold_no, saving_folder)
             parody_plot_with_std(y_test, y_pred_test, y_pred_test_std, fold_no, saving_folder, label_to_predict)

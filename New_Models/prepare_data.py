@@ -134,7 +134,7 @@ def prepare_dataset_Single_Output_Regression(full_dataset_pathname, image_folder
     dataset = read_dataset(full_dataset_pathname)
     #adding images to the dataset
     # raw_images = get_images_from_dataset(dataset, image_folder)
-    corr_matrix, p_matrix, important_features = Pearson_correlation(dataset, label_to_predict, maximum_p_value=maximum_p_value) #changed this from .05 to .01 on 5/22/23
+    corr_matrix, p_matrix, important_features = Pearson_correlation(dataset, label_to_predict, maximum_p_value=maximum_p_value) 
     dataset = remove_unwanted_labels(dataset, label_to_predict, all_labels)
     full_dataset_labels = dataset[label_to_predict].to_numpy()
     for label in all_labels: 

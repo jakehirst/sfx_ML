@@ -35,21 +35,21 @@ all_labels = ['height', 'phi', 'theta',
 # lossfunc = tf.keras.losses.Huber()
 # lossfunc = tf.keras.losses.LogCosh()
 
-# label_to_predict = 'impact site x'
-# saving_folder=f'/Users/jakehirst/Desktop/model_results/MODEL_COMPARISONS/CNN_no_images_{label_to_predict}/'
-# correlated_featureset, full_dataset_labels, important_features = prepare_dataset_Single_Output_Regression(full_dataset_pathname, image_folder, label_to_predict, all_labels, saving_folder=None)
-# features_to_keep = ['crack len', 'init phi', 'init x']
-# correlated_featureset = correlated_featureset[features_to_keep]
-# raw_images = []
-# run_kfold_Regression_CNN(correlated_featureset, raw_images, full_dataset_labels, patience=100, max_epochs=2000, num_outputs=1, lossfunc='mean_squared_error', saving_folder=saving_folder, use_images=False)
-
-label_to_predict = 'impact site y'
+label_to_predict = 'impact site x'
 saving_folder=f'/Users/jakehirst/Desktop/model_results/MODEL_COMPARISONS/CNN_no_images_{label_to_predict}/'
 correlated_featureset, full_dataset_labels, important_features = prepare_dataset_Single_Output_Regression(full_dataset_pathname, image_folder, label_to_predict, all_labels, saving_folder=None)
-features_to_keep = ['max_kink', 'init y']
+features_to_keep = ['crack len', 'init phi', 'init x']
 correlated_featureset = correlated_featureset[features_to_keep]
 raw_images = []
 run_kfold_Regression_CNN(correlated_featureset, raw_images, full_dataset_labels, patience=100, max_epochs=2000, num_outputs=1, lossfunc='mean_squared_error', saving_folder=saving_folder, use_images=False)
+
+# label_to_predict = 'impact site y'
+# saving_folder=f'/Users/jakehirst/Desktop/model_results/MODEL_COMPARISONS/CNN_no_images_{label_to_predict}/'
+# correlated_featureset, full_dataset_labels, important_features = prepare_dataset_Single_Output_Regression(full_dataset_pathname, image_folder, label_to_predict, all_labels, saving_folder=None)
+# features_to_keep = ['max_kink', 'init y']
+# correlated_featureset = correlated_featureset[features_to_keep]
+# raw_images = []
+# run_kfold_Regression_CNN(correlated_featureset, raw_images, full_dataset_labels, patience=100, max_epochs=2000, num_outputs=1, lossfunc='mean_squared_error', saving_folder=saving_folder, use_images=False)
 
 
 # label_to_predict = 'impact site z'
