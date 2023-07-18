@@ -85,16 +85,17 @@ def plot_test_predictions_heatmap(full_dataset, labels_to_predict, all_labels, a
     RPA_x, RPA_y, RPA_z = convert_coordinates_to_new_basis(Material_X, Material_Y, Material_Z, CM, RPA_x, RPA_y, RPA_z)
     
     #loading previously trained models
-    model_x = load_GPR_model(f'/Users/jakehirst/Desktop/model_results/GPR_{labels_to_predict[0]}/GPR_model_fold{models_fold_to_pull[labels_to_predict[0]]}.sav')
-    model_y = load_GPR_model(f'/Users/jakehirst/Desktop/model_results/GPR_{labels_to_predict[1]}/GPR_model_fold{models_fold_to_pull[labels_to_predict[1]]}.sav')
-    model_z = load_GPR_model(f'/Users/jakehirst/Desktop/model_results/GPR_{labels_to_predict[2]}/GPR_model_fold{models_fold_to_pull[labels_to_predict[2]]}.sav')
+    model_x = load_GPR_model(f'/Users/jakehirst/Desktop/model_results/GPR_RBF_and_white_{labels_to_predict[0]}/GPR_model_fold{models_fold_to_pull[labels_to_predict[0]]}.sav')
+    model_y = load_GPR_model(f'/Users/jakehirst/Desktop/model_results/GPR_RBF_and_white_{labels_to_predict[1]}/GPR_model_fold{models_fold_to_pull[labels_to_predict[1]]}.sav')
+    # model_z = load_GPR_model(f'/Users/jakehirst/Desktop/model_results/GPR_{labels_to_predict[2]}/GPR_model_fold{models_fold_to_pull[labels_to_predict[2]]}.sav')
     #predicting with previously trained models
-    x_predictions, x_stds = model_x.predict(remove_ABAQUS_features(full_dataset[all_important_features[labels_to_predict[0]]]).to_numpy(), return_std=True)
-    y_predictions, y_stds = model_y.predict(remove_ABAQUS_features(full_dataset[all_important_features[labels_to_predict[1]]]).to_numpy(), return_std=True)
-    z_predictions, z_stds = model_z.predict(remove_ABAQUS_features(full_dataset[all_important_features[labels_to_predict[2]]]).to_numpy(), return_std=True)
+    x_predictions, x_stds = model_x.predict(full_dataset[all_important_features[labels_to_predict[0]]].to_numpy(), return_std=True)
+    y_predictions, y_stds = model_y.predict(full_dataset[all_important_features[labels_to_predict[1]]].to_numpy(), return_std=True)
+    # z_predictions, z_stds = model_z.predict(remove_ABAQUS_features(full_dataset[all_important_features[labels_to_predict[2]]]).to_numpy(), return_std=True)
     x_true = full_dataset[labels_to_predict[0]].to_numpy()
     y_true = full_dataset[labels_to_predict[1]].to_numpy()
-    z_true = full_dataset[labels_to_predict[2]].to_numpy()
+    z_true = full_dataset['impact site z'].to_numpy()
+
 
 
     for i in range(len(full_dataset)):
@@ -102,36 +103,26 @@ def plot_test_predictions_heatmap(full_dataset, labels_to_predict, all_labels, a
         # Create a 3D figure
         fig = plt.figure(figsize=(10,8))
         ax = fig.add_subplot(111, projection='3d')
-
-        # Plot the points
-        # ax.scatter(RPA_x, RPA_y, RPA_z, c='yellow', alpha=0.05)
-        # x_dist = np.random.normal(x_predictions[i], x_stds[i], 5000)
-        # y_dist = np.random.normal(y_predictions[i], y_stds[i], 5000)
-        # z_dist = np.random.normal(z_predictions[i], z_stds[i], 5000)
-        # ax.scatter(x_dist, y_dist, z_dist, c='red', alpha=0.01)
-        # ax.scatter(x_predictions[i], y_predictions[i], z_predictions[i], c='red', label='mean predicted impact location')
-        # ax.scatter(x_true[i], y_true[i], z_true[i], c='blue', label='true impact location')
+        ax.grid(False)
         
-        ax.scatter(RPA_z, RPA_x, RPA_y, c='yellow', alpha=0.05)
+        ax.scatter(RPA_z, RPA_x, RPA_y, c='grey', alpha=0.025)
         x_dist = np.random.normal(x_predictions[i], x_stds[i], 5000)
         y_dist = np.random.normal(y_predictions[i], y_stds[i], 5000)
-        z_dist = np.random.normal(z_predictions[i], z_stds[i], 5000)
-        ax.scatter(z_dist, x_dist, y_dist, c='red', alpha=0.01)
-        ax.scatter(z_predictions[i], x_predictions[i], y_predictions[i], c='red', label='mean predicted impact location')
-        ax.scatter(z_true[i], x_true[i], y_true[i], c='blue', label='true impact location')
+
+        point_size = 50
+        z_dist = np.random.normal(z_true[i], 3, 5000)
+        ax.scatter(z_dist, x_dist, y_dist, c='cyan', alpha=0.01)
+        ax.scatter(z_true[i], x_predictions[i], y_predictions[i], c='blue', label='Mean predicted impact location', s=point_size)
+        ax.scatter(z_true[i], x_true[i], y_true[i], c='orange', label='True impact location', s=point_size)
         
 
-        # Set labels and title
-        # ax.set_xlabel('X')
-        # ax.set_ylabel('Y')
-        # ax.set_zlabel('Z')
         ax.set_xlabel('Z')
         ax.set_ylabel('X')
         ax.set_zlabel('Y')
-        ax.set_xlim3d(-70, 70)
-        ax.set_ylim3d(-70, 70)
-        ax.set_zlim3d(-70, 70)
-        ax.set_title('GPR prediction scatter plot')
+        ax.set_xlim3d(-60, 60)
+        ax.set_ylim3d(-80, 80)
+        ax.set_zlim3d(-60, 60)
+        ax.set_title('GPR prediction for impact site in right parietal bone', fontweight='bold')
         ax.legend()
         
         normal_vector = np.array([0,1,0])
@@ -149,7 +140,7 @@ def plot_test_predictions_heatmap(full_dataset, labels_to_predict, all_labels, a
         # plt.close()
         
         #Creating animation gif that rotates 360 degrees
-        if(i == 4 or i == 10 or i == 19 or i == 21 or i == 24 or i == 27 or i == 54 or i == 93):
+        if(i == 2 or i == 4 or i == 6):
             # Define the update function for the animation
             def update(frame):
                 # ax.view_init(elev=polar - 5 + frame*2, azim=azimuth + 180+frame*2)  # Adjust the viewing angle
@@ -207,7 +198,7 @@ splits the data into 5 different k-folds of test and training sets
 then runs GPR on each of the training sets
 then evaluates the models based on their respective test sets.
 '''
-def Kfold_Gaussian_Process_Regression(full_dataset, raw_images, full_dataset_labels, important_features, saving_folder, label_to_predict, save_data=True):
+def Kfold_Gaussian_Process_Regression(full_dataset, full_dataset_labels, important_features, saving_folder, label_to_predict, save_data=True, num_training_points=False):
     # correlated_featureset, raw_images, full_dataset_labels = prepare_dataset_Single_Output_Regression(full_dataset_pathname, image_folder, label_to_predict, all_labels, saving_folder=None, maximum_p_value=0.01)
     #full_dataset = remove_ABAQUS_features(full_dataset)
     models = []
@@ -224,11 +215,21 @@ def Kfold_Gaussian_Process_Regression(full_dataset, raw_images, full_dataset_lab
         # test_images = raw_images[test_index]
         y_test = full_dataset_labels[test_index]
         
+        """ if we want to limit the number of training datapoints """
+        if(not num_training_points == False):
+            train_df.reset_index(drop=True, inplace=True)
+            train_indicies = np.random.choice(np.arange(0, len(train_df)), size=num_training_points, replace=False)
+            train_df = train_df.iloc[train_indicies]
+            y_train = y_train[train_indicies]
+        
         kernel = ConstantKernel(1.0) + ConstantKernel(1.0) * RBF(length_scale=1e1, length_scale_bounds=(1e-2, 1e3))  + WhiteKernel(noise_level=2, noise_level_bounds=(1e-2, 1e2)) #TODO experiment with the kernel... but this one seems to work.
         kernel = ConstantKernel(1.0) + ConstantKernel(1.0) * RBF() + WhiteKernel(noise_level=1)
+        # kernel = ConstantKernel(1.0) + ConstantKernel(1.0) * RBF() + ConstantKernel(1.0) * ExpSineSquared()+ WhiteKernel(noise_level=1)
 
         
-        model = GaussianProcessRegressor(kernel=kernel, random_state=0, alpha=50)
+        model = GaussianProcessRegressor(kernel=kernel, random_state=0, alpha=50, n_restarts_optimizer=10)
+        # model = GaussianProcessRegressor(kernel=kernel, random_state=0, alpha=50)
+        
         model.fit(train_df.to_numpy(), y_train)
         print(model.get_params())
         y_pred_train, y_pred_train_std = model.predict(train_df.to_numpy(), return_std=True)
@@ -264,4 +265,31 @@ def Kfold_Gaussian_Process_Regression(full_dataset, raw_images, full_dataset_lab
     return models, performances, r2s, mse_s
 
 
+# full_dataset_pathname = "/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Feature_gathering/New_Crack_Len_FULL_OG_dataframe.csv"
+# # full_dataset_pathname = "/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Feature_gathering/FULL_OG_dataframe_with_impact_sites_and_Jimmy_RF.csv"
+# image_folder = '/Users/jakehirst/Desktop/sfx/sfx_pics/jake/images_sfx/new_dataset/Visible_cracks'
+# all_labels = ['height', 'phi', 'theta', 
+#               'impact site x', 'impact site y', 'impact site z', 
+#               'impact site r', 'impact site phi', 'impact site theta']
 
+
+
+
+# label_to_predict = 'impact site r'
+# saving_folder=f'/Users/jakehirst/Desktop/model_results/GPR_RBF_and_white_{label_to_predict}/'
+# if(not os.path.exists(saving_folder)): os.mkdir(saving_folder)
+# correlated_featureset, full_dataset_labels, important_features = prepare_dataset_Single_Output_Regression(full_dataset_pathname, image_folder, label_to_predict, [], saving_folder=None, maximum_p_value=0.5)
+# #correlated_featureset = remove_ABAQUS_features(correlated_featureset)
+# labels_to_predict = ['impact site x', 'impact site y']
+# # features_to_keep = ['crack len', 'init x']
+# # features_to_keep = ['max_kink', 'init y']
+
+# # correlated_featureset = correlated_featureset[features_to_keep]
+# all_important_features = {'impact site x': ['crack len', 'init x'],
+#                           'impact site y': ['max_kink', 'init y']}
+
+# models_fold_to_pull = {'impact site x': 2,
+#                        'impact site y': 4}
+# raw_images = []
+
+# plot_test_predictions_heatmap(correlated_featureset, labels_to_predict, all_labels, all_important_features, models_fold_to_pull, saving_folder)

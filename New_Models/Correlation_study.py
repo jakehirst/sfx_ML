@@ -4,25 +4,29 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import numpy as np
 import matplotlib.patches as mpatches
+from sklearn.decomposition import PCA
+from sklearn.preprocessing import StandardScaler
 
-FORMAL_LABELS = {'init phi': 'Initiation site phi',
-                 'init z': 'Initiation site z',
-                 'angle_btw': 'Crack vector angle',
-                 'sum_kink': 'Sum of kink angles',
-                 'mean_kink': 'Average kink angle',
-                 'init r': 'Initiation site r',
-                 'init theta': 'Initiation site theta',
-                 'avg_ori': 'Average crack orientation',
-                 'abs_val_mean_kink': 'Average Abs(kink angle)',
-                 'mean thickness': 'Average thickness of skull along crack',
-                 'init x': 'Initiation site x',
-                 'init y': 'Initiation site y',
-                 'max thickness': 'Max thickness of skull along crack',
-                 'dist btw frts': 'Distance between crack fronts',
-                 'linearity': 'Linearity',
-                 'max_kink': 'Max kink angle',
-                 'crack len': 'Crack Length',
-                 'abs_val_sum_kink': 'Sum of Abs(kink angles)'
+
+
+FORMAL_LABELS = {'init phi': '\u039E\u03A6',
+                 'init z': '\u039Ez',
+                 'angle_btw': '\u039B',
+                 'sum_kink': '\u03A3\u0393',
+                 'mean_kink': '\u0393\u2090',
+                 'init r': '\u039Er',
+                 'init theta': '\u039E\u03B8',
+                 'avg_ori': '\u039F\u2090',
+                 'abs_val_mean_kink': '|\u0393|\u2090',
+                 'mean thickness': 't\u2090',
+                 'init x': '\u039Ex',
+                 'init y': '\u039Ey',
+                 'max thickness': 't\u2098',
+                 'dist btw frts': 'd',
+                 'linearity': '\u03B6',
+                 'max_kink': '\u0393\u2098',
+                 'crack len': 'L\u209c',
+                 'abs_val_sum_kink': '\u03A3|\u0393|'
                  }
 
 ''' returns the informal list of features in a new formal form '''
@@ -52,7 +56,7 @@ def visualize_correlations(corr_mtx, label_to_predict):
     print("done")
 
 def horiz_barplot_1D_correlation_visualization(sorted_corr_mtx, label_to_predict, fig_path):
-    fontsize = 13
+    fontsize = 15
     #remove all the front location features
     sorted_corr_mtx = sorted_corr_mtx[~sorted_corr_mtx.index.str.contains('front')]
 
@@ -94,9 +98,9 @@ def horiz_barplot_1D_correlation_visualization(sorted_corr_mtx, label_to_predict
 
     # Add labels and title
     plt.xlim(0,1)
-    plt.xlabel('Pearson Correlation Values', fontweight='bold',fontsize=fontsize)
-    plt.ylabel('Features', fontweight='bold',fontsize=fontsize)
-    plt.title(f'Pearson correlation values relating to {label_to_predict}', fontsize=fontsize)
+    plt.xlabel('Pearson Correlation Values',fontsize=fontsize)
+    plt.ylabel('Features',fontsize=fontsize)
+    plt.title(f'{label_to_predict.capitalize()}', fontsize=fontsize, fontweight='bold')
      
     # Show the plot
     # plt.show()
@@ -118,10 +122,20 @@ def barplot_correlations(corr_matrix, label_to_predict):
     plt.show()
     plt.close()
     
-
+def principal_component(df, features):
+    
+    x = StandardScaler().fit_transform(df.loc[:,features].values)
+    PCA_s = PCA(n_components=1) #n_components is the number of PCA features you want
+    principalComponents = PCA_s.fit_transform(x)
+    return principalComponents
 
 full_dataset_pathname = "/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Feature_gathering/New_Crack_Len_FULL_OG_dataframe.csv"
 label_to_predict = 'height'
+label_to_predict = 'impact site x'
+label_to_predict = 'impact site y'
+# label_to_predict = 'impact site phi'
+# label_to_predict = 'impact site theta'
+
 all_labels = ['height', 'phi', 'theta', 
               'impact site x', 'impact site y', 'impact site z', 
               'impact site r', 'impact site phi', 'impact site theta', 'Unnamed: 0']

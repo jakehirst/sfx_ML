@@ -195,7 +195,7 @@ def run_kfold_Categorical_CNN(full_dataset, raw_images, full_dataset_labels, pat
 runs a dual input (image and 1D features) Regression CNN on the given dataset, doing a 5 fold cross validation and testing it 
 on a test dataset pulled from the full_dataset
 '''
-def run_kfold_Regression_CNN(full_dataset, raw_images, full_dataset_labels, patience, max_epochs, num_outputs=1, lossfunc='mae', saving_folder='/Users/jakehirst/Desktop/model_results', use_images=True):
+def run_kfold_Regression_CNN(full_dataset, raw_images, full_dataset_labels, patience, max_epochs, num_outputs=1, lossfunc='mae', saving_folder='/Users/jakehirst/Desktop/model_results', use_images=True, num_training_points=False):
 
     #setting aside a test dataset
     np.random.seed(6) #this should reset the randomness to the same randomness so that the test_indicies are the same throughout the tests
@@ -211,6 +211,13 @@ def run_kfold_Regression_CNN(full_dataset, raw_images, full_dataset_labels, pati
 
     models = []
     
+    """ if we want to limit the number of training datapoints """
+    if(not num_training_points == False):
+        full_dataset.reset_index(drop=True, inplace=True)
+        train_indicies = np.random.choice(np.arange(0, len(full_dataset)), size=num_training_points, replace=False)
+        full_dataset = full_dataset.iloc[train_indicies]
+        full_dataset_labels = full_dataset_labels[train_indicies]
+    
     rnge = range(1, len(full_dataset)+1)
     kf5 = KFold(n_splits=5, shuffle=True)
     fold_no = 1
@@ -219,6 +226,9 @@ def run_kfold_Regression_CNN(full_dataset, raw_images, full_dataset_labels, pati
         y_train = full_dataset_labels[train_index]
         val_df = full_dataset.iloc[val_index]
         y_val = full_dataset_labels[val_index]
+        
+
+
         
         csv_output, csv_input = CNN_1D(train_df)
         

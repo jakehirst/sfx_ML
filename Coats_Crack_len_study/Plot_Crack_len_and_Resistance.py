@@ -40,6 +40,7 @@ def plot_data(plot1, plot2, ylabel):
 
     # Display the plot
     plt.show()
+    plt.close()
 
 
     

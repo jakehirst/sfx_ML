@@ -8,24 +8,24 @@ from itertools import combinations
 import seaborn as sns
 import matplotlib.pyplot as plt
 
-FORMAL_LABELS = {'init phi': 'Initiation site phi',
-                 'init z': 'Initiation site z',
-                 'angle_btw': 'Crack vector angle',
-                 'sum_kink': 'Sum of kink angles',
-                 'mean_kink': 'Average kink angle',
-                 'init r': 'Initiation site r',
-                 'init theta': 'Initiation site theta',
-                 'avg_ori': 'Average crack orientation',
-                 'abs_val_mean_kink': 'Average Abs(kink angle)',
-                 'mean thickness': 'Average thickness of skull along crack',
-                 'init x': 'Initiation site x',
-                 'init y': 'Initiation site y',
-                 'max thickness': 'Max thickness of skull along crack',
-                 'dist btw frts': 'Distance between crack fronts',
-                 'linearity': 'Linearity',
-                 'max_kink': 'Max kink angle',
-                 'crack len': 'Crack Length',
-                 'abs_val_sum_kink': 'Sum of Abs(kink angles)'
+FORMAL_LABELS = {'init phi': '\u039E\u03A6',
+                 'init z': '\u039Ez',
+                 'angle_btw': '\u039B',
+                 'sum_kink': '\u03A3\u0393',
+                 'mean_kink': '\u0393\u2090',
+                 'init r': '\u039Er',
+                 'init theta': '\u039E\u03B8',
+                 'avg_ori': '\u039F\u2090',
+                 'abs_val_mean_kink': '|\u0393|\u2090',
+                 'mean thickness': 't\u2090',
+                 'init x': '\u039Ex',
+                 'init y': '\u039Ey',
+                 'max thickness': 't\u2098',
+                 'dist btw frts': 'd',
+                 'linearity': '\u03B6',
+                 'max_kink': '\u0393\u2098',
+                 'crack len': 'L\u209c',
+                 'abs_val_sum_kink': '\u03A3|\u0393|'
                  }
 
 
@@ -105,11 +105,14 @@ def run_all_feature_combinations():
                 'impact site x', 'impact site y', 'impact site z', 
                 'impact site r', 'impact site phi', 'impact site theta']
 
-    LTP = ['impact site x', 'impact site y', 'height']
-    feats = [['crack len', 'init phi', 'avg_ori', 'init x'], ['max_kink', 'angle_btw', 'init y'], ['abs_val_sum_kink', 'crack len', 'max_kink', 'linearity', 'max thickness']]
+    # LTP = ['impact site x', 'impact site y', 'height']
+    # feats = [['crack len', 'init phi', 'avg_ori', 'init x'], ['max_kink', 'angle_btw', 'init y'], ['abs_val_sum_kink', 'crack len', 'max_kink', 'linearity', 'max thickness']]
 
-    LTP = ['impact site y', 'height']
-    feats = [['max_kink', 'angle_btw', 'init y'], ['abs_val_sum_kink', 'crack len', 'max_kink', 'linearity', 'max thickness']]
+    # LTP = ['impact site y', 'height']
+    # feats = [['max_kink', 'angle_btw', 'init y'], ['abs_val_sum_kink', 'crack len', 'max_kink', 'linearity', 'max thickness']]
+
+    LTP = ['impact site phi', 'impact site theta', 'height']
+    feats = [['crack len', 'init phi', 'avg_ori', 'init x'], ['max_kink', 'angle_btw', 'init y'], ['abs_val_sum_kink', 'crack len', 'max_kink', 'linearity', 'max thickness']]
 
     for i in range(len(LTP)):
         label_to_predict = LTP[i]
@@ -129,7 +132,7 @@ def run_all_feature_combinations():
         # label_to_predict = 'height'
         # All_features = ['abs_val_sum_kink', 'crack len', 'max_kink', 'linearity', 'max thickness']
 
-        model_folder = '/Users/jakehirst/Desktop/Feature_subset_study/Poly4'#TODO change the saving folder if the model type changes
+        model_folder = '/Users/jakehirst/Desktop/Feature_subset_study/GPR_100_restarts'#TODO change the saving folder if the model type changes
         if(not os.path.exists(model_folder)): os.mkdir(model_folder)
         saving_folder = model_folder + f'/{label_to_predict}' 
         if(not os.path.exists(saving_folder)): os.mkdir(saving_folder)
@@ -170,19 +173,19 @@ def run_all_feature_combinations():
             alpha = 0.1
             
             #TODO change the kfold call if the model type changes
-            # Kfold_Gaussian_Process_Regression(featureset, raw_images, full_dataset_labels, important_features, subset_saving_folder, label_to_predict, save_data=True)
+            Kfold_Gaussian_Process_Regression(featureset, raw_images, full_dataset_labels, important_features, subset_saving_folder, label_to_predict, save_data=True)
             # Kfold_Linear_Regression(featureset, raw_images, full_dataset_labels, important_features, subset_saving_folder, label_to_predict, save_data=True)
             # Kfold_Ridge_Regression(alpha, featureset, raw_images, full_dataset_labels, important_features, subset_saving_folder, label_to_predict, save_data=True)
             # Kfold_Lasso_Regression(alpha, featureset, raw_images, full_dataset_labels, important_features, subset_saving_folder, label_to_predict, save_data=True)
-            Kfold_Polynomial_Regression(2, featureset, raw_images, full_dataset_labels, important_features, subset_saving_folder, label_to_predict, save_data=True)
+            # Kfold_Polynomial_Regression(2, featureset, raw_images, full_dataset_labels, important_features, subset_saving_folder, label_to_predict, save_data=True)
             # Kfold_Polynomial_Regression(3, featureset, raw_images, full_dataset_labels, important_features, subset_saving_folder, label_to_predict, save_data=True)
             # Kfold_Polynomial_Regression(4, featureset, raw_images, full_dataset_labels, important_features, subset_saving_folder, label_to_predict, save_data=True)
             # run_kfold_Regression_CNN(featureset, raw_images, full_dataset_labels, patience=100, max_epochs=2000, num_outputs=1, lossfunc='mean_squared_error', saving_folder=subset_saving_folder, use_images=False) #TODO fix how metrics are saved in the CNN
 
             
-            # subsets_and_performances[str(list(subset))] = performances
-            # subsets_and_r2s[str(list(subset))] = r2s
-            # subsets_and_mse_s[str(list(subset))] = mse_s
+    #         subsets_and_performances[str(list(subset))] = performances
+    #         subsets_and_r2s[str(list(subset))] = r2s
+    #         subsets_and_mse_s[str(list(subset))] = mse_s
 
     # plot_mean_r2_and_mse(subsets_and_r2s, subsets_and_mse_s, figure_folder, label_to_predict)
     
@@ -220,32 +223,38 @@ def find_best_feature_combination(parent_folder, Model_type, label_to_predict):
     combinations_and_r2s = {}
     combinations_and_adj_r2s = {}
     combinations_and_mses = {}
+    combinations_and_maes = {}
     folders = os.listdir(folder_path)
     filtered_folders = [string for string in folders if len(string) <= 3]
     for folder in filtered_folders:
         r2 = 0
         adj_r2 = 0
         mse = 0
+        mae = 0
         for fold in range(1,6):
             data = pd.read_csv(folder_path + f'/{folder}/model_metrics_fold_{fold}.csv')
             r2 += data['Test R^2'][0]
             adj_r2 += data['Test adj_R^2'][0]
             mse += data['Test MSE'][0]
+            mae += data['Test MAE'][0]
         features_used = data['features_used'][0]
         combinations_and_r2s[features_used] = r2/5
         combinations_and_adj_r2s[features_used] = adj_r2/5
         combinations_and_mses[features_used] = mse/5
+        combinations_and_maes[features_used] = mae/5
+
     #sorting the dictionaries such that the best feature combinations are first
     top5_combinations_and_r2s = sorted(combinations_and_r2s.items(), key=lambda x: x[1], reverse=True)[:5]
     top5_combinations_and_adj_r2s = sorted(combinations_and_adj_r2s.items(), key=lambda x: x[1], reverse=True)[:5]
     top5_combinations_and_mses = sorted(combinations_and_mses.items(), key=lambda x: x[1])[:5]
-    
+    top5_combinations_and_maes = sorted(combinations_and_maes.items(), key=lambda x: x[1])[:5]
+
     figure_path = folder_path = parent_folder + f'/{Model_type}/{label_to_predict}'
-    barplot_model_and_metric_for_feature_combinations(Model_type, label_to_predict, "R^2", top5_combinations_and_r2s, figure_path, ylims=(0,1))
-    barplot_model_and_metric_for_feature_combinations(Model_type, label_to_predict, "adj R^2", top5_combinations_and_adj_r2s, figure_path,  ylims=(0,1))
-    barplot_model_and_metric_for_feature_combinations(Model_type, label_to_predict, "MSE", top5_combinations_and_mses, figure_path)
+    # barplot_model_and_metric_for_feature_combinations(Model_type, label_to_predict, "R^2", top5_combinations_and_r2s, figure_path, ylims=(0,1))
+    # barplot_model_and_metric_for_feature_combinations(Model_type, label_to_predict, "adj R^2", top5_combinations_and_adj_r2s, figure_path,  ylims=(0,1))
+    # barplot_model_and_metric_for_feature_combinations(Model_type, label_to_predict, "MSE", top5_combinations_and_mses, figure_path)
   
-    return top5_combinations_and_r2s, top5_combinations_and_adj_r2s, top5_combinations_and_mses
+    return top5_combinations_and_r2s, top5_combinations_and_adj_r2s, top5_combinations_and_mses, top5_combinations_and_maes
 
 ''' 
 For a given label to predict, 
@@ -254,7 +263,7 @@ plots the metric for the best result of each model type
 and the features that each model used. 
 '''
 def barplots_for_best_on_best(label_to_predict, best_on_best, figure_path):
-    metrics = ['R^2', 'adj_R^2', 'MSE']
+    metrics = ['MAE', 'R^2', 'adj_R^2', 'MSE']
 
     for metric in metrics:
         print('\n' + metric)
@@ -264,7 +273,7 @@ def barplots_for_best_on_best(label_to_predict, best_on_best, figure_path):
         for key in BoB.keys():
             print(f'{key} : {BoB[key][1]} \nFeatures used = {BoB[key][0]}\n')
             feats = eval(BoB[key][0])
-            # feats = replace_features_with_formal_names(feats) #COMMENT tried to do this, takes up too much room
+            feats = replace_features_with_formal_names(feats) #COMMENT tried to do this, takes up too much room
             feats = str(feats).replace('[', '').replace(']', '').replace(',', '\n')
             x_values.append(f'{key} \n\n {feats}')
             y_values.append(BoB[key][1])
@@ -288,23 +297,29 @@ def barplots_for_best_on_best(label_to_predict, best_on_best, figure_path):
     return
 
 
+run_all_feature_combinations()
+
 parent_folder = '/Users/jakehirst/Desktop/Feature_subset_study'
 Model_types = ['ANN', 'GPR', 'Lasso', 'Linear', 'Poly2', 'Poly3', 'Poly4', 'Ridge']
 labels_to_predict = ['height', 'impact site x', 'impact site y']
 
+#run_all_feature_combinations()
+
 for label_to_predict in labels_to_predict:
-    best_on_best = {'R^2':{}, 'adj_R^2': {}, 'MSE': {}}
+    best_on_best = {'R^2':{}, 'adj_R^2': {}, 'MSE': {}, 'MAE': {}}
     for Model_type in Model_types:
         if(Model_type == 'Linear' or Model_type == 'Poly4'):
             print('here')
-        t5_r2, t5_adj_r2, t5_mses = find_best_feature_combination(parent_folder, Model_type, label_to_predict)
+        t5_r2, t5_adj_r2, t5_mses, t5_maes = find_best_feature_combination(parent_folder, Model_type, label_to_predict)
         best_on_best['R^2'][Model_type] = t5_r2[0]
         best_on_best['adj_R^2'][Model_type] = t5_adj_r2[0]
         best_on_best['MSE'][Model_type] = t5_mses[0]
+        best_on_best['MAE'][Model_type] = t5_maes[0]
+
 
     
     barplots_for_best_on_best(label_to_predict, best_on_best, parent_folder)
 
         
         
-print('done')
+# print('done')

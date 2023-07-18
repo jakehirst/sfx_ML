@@ -7,7 +7,7 @@ splits the data into 5 different k-folds of test and training sets
 then runs GPR on each of the training sets
 then evaluates the models based on their respective test sets.
 '''
-def Kfold_Polynomial_Regression(degree, full_dataset, raw_images, full_dataset_labels, important_features, saving_folder, label_to_predict, save_data=True): #TODO change title for different models
+def Kfold_Polynomial_Regression(degree, full_dataset, full_dataset_labels, important_features, saving_folder, label_to_predict, save_data=True, num_training_points=False): #TODO change title for different models
     # correlated_featureset, raw_images, full_dataset_labels = prepare_dataset_Single_Output_Regression(full_dataset_pathname, image_folder, label_to_predict, all_labels, saving_folder=None, maximum_p_value=0.01)
 
     #full_dataset = remove_ABAQUS_features(full_dataset)
@@ -24,6 +24,13 @@ def Kfold_Polynomial_Regression(degree, full_dataset, raw_images, full_dataset_l
         # test_images = raw_images[test_index]
         y_test = full_dataset_labels[test_index]
         
+        """ if we want to limit the number of training datapoints """
+        if(not num_training_points == False):
+            train_df.reset_index(drop=True, inplace=True)
+            train_indicies = np.random.choice(np.arange(0, len(train_df)), size=num_training_points, replace=False)
+            train_df = train_df.iloc[train_indicies]
+            y_train = y_train[train_indicies]
+            
         model = make_pipeline(PolynomialFeatures(degree),LinearRegression())
         model.fit(train_df.to_numpy(), y_train)
         
