@@ -1,7 +1,7 @@
 from CNN import *
 
-full_dataset_pathname = "/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Feature_gathering/New_Crack_Len_FULL_OG_dataframe.csv"
-image_folder = '/Users/jakehirst/Desktop/sfx/sfx_pics/jake/images_sfx/new_dataset/Visible_cracks'
+full_dataset_pathname = "/Users/jakehirst/Desktop/sfx/sfx_data/New_Crack_Len_FULL_OG_dataframe_2023_07_14.csv"
+image_folder = '/Users/jakehirst/Desktop/sfx/sfx_data/images_sfx/new_dataset/Visible_cracks'
 
 
 ''' preparing data for logistic regression on impact site using k-means clustering'''
@@ -20,9 +20,6 @@ image_folder = '/Users/jakehirst/Desktop/sfx/sfx_pics/jake/images_sfx/new_datase
 # run_kfold_Categorical_CNN(correlated_featureset, raw_images, full_dataset_labels, patience=100, max_epochs=1000, saving_folder=saving_folder)
 
 
-full_dataset_pathname = "/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Feature_gathering/New_Crack_Len_FULL_OG_dataframe.csv"
-image_folder = '/Users/jakehirst/Desktop/sfx/sfx_pics/jake/images_sfx/new_dataset/Visible_cracks'
-
 all_labels = ['height', 'phi', 'theta', 
               'impact site x', 'impact site y', 'impact site z']
 
@@ -36,12 +33,13 @@ all_labels = ['height', 'phi', 'theta',
 # lossfunc = tf.keras.losses.LogCosh()
 
 label_to_predict = 'impact site x'
-saving_folder=f'/Users/jakehirst/Desktop/model_results/MODEL_COMPARISONS/CNN_no_images_{label_to_predict}/'
+saving_folder=f'/Users/jakehirst/Desktop/model_results/MODEL_COMPARISONS/CNN_with_raw_images_{label_to_predict}/'
+raw_images = get_images_from_dataset(full_dataset_pathname, image_folder)
 correlated_featureset, full_dataset_labels, important_features = prepare_dataset_Single_Output_Regression(full_dataset_pathname, image_folder, label_to_predict, all_labels, saving_folder=None)
 features_to_keep = ['crack len', 'init phi', 'init x']
 correlated_featureset = correlated_featureset[features_to_keep]
-raw_images = []
-run_kfold_Regression_CNN(correlated_featureset, raw_images, full_dataset_labels, patience=100, max_epochs=2000, num_outputs=1, lossfunc='mean_squared_error', saving_folder=saving_folder, use_images=False)
+# raw_images = []
+run_kfold_Regression_CNN(correlated_featureset, raw_images, full_dataset_labels, patience=100, max_epochs=2000, num_outputs=1, lossfunc='mean_squared_error', saving_folder=saving_folder, use_images=True)
 
 # label_to_predict = 'impact site y'
 # saving_folder=f'/Users/jakehirst/Desktop/model_results/MODEL_COMPARISONS/CNN_no_images_{label_to_predict}/'

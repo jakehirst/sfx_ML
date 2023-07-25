@@ -65,14 +65,32 @@ def CNN_1D(train_features_1D):
 
     return csv_output, csv_input
 
+
+# def googlenet_CNN_images(image_shape):
+    
+#     img_output = tf.keras.layers.Dense(8, activation='relu')(dense1)
+#     return input, img_output
+
+
 """ 
 CNN architecture before output layer for image features
 image shape should be (642, 802, 3) 
 returns the input 
 """
 def CNN_image(image_shape):
+    # input = tf.keras.layers.Input(shape=image_shape, name="img_input")
+    # conv1 = tf.keras.layers.Conv2D(128, (7, 7), activation='relu', input_shape=image_shape)(input)
+    # conv2 = tf.keras.layers.Conv2D(128, (7, 7), activation='relu', input_shape=image_shape)(conv1)
+    # pool1 = tf.keras.layers.MaxPooling2D(2)(conv2)
+    # conv3 = tf.keras.layers.Conv2D(64, (3, 3), activation='relu', input_shape=image_shape)(pool1)
+    # conv4 = tf.keras.layers.Conv2D(64, (3, 3), activation='relu', input_shape=image_shape)(conv3)
+    # pool2 = tf.keras.layers.MaxPooling2D(2)(conv4)
+    # conv5 = tf.keras.layers.Conv2D(32, (3, 3), activation='relu', input_shape=image_shape)(pool2)
+    # conv6 = tf.keras.layers.Conv2D(32, (3, 3), activation='relu', input_shape=image_shape)(conv5)
+    # pool3 = tf.keras.layers.MaxPooling2D(2)(conv6)
+    
     input = tf.keras.layers.Input(shape=image_shape, name="img_input")
-    conv1 = tf.keras.layers.Conv2D(32, (3, 3), activation='relu', input_shape=image_shape)(input)
+    conv1 = tf.keras.layers.Conv2D(64, (7, 7), activation='relu', input_shape=image_shape)(input)
     pool1 = tf.keras.layers.MaxPooling2D(2)(conv1)
     # conv2 = tf.keras.layers.Conv2D(32, (3, 3), activation='relu', input_shape=image_shape)(pool1)
     # pool2 = tf.keras.layers.MaxPooling2D(2)(conv2)
@@ -80,6 +98,7 @@ def CNN_image(image_shape):
     flat = tf.keras.layers.Flatten()(pool1)
     
     # dense1 = tf.keras.layers.Dense(128, activation='relu')(flat)
+    # dense2 = tf.keras.layers.Dense(64, activation='relu')(flat)
     img_output = tf.keras.layers.Dense(8, activation='relu')(flat)
     return input, img_output
 
@@ -190,6 +209,8 @@ def run_kfold_Categorical_CNN(full_dataset, raw_images, full_dataset_labels, pat
         fold_no += 1
     
     return models
+
+
 
 '''
 runs a dual input (image and 1D features) Regression CNN on the given dataset, doing a 5 fold cross validation and testing it 

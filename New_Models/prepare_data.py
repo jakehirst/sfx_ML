@@ -100,7 +100,8 @@ def remove_unwanted_labels(dataset, label_to_predict, labels):
 '''
 gets the list of images in their raw form and adds it to the dataframe under 'raw_images'
 '''
-def get_images_from_dataset(df, image_folder):
+def get_images_from_dataset(df_1D_features_path, image_folder):
+    df = pd.read_csv(df_1D_features_path)
     images = []
     for row in df.iterrows():
         height = str(row[1]['height']).replace('.', '-')

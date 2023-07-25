@@ -24,7 +24,7 @@ case_study_df = case_study_df[~case_study_df['Age (mo)'].isna()]#getting rid of 
 case_study_df = case_study_df[case_study_df['Age (mo)'] <= 5.0]
 
 """ Liminting the case studies to only hard surfaces """
-case_study_df = case_study_df[case_study_df['Surface COR'] == 'high']
+# case_study_df = case_study_df[case_study_df['Surface COR'] == 'high']
 print("here")
 
 
@@ -95,6 +95,7 @@ def get_mins_and_maxes(df):
 
 # case_study_df = case_study_df[case_study_df[case_study_df.columns.to_list()] != "Siemens - can't analyze"]
 # case_study_df = case_study_df[case_study_df[case_study_df.columns.to_list()] != "no scale factor - cannot analyze"]
+case_study_df['BC height'] = case_study_df['BC height'] * 3.28084 #changing height from meters to feet
 
 mean_1, std_1, max_1, min_1, median_1, mode_1, range_1, iqr_1, variance_1, cv_1, skewness_1, kurtosis_1 = get_mins_and_maxes(case_study_df)
 
@@ -144,6 +145,11 @@ def scatter_plot(df, column_name, median, mode, what_are_we_comparing):
     # plt.show()
     plt.close()
     
+def plot_heights_for_case_studies_and_kdiff(case_study_df, kdiff_df):
+    
+    
+    return
+    
 
  
 def plot_crack_len_vs_height(kdiff_df, kdiff_crack_len_name, kdiff_height_name, coats_df, coats_crack_len_name, coats_height_name):
@@ -163,7 +169,7 @@ def plot_crack_len_vs_height(kdiff_df, kdiff_crack_len_name, kdiff_height_name, 
 
 
     coats_crack_lens = coats_df[coats_crack_len_name]
-    coats_df['BC height'] = coats_df[coats_height_name] * 3.28084 #changing height from meters to feet
+    coats_df['BC height'] = coats_df[coats_height_name]  
     coats_heights = coats_df[coats_height_name] #heights are now in feet
 
     coats_correlation = coats_df[coats_height_name].corr(coats_df[coats_crack_len_name])
@@ -199,7 +205,8 @@ def plot_crack_len_vs_height(kdiff_df, kdiff_crack_len_name, kdiff_height_name, 
 
     return
     
-    
+
+
 # Boxplot of crack len
 # boxplot(case_study_df, 'Final True Line Length (mm)', max_1, min_1)
 # scatter_plot(case_study_df, 'Final True Line Length (mm)', median_1, mode_1, 'crack length')
@@ -208,8 +215,12 @@ plot_crack_len_vs_height(kdiff_df, 'crack len', 'height', case_study_df, 'Final 
 
 # Histograms comparing crack len
 xlimits = (0, 140)
-histogram(case_study_df, 'Final True Line Length (mm)', mean_1, std_1, 'crack length', x_limits=xlimits)
-histogram(kdiff_df, 'crack len', mean_2, std_2, 'crack length', x_limits=xlimits)
+# histogram(case_study_df, 'Final True Line Length (mm)', mean_1, std_1, 'crack length', x_limits=xlimits)
+# histogram(kdiff_df, 'crack len', mean_2, std_2, 'crack length', x_limits=xlimits)
+
+xlimits = (0, 5)
+histogram(case_study_df, 'BC height', mean_1, std_1, 'fall height', x_limits=xlimits)
+histogram(kdiff_df, 'height', mean_2, std_2, 'fall height', x_limits=xlimits)
 
 # Histograms comparing Linearity
 # xlimits = (0.75, 2.1)
@@ -233,8 +244,8 @@ histogram(kdiff_df, 'crack len', mean_2, std_2, 'crack length', x_limits=xlimits
 # side_by_side_plot(case_study_df, kdiff_df, kdiff_col='crack len', coats_col="Final True Line Length (mm)", title="Length vs height", ylim=(0,120))
 
 
-# num_suture_to_suture_kdiff = get_number_of_occurances(kdiff_df, "suture to suture", 1)
-# num_suture_to_suture_Coats = get_number_of_occurances(case_study_df, "Suture to Suture", 1)
+num_suture_to_suture_kdiff = get_number_of_occurances(kdiff_df, "suture to suture", 1)
+num_suture_to_suture_Coats = get_number_of_occurances(case_study_df, "Suture to Suture", 1)
 
 # print(f"Total k-diff S2S = {num_suture_to_suture_kdiff}. percentage = {num_suture_to_suture_kdiff / len(kdiff_df)}")
 # print(f"Total Case_study S2S = {num_suture_to_suture_Coats}. percentage = {num_suture_to_suture_Coats / len(case_study_df)}")

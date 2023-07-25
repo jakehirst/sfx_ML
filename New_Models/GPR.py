@@ -10,6 +10,7 @@ import os
 import pickle
 import matplotlib.animation as animation
 from Metric_collection import *
+from sklearn import preprocessing
 
 
 
@@ -85,8 +86,8 @@ def plot_test_predictions_heatmap(full_dataset, labels_to_predict, all_labels, a
     RPA_x, RPA_y, RPA_z = convert_coordinates_to_new_basis(Material_X, Material_Y, Material_Z, CM, RPA_x, RPA_y, RPA_z)
     
     #loading previously trained models
-    model_x = load_GPR_model(f'/Users/jakehirst/Desktop/model_results/GPR_RBF_and_white_{labels_to_predict[0]}/GPR_model_fold{models_fold_to_pull[labels_to_predict[0]]}.sav')
-    model_y = load_GPR_model(f'/Users/jakehirst/Desktop/model_results/GPR_RBF_and_white_{labels_to_predict[1]}/GPR_model_fold{models_fold_to_pull[labels_to_predict[1]]}.sav')
+    model_x = load_GPR_model(f'/Users/jakehirst/Desktop/model_results/MODEL_COMPARISONS/GPR_{labels_to_predict[0]}/GPR_model_fold{models_fold_to_pull[labels_to_predict[0]]}.sav')
+    model_y = load_GPR_model(f'/Users/jakehirst/Desktop/model_results/MODEL_COMPARISONS/GPR_{labels_to_predict[1]}/GPR_model_fold{models_fold_to_pull[labels_to_predict[1]]}.sav')
     # model_z = load_GPR_model(f'/Users/jakehirst/Desktop/model_results/GPR_{labels_to_predict[2]}/GPR_model_fold{models_fold_to_pull[labels_to_predict[2]]}.sav')
     #predicting with previously trained models
     x_predictions, x_stds = model_x.predict(full_dataset[all_important_features[labels_to_predict[0]]].to_numpy(), return_std=True)
@@ -133,30 +134,29 @@ def plot_test_predictions_heatmap(full_dataset, labels_to_predict, all_labels, a
         azimuth = np.degrees(azimuth)
         polar = np.degrees(polar)
         # # Set the camera direction using the angles (customizing a bit)
-        ax.view_init(elev=-5, azim=azimuth + 180)
+        ax.view_init(elev=-5, azim=azimuth + 270)
         # # Show the plot
-        # plt.savefig(saving_folder + f'prediction_{i}.png')
+        plt.savefig(saving_folder + f'prediction_{i}.png')
         # plt.show()
-        # plt.close()
         
-        #Creating animation gif that rotates 360 degrees
-        if(i == 2 or i == 4 or i == 6):
-            # Define the update function for the animation
-            def update(frame):
-                # ax.view_init(elev=polar - 5 + frame*2, azim=azimuth + 180+frame*2)  # Adjust the viewing angle
-                ax.view_init(elev=-5, azim=azimuth + 180+frame*2)  # Adjust the viewing angle
+        """Creating animation gif that rotates 360 degrees"""
+        # if(i == 2 or i == 4 or i == 6):
+        #     # Define the update function for the animation
+        #     def update(frame):
+        #         # ax.view_init(elev=polar - 5 + frame*2, azim=azimuth + 180+frame*2)  # Adjust the viewing angle
+        #         ax.view_init(elev=-5, azim=azimuth + 180+frame*2)  # Adjust the viewing angle
 
-                # line.set_data(x[:frame], y[:frame])  # Update the plot data
-                # line.set_3d_properties(z[:frame])
-                # return line
+        #         # line.set_data(x[:frame], y[:frame])  # Update the plot data
+        #         # line.set_3d_properties(z[:frame])
+        #         # return line
 
-            num_frames = 180
-            # Create the animation
-            ani = animation.FuncAnimation(fig, update, frames=num_frames, interval=50)
-            f = f'/Users/jakehirst/Desktop/sfx/Presentations_and_Papers/USNCCM/figures/rotation_figure{i}.gif'
-            writergif = animation.PillowWriter(fps=10) 
-            ani.save(f, writer=writergif)
-            print("next")
+        #     num_frames = 180
+        #     # Create the animation
+        #     ani = animation.FuncAnimation(fig, update, frames=num_frames, interval=50)
+        #     f = f'/Users/jakehirst/Desktop/sfx/Presentations_and_Papers/USNCCM/figures/rotation_figure{i}.gif'
+        #     writergif = animation.PillowWriter(fps=10) 
+        #     ani.save(f, writer=writergif)
+        #     print("next")
             
         plt.close()
 
@@ -222,18 +222,56 @@ def Kfold_Gaussian_Process_Regression(full_dataset, full_dataset_labels, importa
             train_df = train_df.iloc[train_indicies]
             y_train = y_train[train_indicies]
         
+        """ defining the covariance (kernel) function """
         kernel = ConstantKernel(1.0) + ConstantKernel(1.0) * RBF(length_scale=1e1, length_scale_bounds=(1e-2, 1e3))  + WhiteKernel(noise_level=2, noise_level_bounds=(1e-2, 1e2)) #TODO experiment with the kernel... but this one seems to work.
         kernel = ConstantKernel(1.0) + ConstantKernel(1.0) * RBF() + WhiteKernel(noise_level=1)
         # kernel = ConstantKernel(1.0) + ConstantKernel(1.0) * RBF() + ConstantKernel(1.0) * ExpSineSquared()+ WhiteKernel(noise_level=1)
-
+        # kernel = ConstantKernel(1.0) + ConstantKernel(1.0) * ExpSineSquared()+ WhiteKernel(noise_level=1)
         
-        model = GaussianProcessRegressor(kernel=kernel, random_state=0, alpha=50, n_restarts_optimizer=10)
+        model = GaussianProcessRegressor(kernel=kernel, random_state=0, alpha=50, n_restarts_optimizer=25)
         # model = GaussianProcessRegressor(kernel=kernel, random_state=0, alpha=50)
         
-        model.fit(train_df.to_numpy(), y_train)
-        print(model.get_params())
-        y_pred_train, y_pred_train_std = model.predict(train_df.to_numpy(), return_std=True)
-        y_pred_test, y_pred_test_std = model.predict(test_df.to_numpy(), return_std=True)
+        """ fitting and making predictions based on non-scaled data """
+        # model.fit(train_df.to_numpy(), y_train)
+        
+        # print(model.get_params())
+        # y_pred_train, y_pred_train_std = model.predict(train_df.to_numpy(), return_std=True)
+        # y_pred_test, y_pred_test_std = model.predict(test_df.to_numpy(), return_std=True)
+        
+        # train_uncertainty, train_uncertainty_values = evaluate_uncertainty(y_pred_train, y_pred_train_std, y_train, 'Train')
+        # print(f'\ntrain uncertainty = \n {train_uncertainty}')
+        # test_uncertainty, test_uncertainty_values = evaluate_uncertainty(y_pred_test, y_pred_test_std, y_test, 'Test')
+        # print(f'\ntest uncertainty = \n {test_uncertainty}')
+
+        
+        # if(save_data):
+        #     save_GPR_model(model, fold_no, saving_folder)            
+        #     collect_and_save_metrics(y_train, y_pred_train, y_test, y_pred_test, list(train_df.columns), fold_no, saving_folder)
+            
+        #     # adding the uncertainty metrics to the metric data
+        #     metric_data = pd.read_csv(saving_folder + f'/model_metrics_fold_{fold_no}.csv')
+        #     metric_data = metric_data.assign(**train_uncertainty)
+        #     metric_data = metric_data.assign(**test_uncertainty)
+        #     metric_data.to_csv(saving_folder + f'/model_metrics_fold_{fold_no}.csv')
+            
+        #     #plot_test_predictions_heatmap(y_test, y_pred_test, y_pred_test_std, fold_no, saving_folder)
+        #     parody_plot_with_std(y_test, y_pred_test, y_pred_test_std, fold_no, saving_folder, label_to_predict)
+        # models.append((model, y_test, test_df, y_train, train_df))
+
+        """ fitting and making predictions based on non-scaled data """
+
+
+
+        """ fitting and making predictions based on scaled data """
+        """ Scaling my data """
+        scaler = preprocessing.StandardScaler().fit(full_dataset.to_numpy())
+        X_scaled_train = scaler.transform(train_df.to_numpy())
+        X_scaled_test = scaler.transform(test_df.to_numpy())
+        
+        model.fit(X_scaled_train, y_train)
+        
+        y_pred_train, y_pred_train_std = model.predict(X_scaled_train, return_std=True)
+        y_pred_test, y_pred_test_std = model.predict(X_scaled_test, return_std=True)
         
         train_uncertainty, train_uncertainty_values = evaluate_uncertainty(y_pred_train, y_pred_train_std, y_train, 'Train')
         print(f'\ntrain uncertainty = \n {train_uncertainty}')
@@ -250,12 +288,19 @@ def Kfold_Gaussian_Process_Regression(full_dataset, full_dataset_labels, importa
             metric_data = metric_data.assign(**train_uncertainty)
             metric_data = metric_data.assign(**test_uncertainty)
             metric_data.to_csv(saving_folder + f'/model_metrics_fold_{fold_no}.csv')
-            
-            #plot_test_predictions_heatmap(y_test, y_pred_test, y_pred_test_std, fold_no, saving_folder)
+            # plot_test_predictions_heatmap(y_test, y_pred_test, y_pred_test_std, fold_no, saving_folder)
             parody_plot_with_std(y_test, y_pred_test, y_pred_test_std, fold_no, saving_folder, label_to_predict)
         
+        Scaled_train_df = pd.DataFrame(X_scaled_train, columns=train_df.columns)
+        Scaled_test_df = pd.DataFrame(X_scaled_test, columns=test_df.columns)
+
+        models.append((model, y_test, Scaled_test_df, y_train, Scaled_train_df))
+
+        """ fitting and making predictions based on scaled data """
+
+
+
         performances.append((r2_score(y_test, y_pred_test), mean_squared_error(y_test, y_pred_test)))
-        models.append((model, y_test, test_df))
         fold_no += 1
         
     r2s = np.array([t[0] for t in performances])
@@ -293,3 +338,5 @@ def Kfold_Gaussian_Process_Regression(full_dataset, full_dataset_labels, importa
 # raw_images = []
 
 # plot_test_predictions_heatmap(correlated_featureset, labels_to_predict, all_labels, all_important_features, models_fold_to_pull, saving_folder)
+
+
