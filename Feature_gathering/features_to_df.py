@@ -11,6 +11,22 @@ from thickness import *
 from orientation import *
 from kink_angle import *
 import random 
+from FindImpactNode import *
+import ast
+from datetime import date
+
+current_date = date.today()
+current_date_string = current_date.strftime("%Y_%m_%d")
+
+
+#material basis vectors for RPA bone
+Material_X = np.array([-0.87491124, -0.44839274,  0.18295974])
+Material_Y = np.array([ 0.23213791, -0.71986519, -0.65414532])
+Material_Z = np.array([ 0.42502036, -0.5298472,   0.7339071 ])
+#Center of mass of the RPA bone in abaqus basis
+CM = np.array([106.55,72.79,56.64])
+#Ossification center of the RPA bone in abaqus basis
+OC = np.array([130.395996,46.6063,98.649696])
 
 FOLDER_PATH = "F:\\Jake\\good_simies\\"
 # FOLDER_PATH = "Z:\\bjornssimies\\correcthistory\\"
@@ -101,6 +117,51 @@ def PhiTheta_to_cartesian(df):
 """ saves the dataframe to the specified filepath"""
 def save_df(df, filepath):
     df.to_csv(filepath)
+
+'''
+Inserts a column of data (new_column_data) into the df after the column_before column and it 
+calls the new column 'new_column_name'
+Returns the new dataframe.
+'''
+def insert_column_into_df(df, column_before, new_column_name, new_column_data):
+    df.insert(loc=df.columns.get_loc(column_before) , column=new_column_name, value=new_column_data)
+    return df
+
+''' 
+Converts the xs ys and zs from the ABAQUS basis into the basis that is centered at the center of mass of the skull CM, and 
+the z axis goes through the the ossification site of the RPA bone. These new basis vectors are defined above as Material X, Y, and Z.
+Returns the x, y and z values in the new basis.
+'''
+def convert_coordinates_to_new_basis(Material_X, Material_Y, Material_Z, CM, xs, ys, zs):
+    Transform = np.linalg.inv( np.matrix(np.transpose([Material_X,Material_Y,Material_Z])) )
+    x2 = []
+    y2 = []
+    z2 = []
+    for i in range(len(xs)):
+        #the old point is in reference to the center of mass of the skull, defined as CM
+        old_point = np.array([xs[i], ys[i], zs[i]]) - CM 
+        #using transformation matrix to go from abaqus basis to the material basis
+        new_point = np.array( Transform * np.matrix(old_point.reshape((3,1))) ).reshape((1,3)) 
+        x2.append(new_point[0][0])
+        y2.append(new_point[0][1])
+        z2.append(new_point[0][2])
+
+    print("Coordinates in the target basis:")
+    print(f"x2: {x2}, y2: {y2}, z2: {z2}")
+        
+    return np.array(x2), np.array(y2), np.array(z2)
+
+'''
+Converts x, y and z values into sphereical coordinates r, phi, and theta.
+Returns r, phi and theta values 
+'''
+def convert_cartesian_to_spherical(x,y,z):
+    r = np.sqrt(x**2 + y**2 + z**2)
+    phi = np.arccos(z / r)
+    theta = np.arctan2(y, x)
+    theta = np.degrees(theta)
+    return r, np.degrees(phi) , (theta % 360 + 360) % 360
+
 
 def check_history_output(folder_path, key):
     file = open(folder_path + key + "\\" + key + "_history.log")
@@ -255,6 +316,102 @@ def create_df():
             "theta": theta_array
             }
     df = pd.DataFrame(df,columns=columns)
+
+    ''' add impact sites to the df '''
+    min_distance_locations, parietal_nodes, impact_bones = get_all_impact_node_sites(FOLDER_PATH)
+    parietal_nodes = np.asarray(parietal_nodes)
+    parietal_node_locations = parietal_nodes[:,1:] #parietal_node_locations doesnt include the node number, parietal_nodes does include the node number
+    impact_nodes = np.array(list(min_distance_locations.values()))
+    df = add_impact_sites_to_existing_df(df, 'C:\\Users\\u1056\\sfx\\sfx_ML\\sfx_ML\\Feature_gathering\\','impact_sites.json')
+
+
+    ''' convert all locational features and labels into Jimmys reference frame. (z axis goes from the center of mass through the ossification site)'''
+    impact_sites_list = df['impact_sites'].to_numpy()
+    # Transform each list element into a numpy array
+    impact_sites = np.array([np.array(ast.literal_eval(string)) for string in impact_sites_list])
+    df = insert_column_into_df(df, 'impact_sites', 'impact site x', impact_sites[:,0])
+    df = insert_column_into_df(df, 'impact_sites', 'impact site y', impact_sites[:,1])
+    df = insert_column_into_df(df, 'impact_sites', 'impact site z', impact_sites[:,2])
+
+    Jimmy_impact_sites_x, Jimmy_impact_sites_y, Jimmy_impact_sites_z = convert_coordinates_to_new_basis(Material_X, Material_Y, Material_Z, CM, impact_sites[:,0], impact_sites[:,1], impact_sites[:,2])
+    Jimmy_init_x, Jimmy_init_y, Jimmy_init_z = convert_coordinates_to_new_basis(Material_X, Material_Y, Material_Z, CM, df['init x'].to_numpy(), df['init y'].to_numpy(), df['init z'].to_numpy())
+    Jimmy_front_0_x, Jimmy_front_0_y, Jimmy_front_0_z = convert_coordinates_to_new_basis(Material_X, Material_Y, Material_Z, CM, df['front 0 x'].to_numpy(), df['front 0 y'].to_numpy(), df['front 0 z'].to_numpy())
+    Jimmy_front_1_x, Jimmy_front_1_y, Jimmy_front_1_z = convert_coordinates_to_new_basis(Material_X, Material_Y, Material_Z, CM, df['front 1 x'].to_numpy(), df['front 1 y'].to_numpy(), df['front 1 z'].to_numpy())
+
+    Jimmy_impact_sites_r, Jimmy_impact_sites_phi, Jimmy_impact_sites_theta = convert_cartesian_to_spherical(Jimmy_impact_sites_x, Jimmy_impact_sites_y, Jimmy_impact_sites_z)
+    Jimmy_init_r, Jimmy_init_phi, Jimmy_init_theta = convert_cartesian_to_spherical(Jimmy_init_x, Jimmy_init_y, Jimmy_init_z)
+    Jimmy_front0_r, Jimmy_front0_phi, Jimmy_front0_theta = convert_cartesian_to_spherical(Jimmy_front_0_x, Jimmy_front_0_y, Jimmy_front_0_z)
+    Jimmy_front1_r, Jimmy_front1_phi, Jimmy_front1_theta = convert_cartesian_to_spherical(Jimmy_front_1_x, Jimmy_front_1_y, Jimmy_front_1_z)
+
+    df = insert_column_into_df(df, 'init z', 'Jimmy_init theta', Jimmy_init_theta)
+    df = insert_column_into_df(df, 'init z', 'Jimmy_init phi', Jimmy_init_phi)
+    df = insert_column_into_df(df, 'init z', 'Jimmy_init r', Jimmy_init_r)
+
+    df = insert_column_into_df(df, 'front 0 z', 'Jimmy_front 0 theta', Jimmy_front0_theta)
+    df = insert_column_into_df(df, 'front 0 z', 'Jimmy_front 0 phi', Jimmy_front0_phi)
+    df = insert_column_into_df(df, 'front 0 z', 'Jimmy_front 0 r', Jimmy_front0_r)
+
+    df = insert_column_into_df(df, 'front 1 z', 'Jimmy_front 1 theta', Jimmy_front1_theta)
+    df = insert_column_into_df(df, 'front 1 z', 'Jimmy_front 1 phi', Jimmy_front1_phi)
+    df = insert_column_into_df(df, 'front 1 z', 'Jimmy_front 1 r', Jimmy_front1_r)
+
+    df = insert_column_into_df(df, 'impact_sites', 'Jimmy_impact site theta', Jimmy_impact_sites_theta)
+    df = insert_column_into_df(df, 'impact_sites', 'Jimmy_impact site phi', Jimmy_impact_sites_phi)
+    df = insert_column_into_df(df, 'impact_sites', 'Jimmy_impact site r', Jimmy_impact_sites_r)
+
+    df = insert_column_into_df(df, 'impact_sites', 'Jimmy_impact site z', Jimmy_impact_sites_z)
+    df = insert_column_into_df(df, 'impact_sites', 'Jimmy_impact site y', Jimmy_impact_sites_y)
+    df = insert_column_into_df(df, 'impact_sites', 'Jimmy_impact site x', Jimmy_impact_sites_x)
+
+    df = insert_column_into_df(df, 'init z', 'Jimmy_init z', Jimmy_init_z)
+    df = insert_column_into_df(df, 'init z', 'Jimmy_init y', Jimmy_init_y)
+    df = insert_column_into_df(df, 'init z', 'Jimmy_init x', Jimmy_init_x)
+
+    df = insert_column_into_df(df, 'front 0 z', 'Jimmy_front_0_z', Jimmy_front_0_z)
+    df = insert_column_into_df(df, 'front 0 z', 'Jimmy_front_0_y', Jimmy_front_0_y)
+    df = insert_column_into_df(df, 'front 0 z', 'Jimmy_front_0_x', Jimmy_front_0_x)
+
+    df = insert_column_into_df(df, 'front 1 z', 'Jimmy_front_1_z', Jimmy_front_1_z)
+    df = insert_column_into_df(df, 'front 1 z', 'Jimmy_front_1_y', Jimmy_front_1_y)
+    df = insert_column_into_df(df, 'front 1 z', 'Jimmy_front_1_x', Jimmy_front_1_x)
+
+    df = df.drop(columns=['impact site x', 'impact site y', 'impact site z',
+                          'front 0 x', 'front 0 y', 'front 0 z',
+                          'front 1 x', 'front 1 y', 'front 1 z',
+                          'init x', 'init y', 'init z',
+                          'impact site x', 'impact site y', 'impact site z', 'impact_sites'])
+    
+    column_name_changes = {
+    'Jimmy_front 0 theta': 'front 0 theta',
+    'Jimmy_front 0 phi': 'front 0 phi',
+    'Jimmy_front 0 r': 'front 0 r',
+    'Jimmy_front_0_z': 'front_0_z', 
+    'Jimmy_front_0_y': 'front_0_y', 
+    'Jimmy_front_0_x': 'front_0_x',
+    'Jimmy_front 1 theta': 'front 1 theta', 
+    'Jimmy_front 1 phi': 'front 1 phi', 
+    'Jimmy_front 1 r': 'front 1 r',
+    'Jimmy_front_1_z': 'front 1 z', 
+    'Jimmy_front_1_y': 'front 1 y', 
+    'Jimmy_front_1_x': 'front 1 x',
+    'Jimmy_init theta': 'init theta', 
+    'Jimmy_init phi': 'init phi', 
+    'Jimmy_init r': 'init r', 
+    'Jimmy_init z': 'init z',
+    'Jimmy_init y': 'init y', 
+    'Jimmy_init x': 'init x',
+    'Jimmy_impact site theta': 'impact site theta', 
+    'Jimmy_impact site phi': 'impact site phi',
+    'Jimmy_impact site r': 'impact site r',
+    'Jimmy_impact site z': 'impact site z', 
+    'Jimmy_impact site y': 'impact site y',
+    'Jimmy_impact site x': 'impact site x'
+    }
+
+    # Rename specific columns of the DataFrame
+    df = df.rename(columns=column_name_changes)
+
+    
     return df
 
 
@@ -270,11 +427,11 @@ print(df)
 Pearson_Correlations_for_df(df, "height")
 Pearson_Correlations_for_df(df, "phi")
 Pearson_Correlations_for_df(df, "theta")
-save_df(test_df, "C:\\Users\\u1056\\sfx\\sfx_ML\\sfx_ML\\Feature_gathering\\New_Crack_Len_TEST_OG_dataframe.csv")
-save_df(train_df, "C:\\Users\\u1056\\sfx\\sfx_ML\\sfx_ML\\Feature_gathering\\New_Crack_Len_TRAIN_OG_dataframe.csv")
-save_df(df, "C:\\Users\\u1056\\sfx\\sfx_ML\\sfx_ML\\Feature_gathering\\New_Crack_Len_FULL_OG_dataframe.csv")
+# save_df(test_df, "C:\\Users\\u1056\\sfx\\sfx_ML\\sfx_ML\\Feature_gathering\\New_Crack_Len_TEST_OG_dataframe.csv")
+# save_df(train_df, "C:\\Users\\u1056\\sfx\\sfx_ML\\sfx_ML\\Feature_gathering\\New_Crack_Len_TRAIN_OG_dataframe.csv")
+save_df(df, "C:\\Users\\u1056\\sfx\\sfx_ML\\sfx_ML\\Feature_gathering\\New_Crack_Len_FULL_OG_dataframe_" + current_date_string + ".csv")
 df = PhiTheta_to_cartesian(df)
-save_df(df, "C:\\Users\\u1056\\sfx\\sfx_ML\\sfx_ML\\Feature_gathering\\OG_dataframe_cartesian.csv")
+save_df(df, "C:\\Users\\u1056\\sfx\\sfx_ML\\sfx_ML\\Feature_gathering\\OG_dataframe_cartesian_" + current_date_string + ".csv")
 Pearson_Correlations_for_df(df, "x")
 Pearson_Correlations_for_df(df, "y")
 Pearson_Correlations_for_df(df, "z")
