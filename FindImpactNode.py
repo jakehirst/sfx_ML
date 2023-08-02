@@ -38,7 +38,7 @@ def get_distance(N1, N2):
     distance = ((N1[1] - N2[1])**2 + (N1[2] - N2[2])**2 + (N1[3] - N2[3])**2)**0.5
     return distance
 
-def get_impact_node(file, min_steps_and_ucis):
+def get_impact_node(file, min_steps_and_ucis, folder_name):
     print("\nCHECKING "+ file)
     step = min_steps_and_ucis[file][0]
     uci = min_steps_and_ucis[file][1]
@@ -132,7 +132,7 @@ def get_all_impact_node_sites(folder_name):
 
     for file in min_steps_and_ucis.keys():
 
-        min_distance, part_of_skull,Skull_nodes = get_impact_node(file, min_steps_and_ucis)
+        min_distance, part_of_skull,Skull_nodes = get_impact_node(file, min_steps_and_ucis, folder_name)
         impact_bones[file] = part_of_skull
         min_distance_locations[file] = min_distance[2][1:]
         if(min_distance[1] != "RPA1_5#PART-1\n"):
@@ -158,15 +158,15 @@ def plot_impact_sites(parietal_nodes, min_distance_locations):
     fig = plt.figure(figsize=(8,8))
     ax = fig.add_subplot(111, projection='3d')
     # Plot the parietal points lightly
-    ax.scatter(parietal_nodes[:,0], parietal_nodes[:,1], parietal_nodes[:,2], color='blue', alpha=0.1, label='parietal_nodes')
+    ax.scatter(parietal_nodes[:,0], parietal_nodes[:,1], parietal_nodes[:,2], color='blue', alpha=0.1, label='Parietal bone')
 
     # Plot the impact points more heavily
-    ax.scatter(min_distance_locations[:,0], min_distance_locations[:,1], min_distance_locations[:,2], color='red', alpha=0.3, label='impact_sites')
-
+    ax.scatter(min_distance_locations[:,0], min_distance_locations[:,1], min_distance_locations[:,2], color='red', alpha=0.3, label='Impact sites')
+    ax.grid(False)
     # Show the plot
     plt.legend()
     # plt.show()
-    plt.savefig('C:\\Users\\u1056\\sfx\\sfx_ML\\sfx_ML\\Feature_gathering\\impact_sites_image.png')
+    # plt.savefig('C:\\Users\\u1056\\sfx\\sfx_ML\\sfx_ML\\Feature_gathering\\impact_sites_image.png')
     plt.show()
     plt.close()
 
@@ -200,10 +200,27 @@ def add_impact_sites_to_df(df_folder, df_filename, impact_folder, impact_filenam
     df.to_csv(df_folder + df_filename.replace('.csv', '_with_impact_sites.csv'))
     return df
 
+def add_impact_sites_to_existing_df(df, impact_folder, impact_filename):
+    # df = pd.read_csv(df_folder + df_filename)
+    impact_sites = load_impact_sites(impact_folder, impact_filename)
+    impact_simulations = list(impact_sites.keys())
+    # impact_location_arr = np.zeros((len(df),3))
+    impact_location_arr = [''] * len(df)
 
-folder_name = "F:\\Jake\\good_simies_coats\\"
-folder_name = "C:\\Users\\u1056\\OneDrive\\Desktop\\Loyd_42_0_case\\delta_k_code\\"
-folder_name = "C:\\Users\\u1056\\sfx\\impact_node_check\\"
+    for simulation in impact_simulations:
+        height = float(simulation.split('_')[1].replace('-','.').replace('ft',''))
+        phi = float(simulation.split('_')[3])
+        theta = float(simulation.split('_')[-1])
+
+        index = df[(df['height'] == height) & (df['phi'] == phi) & (df['theta'] == theta)]
+        impact_location_arr[index.index[0]] = str(impact_sites[simulation])
+    df['impact_sites'] = impact_location_arr
+    # df.to_csv(df_folder + df_filename.replace('.csv', '_with_impact_sites.csv'))
+    return df
+
+# folder_name = "F:\\Jake\\good_simies_coats\\"
+# folder_name = "C:\\Users\\u1056\\OneDrive\\Desktop\\Loyd_42_0_case\\delta_k_code\\"
+# folder_name = "C:\\Users\\u1056\\sfx\\impact_node_check\\"
 folder_name = "F:\\Jake\\good_simies\\"
 
 min_distance_locations, parietal_nodes, impact_bones = get_all_impact_node_sites(folder_name)
@@ -212,7 +229,7 @@ parietal_node_locations = parietal_nodes[:,1:] #parietal_node_locations doesnt i
 impact_nodes = np.array(list(min_distance_locations.values()))
 plot_impact_sites(parietal_node_locations, impact_nodes)
 
-df = add_impact_sites_to_df('C:\\Users\\u1056\\sfx\\sfx_ML\\sfx_ML\\Feature_gathering\\', 'New_Crack_Len_FULL_OG_dataframe.csv','C:\\Users\\u1056\\sfx\\sfx_ML\\sfx_ML\\Feature_gathering\\','impact_sites.json')
+# df = add_impact_sites_to_df('C:\\Users\\u1056\\sfx\\sfx_ML\\sfx_ML\\Feature_gathering\\', 'New_Crack_Len_FULL_OG_dataframe.csv','C:\\Users\\u1056\\sfx\\sfx_ML\\sfx_ML\\Feature_gathering\\','impact_sites.json')
 
-print(df)
-print("done")
+# print(df)
+# print("done")
