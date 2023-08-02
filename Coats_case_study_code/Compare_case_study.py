@@ -118,7 +118,7 @@ def histogram(df1, column_name_df1, mean_1, std_1, what_are_we_comparing, x_limi
     plt.title(title)
     plt.xlim(x_limits)
     plt.ylabel('Percentage of cases')
-    plt.xlabel('Crack lengths (mm)')
+    plt.xlabel(what_are_we_comparing)
     plt.ylim(0, 0.4)
     plt.legend()
     plt.show()
@@ -215,8 +215,8 @@ plot_crack_len_vs_height(kdiff_df, 'crack len', 'height', case_study_df, 'Final 
 
 # Histograms comparing crack len
 xlimits = (0, 140)
-# histogram(case_study_df, 'Final True Line Length (mm)', mean_1, std_1, 'crack length', x_limits=xlimits)
-# histogram(kdiff_df, 'crack len', mean_2, std_2, 'crack length', x_limits=xlimits)
+histogram(case_study_df, 'Final True Line Length (mm)', mean_1, std_1, 'crack length', x_limits=xlimits)
+histogram(kdiff_df, 'crack len', mean_2, std_2, 'crack length', x_limits=xlimits)
 
 xlimits = (0, 5)
 histogram(case_study_df, 'BC height', mean_1, std_1, 'fall height', x_limits=xlimits)
