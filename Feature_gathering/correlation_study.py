@@ -69,7 +69,7 @@ def insert_column_into_df(df, column_before, new_column_name, new_column_data):
 
     
     
-full_df = pd.read_csv("/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Feature_gathering/FULL_OG_dataframe_with_impact_sites.csv")
+full_df = pd.read_csv("/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Feature_gathering/New_Crack_Len_FULL_OG_dataframe_with_impact_sites.csv")
 full_df = full_df.drop("Unnamed: 0.1", axis=1)
 full_df = full_df.drop("Unnamed: 0", axis=1)
 

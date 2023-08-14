@@ -3,12 +3,14 @@ from prepare_data import *
 from CNN import *
 from sklearn.model_selection import KFold
 from sklearn.gaussian_process import GaussianProcessRegressor
-from sklearn.gaussian_process.kernels import RBF, ConstantKernel, WhiteKernel
+from sklearn.gaussian_process.kernels import RBF, ConstantKernel, WhiteKernel, ExpSineSquared, DotProduct
 import matplotlib.pyplot as plt
 from sklearn.metrics import r2_score, precision_score, confusion_matrix, recall_score, f1_score
 import os
 import pickle
 import matplotlib.animation as animation
+from Metric_collection import *
+from sklearn import preprocessing
 
 
 
@@ -41,22 +43,6 @@ def parody_plot_with_std(y_test, y_pred_test, y_pred_test_std, fold_no, saving_f
     # plt.show()
     plt.close()
 
-'''
-gets regression metrics comparing the predictions to the true values and saves them into the saving_folder
-'''
-def collect_and_save_metrics(y_test, y_pred_test, num_samples, num_features, important_features, fold_no, saving_folder):
-    r2 = r2_score(y_test, y_pred_test)
-    adj_r2 = adjusted_r2(y_test, y_pred_test, num_samples, num_features)
-    mae = mean_absolute_error(y_test, y_pred_test)
-    mse = mean_squared_error(y_test, y_pred_test)
-    rmse = np.sqrt(mse)
-    
-    with open(saving_folder + f'/model_metrics_fold_{fold_no}.csv', 'w', newline='') as file:
-        writer = csv.writer(file)
-        #write the header row
-        writer.writerow(['r^2', 'adj_r^2', 'MAE', 'MSE', 'RMSE', 'features_used'])
-        writer.writerow([r2, adj_r2, mae, mse, rmse, important_features])
-    return
 
 ''' 
 Converts the xs ys and zs from the ABAQUS basis into the basis that is centered at the center of mass of the skull CM, and 
@@ -100,16 +86,17 @@ def plot_test_predictions_heatmap(full_dataset, labels_to_predict, all_labels, a
     RPA_x, RPA_y, RPA_z = convert_coordinates_to_new_basis(Material_X, Material_Y, Material_Z, CM, RPA_x, RPA_y, RPA_z)
     
     #loading previously trained models
-    model_x = load_GPR_model(f'/Users/jakehirst/Desktop/model_results/GPR_{labels_to_predict[0]}/GPR_model_fold{models_fold_to_pull[labels_to_predict[0]]}.sav')
-    model_y = load_GPR_model(f'/Users/jakehirst/Desktop/model_results/GPR_{labels_to_predict[1]}/GPR_model_fold{models_fold_to_pull[labels_to_predict[1]]}.sav')
-    model_z = load_GPR_model(f'/Users/jakehirst/Desktop/model_results/GPR_{labels_to_predict[2]}/GPR_model_fold{models_fold_to_pull[labels_to_predict[2]]}.sav')
+    model_x = load_GPR_model(f'/Users/jakehirst/Desktop/model_results/MODEL_COMPARISONS/GPR_{labels_to_predict[0]}/GPR_model_fold{models_fold_to_pull[labels_to_predict[0]]}.sav')
+    model_y = load_GPR_model(f'/Users/jakehirst/Desktop/model_results/MODEL_COMPARISONS/GPR_{labels_to_predict[1]}/GPR_model_fold{models_fold_to_pull[labels_to_predict[1]]}.sav')
+    # model_z = load_GPR_model(f'/Users/jakehirst/Desktop/model_results/GPR_{labels_to_predict[2]}/GPR_model_fold{models_fold_to_pull[labels_to_predict[2]]}.sav')
     #predicting with previously trained models
-    x_predictions, x_stds = model_x.predict(remove_ABAQUS_features(full_dataset[all_important_features[labels_to_predict[0]]]).to_numpy(), return_std=True)
-    y_predictions, y_stds = model_y.predict(remove_ABAQUS_features(full_dataset[all_important_features[labels_to_predict[1]]]).to_numpy(), return_std=True)
-    z_predictions, z_stds = model_z.predict(remove_ABAQUS_features(full_dataset[all_important_features[labels_to_predict[2]]]).to_numpy(), return_std=True)
+    x_predictions, x_stds = model_x.predict(full_dataset[all_important_features[labels_to_predict[0]]].to_numpy(), return_std=True)
+    y_predictions, y_stds = model_y.predict(full_dataset[all_important_features[labels_to_predict[1]]].to_numpy(), return_std=True)
+    # z_predictions, z_stds = model_z.predict(remove_ABAQUS_features(full_dataset[all_important_features[labels_to_predict[2]]]).to_numpy(), return_std=True)
     x_true = full_dataset[labels_to_predict[0]].to_numpy()
     y_true = full_dataset[labels_to_predict[1]].to_numpy()
-    z_true = full_dataset[labels_to_predict[2]].to_numpy()
+    z_true = full_dataset['impact site z'].to_numpy()
+
 
 
     for i in range(len(full_dataset)):
@@ -117,36 +104,26 @@ def plot_test_predictions_heatmap(full_dataset, labels_to_predict, all_labels, a
         # Create a 3D figure
         fig = plt.figure(figsize=(10,8))
         ax = fig.add_subplot(111, projection='3d')
-
-        # Plot the points
-        # ax.scatter(RPA_x, RPA_y, RPA_z, c='yellow', alpha=0.05)
-        # x_dist = np.random.normal(x_predictions[i], x_stds[i], 5000)
-        # y_dist = np.random.normal(y_predictions[i], y_stds[i], 5000)
-        # z_dist = np.random.normal(z_predictions[i], z_stds[i], 5000)
-        # ax.scatter(x_dist, y_dist, z_dist, c='red', alpha=0.01)
-        # ax.scatter(x_predictions[i], y_predictions[i], z_predictions[i], c='red', label='mean predicted impact location')
-        # ax.scatter(x_true[i], y_true[i], z_true[i], c='blue', label='true impact location')
+        ax.grid(False)
         
-        ax.scatter(RPA_z, RPA_x, RPA_y, c='yellow', alpha=0.05)
+        ax.scatter(RPA_z, RPA_x, RPA_y, c='grey', alpha=0.025)
         x_dist = np.random.normal(x_predictions[i], x_stds[i], 5000)
         y_dist = np.random.normal(y_predictions[i], y_stds[i], 5000)
-        z_dist = np.random.normal(z_predictions[i], z_stds[i], 5000)
-        ax.scatter(z_dist, x_dist, y_dist, c='red', alpha=0.01)
-        ax.scatter(z_predictions[i], x_predictions[i], y_predictions[i], c='red', label='mean predicted impact location')
-        ax.scatter(z_true[i], x_true[i], y_true[i], c='blue', label='true impact location')
+
+        point_size = 50
+        z_dist = np.random.normal(z_true[i], 3, 5000)
+        ax.scatter(z_dist, x_dist, y_dist, c='cyan', alpha=0.01)
+        ax.scatter(z_true[i], x_predictions[i], y_predictions[i], c='blue', label='Mean predicted impact location', s=point_size)
+        ax.scatter(z_true[i], x_true[i], y_true[i], c='orange', label='True impact location', s=point_size)
         
 
-        # Set labels and title
-        # ax.set_xlabel('X')
-        # ax.set_ylabel('Y')
-        # ax.set_zlabel('Z')
         ax.set_xlabel('Z')
         ax.set_ylabel('X')
         ax.set_zlabel('Y')
-        ax.set_xlim3d(-70, 70)
-        ax.set_ylim3d(-70, 70)
-        ax.set_zlim3d(-70, 70)
-        ax.set_title('GPR prediction scatter plot')
+        ax.set_xlim3d(-60, 60)
+        ax.set_ylim3d(-80, 80)
+        ax.set_zlim3d(-60, 60)
+        ax.set_title('GPR prediction for impact site in right parietal bone', fontweight='bold')
         ax.legend()
         
         normal_vector = np.array([0,1,0])
@@ -157,30 +134,29 @@ def plot_test_predictions_heatmap(full_dataset, labels_to_predict, all_labels, a
         azimuth = np.degrees(azimuth)
         polar = np.degrees(polar)
         # # Set the camera direction using the angles (customizing a bit)
-        ax.view_init(elev=-5, azim=azimuth + 180)
+        ax.view_init(elev=-5, azim=azimuth + 270)
         # # Show the plot
-        # plt.savefig(saving_folder + f'prediction_{i}.png')
+        plt.savefig(saving_folder + f'prediction_{i}.png')
         # plt.show()
-        # plt.close()
         
-        #Creating animation gif that rotates 360 degrees
-        if(i == 4 or i == 10 or i == 19 or i == 21 or i == 24 or i == 27 or i == 54 or i == 93):
-            # Define the update function for the animation
-            def update(frame):
-                # ax.view_init(elev=polar - 5 + frame*2, azim=azimuth + 180+frame*2)  # Adjust the viewing angle
-                ax.view_init(elev=-5, azim=azimuth + 180+frame*2)  # Adjust the viewing angle
+        """Creating animation gif that rotates 360 degrees"""
+        # if(i == 2 or i == 4 or i == 6):
+        #     # Define the update function for the animation
+        #     def update(frame):
+        #         # ax.view_init(elev=polar - 5 + frame*2, azim=azimuth + 180+frame*2)  # Adjust the viewing angle
+        #         ax.view_init(elev=-5, azim=azimuth + 180+frame*2)  # Adjust the viewing angle
 
-                # line.set_data(x[:frame], y[:frame])  # Update the plot data
-                # line.set_3d_properties(z[:frame])
-                # return line
+        #         # line.set_data(x[:frame], y[:frame])  # Update the plot data
+        #         # line.set_3d_properties(z[:frame])
+        #         # return line
 
-            num_frames = 180
-            # Create the animation
-            ani = animation.FuncAnimation(fig, update, frames=num_frames, interval=50)
-            f = f'/Users/jakehirst/Desktop/sfx/Presentations_and_Papers/USNCCM/figures/rotation_figure{i}.gif'
-            writergif = animation.PillowWriter(fps=10) 
-            ani.save(f, writer=writergif)
-            print("next")
+        #     num_frames = 180
+        #     # Create the animation
+        #     ani = animation.FuncAnimation(fig, update, frames=num_frames, interval=50)
+        #     f = f'/Users/jakehirst/Desktop/sfx/Presentations_and_Papers/USNCCM/figures/rotation_figure{i}.gif'
+        #     writergif = animation.PillowWriter(fps=10) 
+        #     ani.save(f, writer=writergif)
+        #     print("next")
             
         plt.close()
 
@@ -192,50 +168,176 @@ def plot_test_predictions_heatmap(full_dataset, labels_to_predict, all_labels, a
 
 def save_GPR_model(model, fold_no, saving_folder):
     # Save the model to a file
-    filename = saving_folder + f'GPR_model_fold{fold_no}.sav'
+    filename = saving_folder + f'/GPR_model_fold{fold_no}.sav'
     pickle.dump(model, open(filename, 'wb'))
 
 def load_GPR_model(filepath):
     loaded_model = pickle.load(open(filepath, 'rb'))
     return loaded_model
     
+''' Evaluates how accurate the uncertainty quantification is based on how many predictions lie within the first, second, and third confidence intervals. '''
+def evaluate_uncertainty(y_pred, y_pred_std, y_true, train_or_test):
+    intervals_and_percentages = {}
+    intervals = [f'{train_or_test} 1 std or 68%', f'{train_or_test} 2 std or 95%', f'{train_or_test} 3 std or 99%']
+    for num_stds in range(1,4):
+        interval = intervals[num_stds-1]
+        num_correct = 0
+        for i in range(len(y_pred)):
+            pred = y_pred[i]; std = y_pred_std[i]; true_value = y_true[i]
+            
+            if(pred + std*num_stds >= true_value and pred - std*num_stds <= true_value):
+                num_correct += 1
+
+        percentage_correct_in_this_interval = num_correct / len(y_true)
+        intervals_and_percentages[interval] = percentage_correct_in_this_interval    
+    
+    return intervals_and_percentages, list(intervals_and_percentages.values())
+
 '''
 splits the data into 5 different k-folds of test and training sets
 then runs GPR on each of the training sets
 then evaluates the models based on their respective test sets.
 '''
-def Kfold_Gaussian_Process_Regression(full_dataset, raw_images, full_dataset_labels, important_features, saving_folder, label_to_predict, save_data=True):
+def Kfold_Gaussian_Process_Regression(full_dataset, full_dataset_labels, important_features, saving_folder, label_to_predict, save_data=True, num_training_points=False):
     # correlated_featureset, raw_images, full_dataset_labels = prepare_dataset_Single_Output_Regression(full_dataset_pathname, image_folder, label_to_predict, all_labels, saving_folder=None, maximum_p_value=0.01)
-    full_dataset = remove_ABAQUS_features(full_dataset)
+    #full_dataset = remove_ABAQUS_features(full_dataset)
     models = []
+    performances = []
     
     rnge = range(1, len(full_dataset)+1)
     kf5 = KFold(n_splits=5, shuffle=True)
     fold_no = 1
     for train_index, test_index in kf5.split(rnge):
         train_df = full_dataset.iloc[train_index]
-        train_images = raw_images[train_index]
+        # train_images = raw_images[train_index]
         y_train = full_dataset_labels[train_index]
         test_df = full_dataset.iloc[test_index]
-        test_images = raw_images[test_index]
+        # test_images = raw_images[test_index]
         y_test = full_dataset_labels[test_index]
         
-        kernel = ConstantKernel(1.0) + ConstantKernel(1.0) * RBF(10)  + WhiteKernel(5) #TODO experiment with the kernel... but this one seems to work.
-        model = GaussianProcessRegressor(kernel=kernel)
-        model.fit(train_df.to_numpy(), y_train)
-        y_pred_train, y_pred_train_std = model.predict(train_df.to_numpy(), return_std=True)
-        y_pred_test, y_pred_test_std = model.predict(test_df.to_numpy(), return_std=True)
+        """ if we want to limit the number of training datapoints """
+        if(not num_training_points == False):
+            train_df.reset_index(drop=True, inplace=True)
+            train_indicies = np.random.choice(np.arange(0, len(train_df)), size=num_training_points, replace=False)
+            train_df = train_df.iloc[train_indicies]
+            y_train = y_train[train_indicies]
+        
+        """ defining the covariance (kernel) function """
+        kernel = ConstantKernel(1.0) + ConstantKernel(1.0) * RBF(length_scale=1e1, length_scale_bounds=(1e-2, 1e3))  + WhiteKernel(noise_level=2, noise_level_bounds=(1e-2, 1e2)) #TODO experiment with the kernel... but this one seems to work.
+        kernel = ConstantKernel(1.0) + ConstantKernel(1.0) * RBF() + WhiteKernel(noise_level=1)
+        kernel = ConstantKernel(1.0) + ConstantKernel(1.0) * RBF()
+        # kernel = ConstantKernel(1.0) + ConstantKernel(1.0) * RBF() + ConstantKernel(1.0) * ExpSineSquared()+ WhiteKernel(noise_level=1)
+        # kernel = ConstantKernel(1.0) + ConstantKernel(1.0) * ExpSineSquared()+ WhiteKernel(noise_level=1)
+        
+        model = GaussianProcessRegressor(kernel=kernel, random_state=0, alpha=50, n_restarts_optimizer=25)
+        # model = GaussianProcessRegressor(kernel=kernel, random_state=0, alpha=50)
+        
+        """ fitting and making predictions based on non-scaled data """
+        # model.fit(train_df.to_numpy(), y_train)
+        
+        # print(model.get_params())
+        # y_pred_train, y_pred_train_std = model.predict(train_df.to_numpy(), return_std=True)
+        # y_pred_test, y_pred_test_std = model.predict(test_df.to_numpy(), return_std=True)
+        
+        # train_uncertainty, train_uncertainty_values = evaluate_uncertainty(y_pred_train, y_pred_train_std, y_train, 'Train')
+        # print(f'\ntrain uncertainty = \n {train_uncertainty}')
+        # test_uncertainty, test_uncertainty_values = evaluate_uncertainty(y_pred_test, y_pred_test_std, y_test, 'Test')
+        # print(f'\ntest uncertainty = \n {test_uncertainty}')
+
+        
+        # if(save_data):
+        #     save_GPR_model(model, fold_no, saving_folder)            
+        #     collect_and_save_metrics(y_train, y_pred_train, y_test, y_pred_test, list(train_df.columns), fold_no, saving_folder)
+            
+        #     # adding the uncertainty metrics to the metric data
+        #     metric_data = pd.read_csv(saving_folder + f'/model_metrics_fold_{fold_no}.csv')
+        #     metric_data = metric_data.assign(**train_uncertainty)
+        #     metric_data = metric_data.assign(**test_uncertainty)
+        #     metric_data.to_csv(saving_folder + f'/model_metrics_fold_{fold_no}.csv')
+            
+        #     #plot_test_predictions_heatmap(y_test, y_pred_test, y_pred_test_std, fold_no, saving_folder)
+        #     parody_plot_with_std(y_test, y_pred_test, y_pred_test_std, fold_no, saving_folder, label_to_predict)
+        # models.append((model, y_test, test_df, y_train, train_df))
+
+        """ fitting and making predictions based on non-scaled data """
+
+
+
+        """ fitting and making predictions based on scaled data """
+        """ Scaling my data """
+        scaler = preprocessing.StandardScaler().fit(full_dataset.to_numpy())
+        X_scaled_train = scaler.transform(train_df.to_numpy())
+        X_scaled_test = scaler.transform(test_df.to_numpy())
+        
+        model.fit(X_scaled_train, y_train)
+        
+        y_pred_train, y_pred_train_std = model.predict(X_scaled_train, return_std=True)
+        y_pred_test, y_pred_test_std = model.predict(X_scaled_test, return_std=True)
+        
+        train_uncertainty, train_uncertainty_values = evaluate_uncertainty(y_pred_train, y_pred_train_std, y_train, 'Train')
+        print(f'\ntrain uncertainty = \n {train_uncertainty}')
+        test_uncertainty, test_uncertainty_values = evaluate_uncertainty(y_pred_test, y_pred_test_std, y_test, 'Test')
+        print(f'\ntest uncertainty = \n {test_uncertainty}')
+
         
         if(save_data):
-            save_GPR_model(model, fold_no, saving_folder)
-            collect_and_save_metrics(y_test, y_pred_test, train_df.__len__(), len(train_df.columns), full_dataset.columns.to_list(), fold_no, saving_folder)
-            #plot_test_predictions_heatmap(y_test, y_pred_test, y_pred_test_std, fold_no, saving_folder)
-            parody_plot_with_std(y_test, y_pred_test, y_pred_test_std, fold_no, saving_folder, label_to_predict)
+            save_GPR_model(model, fold_no, saving_folder)            
+            collect_and_save_metrics(y_train, y_pred_train, y_test, y_pred_test, list(train_df.columns), fold_no, saving_folder)
             
-        models.append((model, y_test, test_df))
-        fold_no += 1
-    
-    return models
+            # adding the uncertainty metrics to the metric data
+            metric_data = pd.read_csv(saving_folder + f'/model_metrics_fold_{fold_no}.csv')
+            metric_data = metric_data.assign(**train_uncertainty)
+            metric_data = metric_data.assign(**test_uncertainty)
+            metric_data.to_csv(saving_folder + f'/model_metrics_fold_{fold_no}.csv')
+            # plot_test_predictions_heatmap(y_test, y_pred_test, y_pred_test_std, fold_no, saving_folder)
+            parody_plot_with_std(y_test, y_pred_test, y_pred_test_std, fold_no, saving_folder, label_to_predict)
+        
+        Scaled_train_df = pd.DataFrame(X_scaled_train, columns=train_df.columns)
+        Scaled_test_df = pd.DataFrame(X_scaled_test, columns=test_df.columns)
 
+        models.append((model, y_test, Scaled_test_df, y_train, Scaled_train_df))
+
+        """ fitting and making predictions based on scaled data """
+
+
+
+        performances.append((r2_score(y_test, y_pred_test), mean_squared_error(y_test, y_pred_test)))
+        fold_no += 1
+        
+    r2s = np.array([t[0] for t in performances])
+    mse_s = np.array([t[1] for t in performances])
+    print(f'mean r^2 = {r2s.mean()}')
+    print(f'mean mse = {mse_s.mean()}')
+    return models, performances, r2s, mse_s
+
+
+# full_dataset_pathname = "/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Feature_gathering/New_Crack_Len_FULL_OG_dataframe.csv"
+# # full_dataset_pathname = "/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Feature_gathering/FULL_OG_dataframe_with_impact_sites_and_Jimmy_RF.csv"
+# image_folder = '/Users/jakehirst/Desktop/sfx/sfx_pics/jake/images_sfx/new_dataset/Visible_cracks'
+# all_labels = ['height', 'phi', 'theta', 
+#               'impact site x', 'impact site y', 'impact site z', 
+#               'impact site r', 'impact site phi', 'impact site theta']
+
+
+
+
+# label_to_predict = 'impact site r'
+# saving_folder=f'/Users/jakehirst/Desktop/model_results/GPR_RBF_and_white_{label_to_predict}/'
+# if(not os.path.exists(saving_folder)): os.mkdir(saving_folder)
+# correlated_featureset, full_dataset_labels, important_features = prepare_dataset_Single_Output_Regression(full_dataset_pathname, image_folder, label_to_predict, [], saving_folder=None, maximum_p_value=0.5)
+# #correlated_featureset = remove_ABAQUS_features(correlated_featureset)
+# labels_to_predict = ['impact site x', 'impact site y']
+# # features_to_keep = ['crack len', 'init x']
+# # features_to_keep = ['max_kink', 'init y']
+
+# # correlated_featureset = correlated_featureset[features_to_keep]
+# all_important_features = {'impact site x': ['crack len', 'init x'],
+#                           'impact site y': ['max_kink', 'init y']}
+
+# models_fold_to_pull = {'impact site x': 2,
+#                        'impact site y': 4}
+# raw_images = []
+
+# plot_test_predictions_heatmap(correlated_featureset, labels_to_predict, all_labels, all_important_features, models_fold_to_pull, saving_folder)
 
 
