@@ -33,6 +33,7 @@ from datetime import date
 from prepare_data import *
 from keras.utils import to_categorical
 import seaborn as sns
+from Metric_collection import *
 
 
 ''' 
@@ -53,8 +54,8 @@ def CNN_1D(train_features_1D):
     csv_data_shape = train_features_1D.shape[1]
     csv_input = tf.keras.layers.Input(shape=csv_data_shape, name="csv")
     csv_model = normalizer(csv_input)
-    csv_model = tf.keras.layers.Dense(256, activation='relu', name="csv_dense1")(csv_model)
-    csv_model = tf.keras.layers.Dense(128, activation='relu', name="csv_dense2")(csv_model)
+    # csv_model = tf.keras.layers.Dense(256, activation='relu', name="csv_dense1")(csv_model)
+    # csv_model = tf.keras.layers.Dense(128, activation='relu', name="csv_dense2")(csv_model)
     csv_model = tf.keras.layers.Dense(64, activation='relu', name="csv_dense3")(csv_model)
     csv_model = tf.keras.layers.Dense(32, activation='relu', name="csv_dense4")(csv_model)
     csv_model = tf.keras.layers.Dense(16, activation='relu', name="csv_dense5")(csv_model)
@@ -64,14 +65,32 @@ def CNN_1D(train_features_1D):
 
     return csv_output, csv_input
 
+
+# def googlenet_CNN_images(image_shape):
+    
+#     img_output = tf.keras.layers.Dense(8, activation='relu')(dense1)
+#     return input, img_output
+
+
 """ 
 CNN architecture before output layer for image features
 image shape should be (642, 802, 3) 
 returns the input 
 """
 def CNN_image(image_shape):
+    # input = tf.keras.layers.Input(shape=image_shape, name="img_input")
+    # conv1 = tf.keras.layers.Conv2D(128, (7, 7), activation='relu', input_shape=image_shape)(input)
+    # conv2 = tf.keras.layers.Conv2D(128, (7, 7), activation='relu', input_shape=image_shape)(conv1)
+    # pool1 = tf.keras.layers.MaxPooling2D(2)(conv2)
+    # conv3 = tf.keras.layers.Conv2D(64, (3, 3), activation='relu', input_shape=image_shape)(pool1)
+    # conv4 = tf.keras.layers.Conv2D(64, (3, 3), activation='relu', input_shape=image_shape)(conv3)
+    # pool2 = tf.keras.layers.MaxPooling2D(2)(conv4)
+    # conv5 = tf.keras.layers.Conv2D(32, (3, 3), activation='relu', input_shape=image_shape)(pool2)
+    # conv6 = tf.keras.layers.Conv2D(32, (3, 3), activation='relu', input_shape=image_shape)(conv5)
+    # pool3 = tf.keras.layers.MaxPooling2D(2)(conv6)
+    
     input = tf.keras.layers.Input(shape=image_shape, name="img_input")
-    conv1 = tf.keras.layers.Conv2D(32, (3, 3), activation='relu', input_shape=image_shape)(input)
+    conv1 = tf.keras.layers.Conv2D(64, (7, 7), activation='relu', input_shape=image_shape)(input)
     pool1 = tf.keras.layers.MaxPooling2D(2)(conv1)
     # conv2 = tf.keras.layers.Conv2D(32, (3, 3), activation='relu', input_shape=image_shape)(pool1)
     # pool2 = tf.keras.layers.MaxPooling2D(2)(conv2)
@@ -79,16 +98,10 @@ def CNN_image(image_shape):
     flat = tf.keras.layers.Flatten()(pool1)
     
     # dense1 = tf.keras.layers.Dense(128, activation='relu')(flat)
+    # dense2 = tf.keras.layers.Dense(64, activation='relu')(flat)
     img_output = tf.keras.layers.Dense(8, activation='relu')(flat)
     return input, img_output
 
-''' 
-returns the adjusted r^2 value of the given predictions
-'''
-def adjusted_r2(true_values, predictions, num_samples, num_features):
-    r2 = r2_score(true_values, predictions)
-    adjusted_r2 = 1 - ((1 - r2) * (num_samples - 1) / (num_samples - num_features - 1))
-    return adjusted_r2
 
 '''
 runs a Classification CNN on the given dataset, doing a 5 fold cross validation and testing it on a test dataset pulled from the full_dataset
@@ -197,77 +210,128 @@ def run_kfold_Categorical_CNN(full_dataset, raw_images, full_dataset_labels, pat
     
     return models
 
+
+
 '''
 runs a dual input (image and 1D features) Regression CNN on the given dataset, doing a 5 fold cross validation and testing it 
 on a test dataset pulled from the full_dataset
 '''
-def run_kfold_Regression_CNN(full_dataset, raw_images, full_dataset_labels, patience, max_epochs, num_outputs=1, lossfunc='mae', saving_folder='/Users/jakehirst/Desktop/model_results'):
+def run_kfold_Regression_CNN(full_dataset, raw_images, full_dataset_labels, patience, max_epochs, num_outputs=1, lossfunc='mae', saving_folder='/Users/jakehirst/Desktop/model_results', use_images=True, num_training_points=False):
 
     #setting aside a test dataset
     np.random.seed(6) #this should reset the randomness to the same randomness so that the test_indicies are the same throughout the tests
     test_indicies = np.random.choice(np.arange(0, len(full_dataset)), size=30, replace=False) #30 for the test dataset
     test_df = full_dataset.iloc[test_indicies]
-    test_images = raw_images[test_indicies]
     y_test = full_dataset_labels[test_indicies]
     full_dataset = full_dataset.drop(test_indicies, axis=0)
-    raw_images = np.delete(raw_images, test_indicies, axis=0)
     full_dataset_labels = np.delete(full_dataset_labels, test_indicies, axis=0)
+    
+    if(use_images):
+        test_images = raw_images[test_indicies]
+        raw_images = np.delete(raw_images, test_indicies, axis=0)
 
     models = []
+    
+    """ if we want to limit the number of training datapoints """
+    if(not num_training_points == False):
+        full_dataset.reset_index(drop=True, inplace=True)
+        train_indicies = np.random.choice(np.arange(0, len(full_dataset)), size=num_training_points, replace=False)
+        full_dataset = full_dataset.iloc[train_indicies]
+        full_dataset_labels = full_dataset_labels[train_indicies]
     
     rnge = range(1, len(full_dataset)+1)
     kf5 = KFold(n_splits=5, shuffle=True)
     fold_no = 1
     for train_index, val_index in kf5.split(rnge):
         train_df = full_dataset.iloc[train_index]
-        train_images = raw_images[train_index]
         y_train = full_dataset_labels[train_index]
         val_df = full_dataset.iloc[val_index]
-        val_images = raw_images[val_index]
         y_val = full_dataset_labels[val_index]
         
-        csv_output, csv_input = CNN_1D(train_df)
-        image_input, image_output= CNN_image(val_images[0].shape)
-        x = tf.keras.layers.concatenate([image_output, csv_output], name="concat_csv_img")
-        # x = tf.keras.layers.Dense(units= 32, activation='relu')(x)
-        predictions = tf.keras.layers.Dense(units=num_outputs)(x) 
-        model = tf.keras.Model(inputs = [image_input, csv_input], outputs = [predictions])
 
-        model.compile(
-            optimizer=tf.keras.optimizers.Adam(),#can define learning rate here
-        loss = lossfunc,
-        )
-    
-        history = model.fit((train_images, train_df), 
-                        y_train, 
-                        epochs=max_epochs, 
-                        callbacks=[
-                            tf.keras.callbacks.EarlyStopping(
-                                # monitor='loss',
-                                monitor='val_loss',
-                                patience=patience,
-                                restore_best_weights=True
+
+        
+        csv_output, csv_input = CNN_1D(train_df)
+        
+        #use_images makes the CNN use the images in train_images/val_images as inputs 
+        if(use_images):
+            train_images = raw_images[train_index]
+            val_images = raw_images[val_index]
+
+            
+            image_input, image_output= CNN_image(val_images[0].shape)
+            x = tf.keras.layers.concatenate([image_output, csv_output], name="concat_csv_img")
+            # x = tf.keras.layers.Dense(units= 32, activation='relu')(x)
+            predictions = tf.keras.layers.Dense(units=num_outputs)(x) 
+            model = tf.keras.Model(inputs = [image_input, csv_input], outputs = [predictions])
+            
+            
+            model.compile(
+                optimizer=tf.keras.optimizers.Adam(),#can define learning rate here
+                loss = lossfunc,
+            )
+        
+            history = model.fit((train_images, train_df), 
+                            y_train, 
+                            epochs=max_epochs, 
+                            callbacks=[
+                                tf.keras.callbacks.EarlyStopping(
+                                    # monitor='loss',
+                                    monitor='val_loss',
+                                    patience=patience,
+                                    restore_best_weights=True
+                                )
+                            ],
+                            validation_data=((val_images, val_df), y_val),
+                            verbose=1,
                             )
-                        ],
-                        validation_data=((val_images, val_df), y_val),
-                        verbose=1,
-                        )
+            
+        else:
+            x = csv_output
+            predictions = tf.keras.layers.Dense(units=num_outputs)(x) 
+            model = tf.keras.Model(inputs = [csv_input], outputs = [predictions])
+            model.compile(
+                optimizer=tf.keras.optimizers.Adam(),#can define learning rate here
+                loss = lossfunc,
+            )
+        
+            history = model.fit((train_df), 
+                            y_train, 
+                            epochs=max_epochs, 
+                            callbacks=[
+                                tf.keras.callbacks.EarlyStopping(
+                                    # monitor='loss',
+                                    monitor='val_loss',
+                                    patience=patience,
+                                    restore_best_weights=True
+                                )
+                            ],
+                            validation_data=((val_df), y_val),
+                            verbose=1,
+                            )
+
+
 
         model.save(saving_folder + f"/trained_model_fold_{fold_no}.h5")        
         print("here")
-        val_pred = model.predict([val_images, val_df])
-        test_pred = model.predict([test_images, test_df])
-        
-        val_r2 = r2_score(y_val, val_pred)
-        val_adj_r2 = adjusted_r2(y_val, val_pred, len(full_dataset), len(full_dataset.columns))
-        val_mae = mean_absolute_error(y_val, val_pred)
-        val_mse = mean_squared_error(y_val, val_pred)
-        val_rmse = np.sqrt(val_mse)
-        test_r2 = r2_score(y_test, test_pred)
-        test_adj_r2 = adjusted_r2(y_test, test_pred, len(full_dataset), len(full_dataset.columns))
-        test_mae = mean_absolute_error(y_test, test_pred)
-        test_mse = mean_squared_error(y_test, test_pred)
-        test_rmse = np.sqrt(test_mse)
+        if(use_images):
+            train_pred = model.predict([train_images, train_df])
+            val_pred = model.predict([val_images, val_df])
+            test_pred = model.predict([test_images, test_df])
+        else:
+            train_pred = model.predict([train_df])
+            val_pred = model.predict([val_df])
+            test_pred = model.predict([test_df])
+        # val_r2 = r2_score(y_val, val_pred)
+        # val_adj_r2 = adjusted_r2(y_val, val_pred, len(full_dataset), len(full_dataset.columns))
+        # val_mae = mean_absolute_error(y_val, val_pred)
+        # val_mse = mean_squared_error(y_val, val_pred)
+        # val_rmse = np.sqrt(val_mse)
+        # test_r2 = r2_score(y_test, test_pred)
+        # test_adj_r2 = adjusted_r2(y_test, test_pred, len(full_dataset), len(full_dataset.columns))
+        # test_mae = mean_absolute_error(y_test, test_pred)
+        # test_mse = mean_squared_error(y_test, test_pred)
+        # test_rmse = np.sqrt(test_mse)
         
         def parody_plot(true_values, predictions, file_to_save=None):
             true_values = true_values.reshape(predictions.shape)
@@ -290,14 +354,16 @@ def run_kfold_Regression_CNN(full_dataset, raw_images, full_dataset_labels, pati
         parody_plot(y_test, test_pred, saving_folder + f'/parody_plot_test_fold{fold_no}.png')
         parody_plot(y_val, val_pred, saving_folder + f'/parody_plot_val_fold{fold_no}.png')
         
-        # open the file for writing
-        with open(saving_folder + f"/model_metrics_fold_{fold_no}.csv", 'w', newline='') as file:
-            writer = csv.writer(file)
+        # # open the file for writing
+        # with open(saving_folder + f"/model_metrics_fold_{fold_no}.csv", 'w', newline='') as file:
+        #     writer = csv.writer(file)
 
-            #write the header row
-            writer.writerow(['dataset', 'r^2', 'adj_r^2', 'MAE', 'MSE', 'RMSE'])
-            writer.writerow(['test', test_r2, test_adj_r2, test_mae, test_mse, test_rmse])
-            writer.writerow(['validation', val_r2, val_adj_r2, val_mae, val_mse, val_rmse])
+        #     #write the header row
+        #     writer.writerow(['dataset', 'r^2', 'adj_r^2', 'MAE', 'MSE', 'RMSE'])
+        #     writer.writerow(['test', test_r2, test_adj_r2, test_mae, test_mse, test_rmse])
+        #     writer.writerow(['validation', val_r2, val_adj_r2, val_mae, val_mse, val_rmse])
+            
+        collect_and_save_metrics(y_train, train_pred, y_test, test_pred, list(train_df.columns), fold_no, saving_folder)
 
             
         fold_no += 1
