@@ -9,15 +9,24 @@ kdiff_df = pd.read_csv('/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Coats_ca
 kdiff_df = pd.read_csv('/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Feature_gathering/New_Crack_Len_FULL_OG_dataframe.csv') #new crack lengths
 # kdiff_df = kdiff_df.drop('impact_sites', axis=1)
 
-""" Limiting the study to cases with 1 or less cracks """
-case_study_df = case_study_df[case_study_df['Num of Fx'] <= 1]
+
+""" Limiting the study to cases where fracture is on parietal """
+case_study_df = case_study_df[case_study_df['Location - Stats'].str.contains('parietal') == True]
+
+""" Limiting the study to cases with only one fracture """
+case_study_df = case_study_df[case_study_df['Num of Fx'] == 1]
 
 """ Limiting the study to cases with 2 or less crack fronts """
 case_study_df = case_study_df[case_study_df['Num of Crack Fronts'] <= 2]
 
+""" Limiting the study to cases between 0 and 4 months old """
+case_study_df = case_study_df[case_study_df['Age (mo)'] < 4]
 
-""" Limiting the study to cases where fracture is on parietal """
-case_study_df = case_study_df[case_study_df['Location - Stats'] == "parietal"]
+""" Converting the BC height from meters to feet """
+case_study_df['BC height'] = case_study_df['BC height'] * 3.28084
+
+
+
 
 case_study_df = case_study_df[~case_study_df['Age (mo)'].isna()]#getting rid of all unknown ages
 """ Limiting the study to cases where age is less than 3 months """
@@ -68,6 +77,7 @@ kdiff_df = kdiff_df.drop(['init x', 'init y', 'init z', 'dist btw frts',
        'abs_val_mean_kink', 'mean_kink', 'sum_kink', 'abs_val_sum_kink',
        'avg_ori', 'angle_btw', 'phi', 'theta'], axis=1)
 
+full_case_study_df = case_study_df.copy()
 case_study_df = case_study_df.drop(['Image', 'Num of Fx', 'Num of Crack Fronts', 'Branching ', 
                                     'Unnamed: 36','Unnamed: 37','Unnamed: 38','Unnamed: 39',
                                     'Cross-Suture', 'Final Straight Line Length (mm)',
@@ -93,9 +103,9 @@ def get_mins_and_maxes(df):
     kurtosis = df.kurtosis()
     return mean, std, max, min, median, mode, range, iqr, variance, cv, skewness, kurtosis
 
-# case_study_df = case_study_df[case_study_df[case_study_df.columns.to_list()] != "Siemens - can't analyze"]
-# case_study_df = case_study_df[case_study_df[case_study_df.columns.to_list()] != "no scale factor - cannot analyze"]
-case_study_df['BC height'] = case_study_df['BC height'] * 3.28084 #changing height from meters to feet
+case_study_df = case_study_df[case_study_df[case_study_df.columns.to_list()] != "Siemens - can't analyze"]
+case_study_df = case_study_df[case_study_df[case_study_df.columns.to_list()] != "no scale factor - cannot analyze"]
+
 
 mean_1, std_1, max_1, min_1, median_1, mode_1, range_1, iqr_1, variance_1, cv_1, skewness_1, kurtosis_1 = get_mins_and_maxes(case_study_df)
 
@@ -123,7 +133,46 @@ def histogram(df1, column_name_df1, mean_1, std_1, what_are_we_comparing, x_limi
     plt.legend()
     plt.show()
     image_name = f"{title}.png".replace(" ", "_")
-    # plt.savefig(f"/Users/jakehirst/Desktop/sfx/Presentations_and_Papers/USNCCM/figures/younger_than_5_mo_{image_name}")
+    #plt.savefig(f"/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Coats_case_study_code/{image_name}")
+    plt.close()
+        
+def percentage_histogram(df, column_name, x_limits, y_limits, x_label):
+    if(df.columns[0] == 'Suture to Suture'):
+        title = f"Histogram of Case study {x_label}"
+    else:
+        title = f'Histogram of k-diff {x_label}'
+    # Calculate the mean and standard deviation
+    mean = df[column_name].mean()
+    std = df[column_name].std()
+
+    # Plot the histogram
+    sns.histplot(data=df, x=column_name, kde=False, bins=20)
+
+    # Set the y-axis as a percentage of the total number of examples
+    total_examples = len(df)
+    plt.gca().set_yticklabels(['{:.1f}%'.format(x*100/total_examples) for x in plt.gca().get_yticks()])
+
+    # Add a vertical line for the mean
+    plt.axvline(mean, color='r', linestyle='--', label='Mean')
+    # plt.text(mean+1, plt.gca().get_ylim()[1]*0.9, 'Mean: {:.2f}'.format(mean), color='r')
+
+    # Add a shaded region for +/- one standard deviation
+    plt.axvspan(mean-std, mean+std, color='g', alpha=0.3, label='Std Dev')
+    #plt.text(mean-std+1, plt.gca().get_ylim()[1]*0.8, 'Standard Deviation', color='g')
+
+    # Set the labels and title
+    plt.xlabel('Value')
+    plt.ylabel('Percentage of Total Examples')
+    plt.xlim(x_limits)
+    plt.title(title)
+
+    # Add a legend
+    plt.legend()
+
+    # Show the plot
+    # plt.show()
+    image_name = f"{title}.png".replace(" ", "_")
+    plt.savefig(f"/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Coats_case_study_code/PERCENTAGE_{image_name}")
     plt.close()
 
 def boxplot(df, column_name, max, min):# Plotting boxplot with maximum and minimum values
@@ -215,8 +264,11 @@ plot_crack_len_vs_height(kdiff_df, 'crack len', 'height', case_study_df, 'Final 
 
 # Histograms comparing crack len
 xlimits = (0, 140)
-histogram(case_study_df, 'Final True Line Length (mm)', mean_1, std_1, 'crack length', x_limits=xlimits)
-histogram(kdiff_df, 'crack len', mean_2, std_2, 'crack length', x_limits=xlimits)
+ylimits = (0, 25)
+# histogram(case_study_df, 'Final True Line Length (mm)', mean_1, std_1, 'crack length', x_limits=xlimits)
+percentage_histogram(case_study_df, 'Final True Line Length (mm)', xlimits, ylimits, 'crack length')
+# histogram(kdiff_df, 'crack len', mean_2, std_2, 'crack length', x_limits=xlimits)
+percentage_histogram(kdiff_df, 'crack len', xlimits, ylimits, 'crack length')
 
 xlimits = (0, 5)
 histogram(case_study_df, 'BC height', mean_1, std_1, 'fall height', x_limits=xlimits)
@@ -227,15 +279,18 @@ histogram(kdiff_df, 'height', mean_2, std_2, 'fall height', x_limits=xlimits)
 # histogram(case_study_df, 'Linearity', mean_1, std_1, 'Linearity', x_limits=xlimits)
 # histogram(kdiff_df, 'coats_linearity', mean_2, std_2, 'Linearity', x_limits=xlimits)
 
-# # Histograms comparing Orientation
-# xlimits = (0, 100)
-# histogram(case_study_df, 'Final Orient', mean_1, std_1, 'Orientation', x_limits=xlimits)
-# histogram(kdiff_df, 'coats_orientation', mean_2, std_2, 'Orientation', x_limits=xlimits)
+
+# Histograms comparing Orientation
+xlimits = (0, 100)
+histogram(case_study_df, 'Final Orient', mean_1, std_1, 'Orientation', x_limits=xlimits)
+histogram(kdiff_df, 'coats_orientation', mean_2, std_2, 'Orientation', x_limits=xlimits)
 
 # Histograms comparing Height
-# xlimits = (0,4)
-# histogram(case_study_df, 'BC height', mean_1, std_1, 'Height', x_limits=xlimits)
-# histogram(kdiff_df, 'height', mean_2, std_2, 'Height', x_limits=xlimits)
+
+xlimits = (0,5)
+histogram(case_study_df, 'BC height', mean_1, std_1, 'Height', x_limits=xlimits)
+histogram(kdiff_df, 'height', mean_2, std_2, 'Height', x_limits=xlimits)
+
 
 
 # side_by_side_plot(case_study_df, kdiff_df, kdiff_col='coats_orientation', coats_col="Final Orient", title="Orient vs height", ylim=(0,100))
