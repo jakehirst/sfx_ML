@@ -90,12 +90,14 @@ def CNN_image(image_shape):
     # pool3 = tf.keras.layers.MaxPooling2D(2)(conv6)
     
     input = tf.keras.layers.Input(shape=image_shape, name="img_input")
-    conv1 = tf.keras.layers.Conv2D(64, (7, 7), activation='relu', input_shape=image_shape)(input)
-    pool1 = tf.keras.layers.MaxPooling2D(2)(conv1)
-    # conv2 = tf.keras.layers.Conv2D(32, (3, 3), activation='relu', input_shape=image_shape)(pool1)
-    # pool2 = tf.keras.layers.MaxPooling2D(2)(conv2)
+    conv1 = tf.keras.layers.Conv2D(64, (3, 3), activation='relu', input_shape=image_shape)(input)
+    batch1 = tf.keras.layers.BatchNormalization()(conv1)
+    pool1 = tf.keras.layers.MaxPooling2D(2)(batch1)
+    conv2 = tf.keras.layers.Conv2D(64, (3, 3), activation='relu', input_shape=image_shape)(pool1)
+    batch2 = tf.keras.layers.BatchNormalization()(conv2)
+    pool2 = tf.keras.layers.MaxPooling2D(2)(batch2)
 
-    flat = tf.keras.layers.Flatten()(pool1)
+    flat = tf.keras.layers.Flatten()(pool2)
     
     # dense1 = tf.keras.layers.Dense(128, activation='relu')(flat)
     # dense2 = tf.keras.layers.Dense(64, activation='relu')(flat)

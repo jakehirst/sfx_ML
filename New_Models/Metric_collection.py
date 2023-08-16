@@ -133,6 +133,6 @@ def plot_Uncertainty_across_kfolds(folder, label_to_predict):
 
 # label_to_predict = 'height'
 # label_to_predict = 'impact site x'
-label_to_predict = 'impact site y'
-saving_folder=f'/Users/jakehirst/Desktop/model_results/MODEL_COMPARISONS/GPR_{label_to_predict}/'
-plot_Uncertainty_across_kfolds(saving_folder, label_to_predict)
+# label_to_predict = 'impact site y'
+# saving_folder=f'/Users/jakehirst/Desktop/model_results/MODEL_COMPARISONS/GPR_{label_to_predict}/'
+# plot_Uncertainty_across_kfolds(saving_folder, label_to_predict)
