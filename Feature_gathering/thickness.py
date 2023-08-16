@@ -11,6 +11,7 @@ import numpy as np
 import math as m
 from initiation_sites import *
 
+""" sorts the dynamic steps by first step and then uci, and returns the last one"""
 def get_max_dynamic_step(folder_path, simulation):
     steps_and_ucis = []
     for root, dirs, files in os.walk(folder_path+simulation):
