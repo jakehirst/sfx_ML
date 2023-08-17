@@ -54,11 +54,14 @@ def CNN_1D(train_features_1D):
     csv_data_shape = train_features_1D.shape[1]
     csv_input = tf.keras.layers.Input(shape=csv_data_shape, name="csv")
     csv_model = normalizer(csv_input)
-    # csv_model = tf.keras.layers.Dense(256, activation='relu', name="csv_dense1")(csv_model)
     # csv_model = tf.keras.layers.Dense(128, activation='relu', name="csv_dense2")(csv_model)
+    # csv_model = tf.keras.layers.BatchNormalization()(csv_model)
     csv_model = tf.keras.layers.Dense(64, activation='relu', name="csv_dense3")(csv_model)
+    csv_model = tf.keras.layers.BatchNormalization()(csv_model)
     csv_model = tf.keras.layers.Dense(32, activation='relu', name="csv_dense4")(csv_model)
+    csv_model = tf.keras.layers.BatchNormalization()(csv_model)
     csv_model = tf.keras.layers.Dense(16, activation='relu', name="csv_dense5")(csv_model)
+    csv_model = tf.keras.layers.BatchNormalization()(csv_model)
     csv_model = tf.keras.layers.Dense(8, activation='relu', name="csv_dense6")(csv_model)
     csv_output = tf.keras.layers.Dropout(0.5, name="csv_output")(csv_model)
     """############## 1D model ##############"""
@@ -99,9 +102,11 @@ def CNN_image(image_shape):
 
     flat = tf.keras.layers.Flatten()(pool2)
     
-    # dense1 = tf.keras.layers.Dense(128, activation='relu')(flat)
-    # dense2 = tf.keras.layers.Dense(64, activation='relu')(flat)
-    img_output = tf.keras.layers.Dense(8, activation='relu')(flat)
+    dense1 = tf.keras.layers.Dense(128, activation='relu')(flat)
+    dense1 = tf.keras.layers.BatchNormalization()(dense1)
+    dense2 = tf.keras.layers.Dense(64, activation='relu')(dense1)
+    dense2 = tf.keras.layers.BatchNormalization()(dense2)
+    img_output = tf.keras.layers.Dense(8, activation='relu')(dense2)
     return input, img_output
 
 

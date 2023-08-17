@@ -108,7 +108,11 @@ def get_images_from_dataset(df_1D_features_path, image_folder):
         phi = str(row[1]['phi']).replace('.0', '')
         theta = str(row[1]['theta']).replace('.0', '')
         max_step_uci = find_max_step_and_uci(image_folder, height, phi, theta)
-        image_path = image_folder + f'/OG/Para_{height}ft_PHI_{phi}_THETA_{theta}/Step{max_step_uci[0]}_UCI_{max_step_uci[1]}_Dynamic.png' 
+        #for mac
+        # image_path = image_folder + f'/OG/Para_{height}ft_PHI_{phi}_THETA_{theta}/Step{max_step_uci[0]}_UCI_{max_step_uci[1]}_Dynamic.png' 
+        #for work computer
+        image_path = image_folder + f'\\OG\\Para_{height}ft_PHI_{phi}_THETA_{theta}\\Step{max_step_uci[0]}_UCI_{max_step_uci[1]}_Dynamic.png' 
+
         img_arr = imageio.v2.imread(image_path)[:,:,0:3] / 255.0
         images.append(img_arr)
     return np.asarray(images)
@@ -117,9 +121,12 @@ def get_images_from_dataset(df_1D_features_path, image_folder):
 finds the max step and uci for a single simulation given the image folder, returns it as a tuple (step,uci)
 '''
 def find_max_step_and_uci(image_folder, height, phi, theta):
-    specific_folder = image_folder + f'/OG/Para_{height}ft_PHI_{phi}_THETA_{theta}' 
+    #for mac
+    # specific_folder = image_folder + f'/OG/Para_{height}ft_PHI_{phi}_THETA_{theta}' 
+    #for work computer
+    specific_folder = image_folder + f'\\OG\\Para_{height}ft_PHI_{phi}_THETA_{theta}' 
     files = glob.glob(specific_folder + "/*Dynamic*") #finds all of the files that have 'Dynamic' in the name
-    Step_list = [int(s.split('/Step')[-1].split('_')[0]) for s in files]
+    Step_list = [int(s.split('Step')[-1].split('_')[0]) for s in files]
     uci_list = [int(s.split('_UCI_')[-1].split('_')[0]) for s in files]
     Step_UCI_list = [(x, y) for x, y in zip(Step_list, uci_list)]
     sorted_list = sorted(Step_UCI_list, key=lambda x: (x[0], x[1])) #sorts the Step/UCI list by step and then uci 
