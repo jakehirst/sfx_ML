@@ -6,6 +6,8 @@ def save_model(model, fold_no, saving_folder, model_type):
     # Save the model to a file
     filename = saving_folder + f'/{model_type}_model_fold{fold_no}.sav'
     pickle.dump(model, open(filename, 'wb'))
+    
+
 
 '''
 makes a parody plot of the predictions from GPR including the standard deviations
@@ -26,7 +28,7 @@ splits the data into 5 different k-folds of test and training sets
 then runs Linear Regression on each of the training sets
 then evaluates the models based on their respective test sets.
 '''
-def Kfold_Linear_Regression(full_dataset, full_dataset_labels, important_features, saving_folder, label_to_predict, save_data=True, num_training_points=False): #TODO change title for different models
+def Kfold_Linear_Regression(full_dataset, full_dataset_labels, important_features, saving_folder, label_to_predict, save_data=True, num_training_points=False): 
     # correlated_featureset, raw_images, full_dataset_labels = prepare_dataset_Single_Output_Regression(full_dataset_pathname, image_folder, label_to_predict, all_labels, saving_folder=None, maximum_p_value=0.01)
     #full_dataset = remove_ABAQUS_features(full_dataset)
     models = []
@@ -51,14 +53,14 @@ def Kfold_Linear_Regression(full_dataset, full_dataset_labels, important_feature
             y_train = y_train[train_indicies]
             
             
-        model = LinearRegression() #TODO change model type for different models
+        model = LinearRegression() 
 
         model.fit(train_df.to_numpy(), y_train)
         y_pred_train  = model.predict(train_df.to_numpy())
         y_pred_test = model.predict(test_df.to_numpy())
         
         if(save_data):
-            save_model(model, fold_no, saving_folder, model_type='linear_reg') #TODO change model type for different models
+            save_model(model, fold_no, saving_folder, model_type='linear_reg') 
             # collect_and_save_metrics(y_test, y_pred_test, train_df.__len__(), len(train_df.columns), full_dataset.columns.to_list(), fold_no, saving_folder)
             collect_and_save_metrics(y_train, y_pred_train, y_test, y_pred_test, list(train_df.columns), fold_no, saving_folder)
             #plot_test_predictions_heatmap(y_test, y_pred_test, y_pred_test_std, fold_no, saving_folder)
@@ -67,5 +69,7 @@ def Kfold_Linear_Regression(full_dataset, full_dataset_labels, important_feature
         models.append((model, y_test, test_df))
         fold_no += 1
         
+
+
 
 
