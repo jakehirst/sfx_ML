@@ -4,6 +4,12 @@ import numpy as np
 from prepare_data import *
 from sklearn.model_selection import train_test_split
 from linear_regression import *
+from lasso_regression import *
+from ridge_regression import *
+from polynomial_regression import *
+from GPR import *
+
+
 
 '''
 makes a parody plot of the predictions from GPR including the standard deviations
@@ -47,7 +53,30 @@ def make_linear_regression_models_for_ensemble(training_features, training_label
             print("need to choose a model type")
         elif(model_type == 'linear'):
             model = LinearRegression() 
-
+        elif(model_type == 'lasso'):
+            a = 0.1
+            model = Lasso(alpha=a)
+        elif(model_type == 'ridge'):
+            a = 0.1
+            model = Ridge(alpha=a)
+        elif(model_type == 'poly2'):
+            degree = 2
+            model = make_pipeline(PolynomialFeatures(degree),LinearRegression())
+        elif(model_type == 'poly3'):
+            degree = 3
+            model = make_pipeline(PolynomialFeatures(degree),LinearRegression())
+        elif(model_type == 'poly4'):
+            degree = 4
+            model = make_pipeline(PolynomialFeatures(degree),LinearRegression())  
+        elif(model_type == 'GPR'):
+            # kernel = ConstantKernel(1.0) + ConstantKernel(1.0) * RBF()
+            # kernel = ConstantKernel(1.0) + ConstantKernel(1.0) * RBF(length_scale=1e1, length_scale_bounds=(1e-6, 1e3))  + WhiteKernel(noise_level=2, noise_level_bounds=(1e-2, 1e2))
+            kernel = ConstantKernel(1.0) + ConstantKernel(1.0) * RBF() + WhiteKernel(noise_level=1)
+            model = GaussianProcessRegressor(kernel=kernel, random_state=0, alpha=50, n_restarts_optimizer=25)    
+        elif(model_type == 'ANN'):
+            print('not implemented')
+            
+            
         model.fit(new_train_features.to_numpy(), new_train_labels)
         y_pred_train  = model.predict(new_train_features.to_numpy())
         
@@ -129,7 +158,7 @@ def Get_predictions_and_uncertainty_with_bagging(test_features_path, test_labels
 
 
 
-model_type = 'linear'
+model_type = 'GPR'
 full_dataset_pathname = "/Users/jakehirst/Desktop/sfx/sfx_ML_data/New_Crack_Len_FULL_OG_dataframe_2023_07_14.csv"
 image_folder = '/Users/jakehirst/Desktop/sfx/sfx_ML_data/images_sfx/new_dataset/Visible_cracks'
 all_labels = ['height', 'phi', 'theta', 
@@ -196,7 +225,7 @@ training_labels = pd.read_csv('/Volumes/Jake_sfx_harddrive/ensembling_models/hei
 
 model_saving_folder = f'/Volumes/Jake_sfx_harddrive/ensembling_models/height/{model_type}'
 features_to_keep = ['abs_val_sum_kink']
-make_linear_regression_models_for_ensemble(training_features, training_labels, model_saving_folder, label_to_predict, 500, features_to_keep, model_type=model_type)
+make_linear_regression_models_for_ensemble(training_features, training_labels, model_saving_folder, label_to_predict, 1000, features_to_keep, model_type=model_type)
 
 test_features_path = '/Volumes/Jake_sfx_harddrive/ensembling_models/height/data/test_features.csv'
 test_labels_path = '/Volumes/Jake_sfx_harddrive/ensembling_models/height/data/test_labels.csv'
