@@ -57,11 +57,11 @@ def CNN_1D(train_features_1D):
     # csv_model = tf.keras.layers.Dense(128, activation='relu', name="csv_dense2")(csv_model)
     # csv_model = tf.keras.layers.BatchNormalization()(csv_model)
     csv_model = tf.keras.layers.Dense(64, activation='relu', name="csv_dense3")(csv_model)
-    csv_model = tf.keras.layers.BatchNormalization()(csv_model)
+    # csv_model = tf.keras.layers.BatchNormalization()(csv_model)
     csv_model = tf.keras.layers.Dense(32, activation='relu', name="csv_dense4")(csv_model)
-    csv_model = tf.keras.layers.BatchNormalization()(csv_model)
+    # csv_model = tf.keras.layers.BatchNormalization()(csv_model)
     csv_model = tf.keras.layers.Dense(16, activation='relu', name="csv_dense5")(csv_model)
-    csv_model = tf.keras.layers.BatchNormalization()(csv_model)
+    # csv_model = tf.keras.layers.BatchNormalization()(csv_model)
     csv_model = tf.keras.layers.Dense(8, activation='relu', name="csv_dense6")(csv_model)
     csv_output = tf.keras.layers.Dropout(0.5, name="csv_output")(csv_model)
     """############## 1D model ##############"""
@@ -69,10 +69,7 @@ def CNN_1D(train_features_1D):
     return csv_output, csv_input
 
 
-# def googlenet_CNN_images(image_shape):
-    
-#     img_output = tf.keras.layers.Dense(8, activation='relu')(dense1)
-#     return input, img_output
+
 
 
 """ 
@@ -218,6 +215,37 @@ def run_kfold_Categorical_CNN(full_dataset, raw_images, full_dataset_labels, pat
     return models
 
 
+'''
+makes ANN for regression and returns the model. This will be used for ensembling ANN's in order to provide UQ for parametric models.
+'''
+def make_1D_CNN_for_ensemble(train_df, val_df, train_labels, val_labels, patience=100, max_epochs=1000, num_outputs=1, lossfunc='mean_squared_error'):
+    csv_output, csv_input = CNN_1D(train_df)
+    x = csv_output
+    predictions = tf.keras.layers.Dense(units=num_outputs)(x) 
+    model = tf.keras.Model(inputs = [csv_input], outputs = [predictions])
+    model.compile(
+        optimizer=tf.keras.optimizers.Adam(),#can define learning rate here
+        loss = lossfunc,
+    )
+
+    history = model.fit((train_df), 
+                    train_labels, 
+                    epochs=max_epochs, 
+                    callbacks=[
+                        tf.keras.callbacks.EarlyStopping(
+                            # monitor='loss',
+                            monitor='val_loss',
+                            patience=patience,
+                            restore_best_weights=True
+                        )
+                    ],
+                    validation_data=((val_df), val_labels),
+                    verbose=1,
+                    )
+
+    return model
+
+    
 
 '''
 runs a dual input (image and 1D features) Regression CNN on the given dataset, doing a 5 fold cross validation and testing it 
