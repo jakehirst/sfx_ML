@@ -44,7 +44,7 @@ correlated_featureset, full_dataset_labels, important_features = prepare_dataset
 features_to_keep = ['crack len', 'init phi', 'init x']
 correlated_featureset = correlated_featureset[features_to_keep]
 # raw_images = []
-run_kfold_Regression_CNN(correlated_featureset, raw_images, full_dataset_labels, patience=50, max_epochs=500, num_outputs=1, lossfunc='mean_squared_error', saving_folder=saving_folder, use_images=True)
+run_kfold_Regression_CNN(correlated_featureset, raw_images, full_dataset_labels, patience=50, max_epochs=500, num_outputs=1, lossfunc='mean_squared_error', saving_folder=saving_folder, use_images=False)
 
 
 # label_to_predict = 'impact site y'

@@ -1,6 +1,7 @@
 import os
 import pandas as pd
 import numpy as np
+import random
 from prepare_data import *
 from sklearn.model_selection import train_test_split
 from linear_regression import *
@@ -8,6 +9,7 @@ from lasso_regression import *
 from ridge_regression import *
 from polynomial_regression import *
 from GPR import *
+from CNN import *
 
 
 
@@ -24,6 +26,7 @@ def parody_plot_with_std(y_test, y_pred_test, y_pred_test_std, saving_folder, la
     plt.savefig(saving_folder +  f'/ensemble_UQ_parody_plot.png')
     # plt.show()
     plt.close()
+    return r2_score(y_test, y_pred_test)
 
 ''' specifically saves models for ensembling '''
 def save_ensemble_model(model, fold_no, saving_folder):
@@ -74,13 +77,26 @@ def make_linear_regression_models_for_ensemble(training_features, training_label
             kernel = ConstantKernel(1.0) + ConstantKernel(1.0) * RBF() + WhiteKernel(noise_level=1)
             model = GaussianProcessRegressor(kernel=kernel, random_state=0, alpha=50, n_restarts_optimizer=25)    
         elif(model_type == 'ANN'):
-            print('not implemented')
+            n = int(0.2 * len(new_train_features))  # 20% of the length of the list
+            val_indexes = random.sample(range(len(new_train_features)), n)
+            train_indexes = [i for i in range(len(new_train_features)) if i not in val_indexes]
+
+            train_set = new_train_features.iloc[train_indexes]
+            train_labels = training_labels.iloc[train_indexes]
+            val_set = new_train_features.iloc[val_indexes]
+            val_labels = training_labels.iloc[val_indexes]
+            # raw_images = []
+            model = make_1D_CNN_for_ensemble(train_set, val_set, train_labels, val_labels, patience=100, max_epochs=2000)
+
             
-            
-        model.fit(new_train_features.to_numpy(), new_train_labels)
-        y_pred_train  = model.predict(new_train_features.to_numpy())
-        
-        save_ensemble_model(model, model_num, model_saving_folder) 
+        if(model_type == 'ANN'):
+            save_ensemble_model(model, model_num, model_saving_folder)
+            # model.save(model_saving_folder + f"/trained_model_fold_{model_num}.h5")
+            # print('do something now')
+        else:
+            model.fit(new_train_features.to_numpy(), new_train_labels)
+            y_pred_train  = model.predict(new_train_features.to_numpy())
+            save_ensemble_model(model, model_num, model_saving_folder) 
         # collect_and_save_metrics(y_test, y_pred_test, train_df.__len__(), len(train_df.columns), full_dataset.columns.to_list(), fold_no, saving_folder)
         # collect_and_save_metrics(y_train, y_pred_train, y_test, y_pred_test, list(train_df.columns), fold_no, saving_folder)
         # plot_test_predictions_heatmap(y_test, y_pred_test, y_pred_test_std, fold_no, saving_folder)
@@ -146,9 +162,9 @@ def Get_predictions_and_uncertainty_with_bagging(test_features_path, test_labels
         mean_prediction, var_prediction = np.mean(all_model_predictions[:, label_no]), np.var(all_model_predictions[:, label_no])
         ensemble_predictions.append(mean_prediction)
         ensemble_uncertanties.append(var_prediction)
-    parody_plot_with_std(test_labels.to_numpy(), ensemble_predictions, ensemble_uncertanties, saving_folder, label_to_predict)
+    r2 = parody_plot_with_std(test_labels.to_numpy(), ensemble_predictions, ensemble_uncertanties, saving_folder, label_to_predict)
     
-    return
+    return r2
 
 
 
@@ -158,7 +174,7 @@ def Get_predictions_and_uncertainty_with_bagging(test_features_path, test_labels
 
 
 
-model_type = 'GPR'
+model_type = 'ANN'
 full_dataset_pathname = "/Users/jakehirst/Desktop/sfx/sfx_ML_data/New_Crack_Len_FULL_OG_dataframe_2023_07_14.csv"
 image_folder = '/Users/jakehirst/Desktop/sfx/sfx_ML_data/images_sfx/new_dataset/Visible_cracks'
 all_labels = ['height', 'phi', 'theta', 
@@ -170,22 +186,22 @@ all_labels = ['height', 'phi', 'theta',
 
 ''' ************* impact site x ************'''
 label_to_predict = 'impact site x'
-data_saving_folder = f'/Volumes/Jake_sfx_harddrive/ensembling_models/{label_to_predict}'
+data_saving_folder = f'/Volumes/Jake_ssd/ensembling_models/{label_to_predict}'
 
 Level_1_test_train_split(full_dataset_pathname, image_folder, all_labels, label_to_predict, data_saving_folder)
-training_features = pd.read_csv('/Volumes/Jake_sfx_harddrive/ensembling_models/impact site x/data/train_features.csv', index_col=0)
-training_labels = pd.read_csv('/Volumes/Jake_sfx_harddrive/ensembling_models/impact site x/data/train_labels.csv', index_col=0)
+training_features = pd.read_csv('/Volumes/Jake_ssd/ensembling_models/impact site x/data/train_features.csv', index_col=0)
+training_labels = pd.read_csv('/Volumes/Jake_ssd/ensembling_models/impact site x/data/train_labels.csv', index_col=0)
 
 
-model_saving_folder = f'/Volumes/Jake_sfx_harddrive/ensembling_models/impact site x/{model_type}'
+model_saving_folder = f'/Volumes/Jake_ssd/ensembling_models/impact site x/{model_type}'
 features_to_keep = ['crack len', 'init phi', 'init x']
-make_linear_regression_models_for_ensemble(training_features, training_labels, model_saving_folder, label_to_predict, 1000, features_to_keep, model_type=model_type)
+make_linear_regression_models_for_ensemble(training_features, training_labels, model_saving_folder, label_to_predict, 50, features_to_keep, model_type=model_type)
 
-test_features_path = '/Volumes/Jake_sfx_harddrive/ensembling_models/impact site x/data/test_features.csv'
-test_labels_path = '/Volumes/Jake_sfx_harddrive/ensembling_models/impact site x/data/test_labels.csv'
-model_folder = f'/Volumes/Jake_sfx_harddrive/ensembling_models/impact site x/{model_type}'
-saving_folder = f'/Volumes/Jake_sfx_harddrive/model_results/impact site x/{model_type}'
-Get_predictions_and_uncertainty_with_bagging(test_features_path, test_labels_path, model_folder, saving_folder, features_to_keep, label_to_predict)
+test_features_path = '/Volumes/Jake_ssd/ensembling_models/impact site x/data/test_features.csv'
+test_labels_path = '/Volumes/Jake_ssd/ensembling_models/impact site x/data/test_labels.csv'
+model_folder = f'/Volumes/Jake_ssd/ensembling_models/impact site x/{model_type}'
+saving_folder = f'/Volumes/Jake_ssd/model_results/impact site x/{model_type}'
+r2 = Get_predictions_and_uncertainty_with_bagging(test_features_path, test_labels_path, model_folder, saving_folder, features_to_keep, label_to_predict)
 
 
 
@@ -193,21 +209,23 @@ Get_predictions_and_uncertainty_with_bagging(test_features_path, test_labels_pat
 
 ''' ************* impact site y ************'''
 label_to_predict = 'impact site y'
-data_saving_folder = f'/Volumes/Jake_sfx_harddrive/ensembling_models/{label_to_predict}'
+data_saving_folder = f'/Volumes/Jake_ssd/ensembling_models/{label_to_predict}'
 Level_1_test_train_split(full_dataset_pathname, image_folder, all_labels, label_to_predict, data_saving_folder)
-training_features = pd.read_csv('/Volumes/Jake_sfx_harddrive/ensembling_models/impact site y/data/train_features.csv', index_col=0)
-training_labels = pd.read_csv('/Volumes/Jake_sfx_harddrive/ensembling_models/impact site y/data/train_labels.csv', index_col=0)
+training_features = pd.read_csv('/Volumes/Jake_ssd/ensembling_models/impact site y/data/train_features.csv', index_col=0)
+training_labels = pd.read_csv('/Volumes/Jake_ssd/ensembling_models/impact site y/data/train_labels.csv', index_col=0)
 
 
-model_saving_folder = f'/Volumes/Jake_sfx_harddrive/ensembling_models/impact site y/{model_type}'
+model_saving_folder = f'/Volumes/Jake_ssd/ensembling_models/impact site y/{model_type}'
 features_to_keep = ['max_kink', 'init y', 'angle_btw']
-make_linear_regression_models_for_ensemble(training_features, training_labels, model_saving_folder, label_to_predict, 1000, features_to_keep, model_type=model_type)
+make_linear_regression_models_for_ensemble(training_features, training_labels, model_saving_folder, label_to_predict, 50, features_to_keep, model_type=model_type)
 
-test_features_path = '/Volumes/Jake_sfx_harddrive/ensembling_models/impact site y/data/test_features.csv'
-test_labels_path = '/Volumes/Jake_sfx_harddrive/ensembling_models/impact site y/data/test_labels.csv'
-model_folder = f'/Volumes/Jake_sfx_harddrive/ensembling_models/impact site y/{model_type}'
-saving_folder = f'/Volumes/Jake_sfx_harddrive/model_results/impact site y/{model_type}'
-Get_predictions_and_uncertainty_with_bagging(test_features_path, test_labels_path, model_folder, saving_folder, features_to_keep, label_to_predict)
+test_features_path = '/Volumes/Jake_ssd/ensembling_models/impact site y/data/test_features.csv'
+test_labels_path = '/Volumes/Jake_ssd/ensembling_models/impact site y/data/test_labels.csv'
+model_folder = f'/Volumes/Jake_ssd/ensembling_models/impact site y/{model_type}'
+saving_folder = f'/Volumes/Jake_ssd/model_results/impact site y/{model_type}'
+r2 = Get_predictions_and_uncertainty_with_bagging(test_features_path, test_labels_path, model_folder, saving_folder, features_to_keep, label_to_predict)
+print(f'r2 = {r2}')
+print('\n')
 
 
 
@@ -216,19 +234,19 @@ Get_predictions_and_uncertainty_with_bagging(test_features_path, test_labels_pat
 
 ''' ************* height ************'''
 label_to_predict = 'height'
-data_saving_folder = f'/Volumes/Jake_sfx_harddrive/ensembling_models/{label_to_predict}'
+data_saving_folder = f'/Volumes/Jake_ssd/ensembling_models/{label_to_predict}'
 
 Level_1_test_train_split(full_dataset_pathname, image_folder, all_labels, label_to_predict, data_saving_folder)
-training_features = pd.read_csv('/Volumes/Jake_sfx_harddrive/ensembling_models/height/data/train_features.csv', index_col=0)
-training_labels = pd.read_csv('/Volumes/Jake_sfx_harddrive/ensembling_models/height/data/train_labels.csv', index_col=0)
+training_features = pd.read_csv('/Volumes/Jake_ssd/ensembling_models/height/data/train_features.csv', index_col=0)
+training_labels = pd.read_csv('/Volumes/Jake_ssd/ensembling_models/height/data/train_labels.csv', index_col=0)
 
 
-model_saving_folder = f'/Volumes/Jake_sfx_harddrive/ensembling_models/height/{model_type}'
+model_saving_folder = f'/Volumes/Jake_ssd/ensembling_models/height/{model_type}'
 features_to_keep = ['abs_val_sum_kink']
-make_linear_regression_models_for_ensemble(training_features, training_labels, model_saving_folder, label_to_predict, 1000, features_to_keep, model_type=model_type)
+make_linear_regression_models_for_ensemble(training_features, training_labels, model_saving_folder, label_to_predict, 50, features_to_keep, model_type=model_type)
 
-test_features_path = '/Volumes/Jake_sfx_harddrive/ensembling_models/height/data/test_features.csv'
-test_labels_path = '/Volumes/Jake_sfx_harddrive/ensembling_models/height/data/test_labels.csv'
-model_folder = f'/Volumes/Jake_sfx_harddrive/ensembling_models/height/{model_type}'
-saving_folder = f'/Volumes/Jake_sfx_harddrive/model_results/height/{model_type}'
+test_features_path = '/Volumes/Jake_ssd/ensembling_models/height/data/test_features.csv'
+test_labels_path = '/Volumes/Jake_ssd/ensembling_models/height/data/test_labels.csv'
+model_folder = f'/Volumes/Jake_ssd/ensembling_models/height/{model_type}'
+saving_folder = f'/Volumes/Jake_ssd/model_results/height/{model_type}'
 Get_predictions_and_uncertainty_with_bagging(test_features_path, test_labels_path, model_folder, saving_folder, features_to_keep, label_to_predict)
