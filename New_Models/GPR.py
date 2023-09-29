@@ -3,7 +3,7 @@ from prepare_data import *
 from CNN import *
 from sklearn.model_selection import KFold
 from sklearn.gaussian_process import GaussianProcessRegressor
-from sklearn.gaussian_process.kernels import RBF, ConstantKernel, WhiteKernel, ExpSineSquared, DotProduct
+from sklearn.gaussian_process.kernels import RBF, ConstantKernel, WhiteKernel, ExpSineSquared, DotProduct, Matern
 import matplotlib.pyplot as plt
 from sklearn.metrics import r2_score, precision_score, confusion_matrix, recall_score, f1_score
 import os
