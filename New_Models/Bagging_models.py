@@ -2,6 +2,8 @@ import os
 import pandas as pd
 import numpy as np
 import random
+import re
+from sklearn.ensemble import RandomForestRegressor
 from scipy.optimize import minimize
 from prepare_data import *
 from sklearn.model_selection import train_test_split
@@ -12,19 +14,20 @@ from polynomial_regression import *
 from GPR import *
 from CNN import *
 
-
+# full_dataset_pathname = "/Users/jakehirst/Desktop/sfx/sfx_ML_data/New_Crack_Len_FULL_OG_dataframe_2023_07_14.csv"
+# image_folder = '/Users/jakehirst/Desktop/sfx/sfx_ML_data/images_sfx/new_dataset/Visible_cracks'
 
 '''
 makes a parody plot of the predictions from uncertainty model including the standard deviations
 '''
-def parody_plot_with_std(y_test, y_pred_test, y_pred_test_std, saving_folder, label_to_predict, model_type):
+def parody_plot_with_std(y_test, y_pred_test, y_pred_test_std, saving_folder, label_to_predict, model_type, testtrain='unknown_test_train'):
     plt.figure()
     plt.errorbar(y_test, y_pred_test, yerr=y_pred_test_std, fmt='o')
     plt.plot(y_test, y_test, c='r')
-    plt.title(f'{model_type} regression ensemble predicting '+f'{label_to_predict}' + ', R2=%.2f' % r2_score(y_test, y_pred_test))
+    plt.title(f'{testtrain} set {model_type} regression ensemble predicting '+f'{label_to_predict}' + ', R2=%.2f' % r2_score(y_test, y_pred_test))
     plt.xlabel('Actual')
     plt.ylabel('Predicted')
-    plt.savefig(saving_folder +  f'/ensemble_UQ_parody_plot.png')
+    plt.savefig(saving_folder +  f'/ensemble_UQ_parody_plot_{testtrain}_set.png')
     # plt.show()
     plt.close()
     return r2_score(y_test, y_pred_test)
@@ -43,7 +46,9 @@ def make_linear_regression_models_for_ensemble(training_features, training_label
     models = []
     training_features = training_features[features_to_keep]
     if(not os.path.exists(model_saving_folder)): os.mkdir(model_saving_folder)
-    
+    # training_features['crack len'] = np.arange(0, 195)
+    # training_labels['impact site x'] = np.arange(0, 195)
+
     num_samples = len(training_features)
     
     #now to train all the models and save them
@@ -55,6 +60,19 @@ def make_linear_regression_models_for_ensemble(training_features, training_label
         
         if(model_type == None):
             print("need to choose a model type")
+        elif(model_type == "RF"):
+            '''
+            impact site x - 0.62 Test and 0.94 train R2 with great UQ
+            impact site y - 0.51 Test and 0.83 train R2 with great UQ
+            # model =  RandomForestRegressor(n_estimators=100, random_state=42)
+            '''
+            '''
+            impact site x - 0.71 Test and 0.92 train R2 with okay UQ
+            impact site y -  ___ Test and ___ train R2 with great UQ
+            # model =  RandomForestRegressor(max_depth=10, n_estimators=100, random_state=42)
+            '''
+            model =  RandomForestRegressor(max_depth=20, n_estimators=100, random_state=42)
+
         elif(model_type == 'linear'):
             model = LinearRegression() 
         elif(model_type == 'lasso'):
@@ -75,24 +93,48 @@ def make_linear_regression_models_for_ensemble(training_features, training_label
         elif(model_type == 'GPR'):
             # kernel = ConstantKernel(1.0) + ConstantKernel(1.0) * RBF()
             # kernel = ConstantKernel(1.0) + ConstantKernel(1.0) * RBF(length_scale=1e1, length_scale_bounds=(1e-6, 1e3))  + WhiteKernel(noise_level=2, noise_level_bounds=(1e-2, 1e2))
-            kernel = ConstantKernel(1.0) + ConstantKernel(1.0) * RBF() + WhiteKernel(noise_level=1)
-            model = GaussianProcessRegressor(kernel=kernel, random_state=0, alpha=50, n_restarts_optimizer=25)    
+            kernel = ConstantKernel(1.0) + ConstantKernel(1.0) * RBF() + WhiteKernel(noise_level=1) # this one works well
+            # kernel = Matern(length_scale=length_scale_param, length_scale_bounds=length_scale_bounds_param,nu=nu_param) + WhiteKernel(noise_level=1)
+            # kernel = Matern() + WhiteKernel(noise_level=1)
+
+            model = GaussianProcessRegressor(kernel=kernel, random_state=0, alpha=50, n_restarts_optimizer=25)
         elif(model_type == 'ANN'):
             n = int(0.2 * len(new_train_features))  # 20% of the length of the list
             val_indexes = random.sample(range(len(new_train_features)), n)
             train_indexes = [i for i in range(len(new_train_features)) if i not in val_indexes]
 
             train_set = new_train_features.iloc[train_indexes]
-            train_labels = training_labels.iloc[train_indexes]
+            train_labels = new_train_labels.iloc[train_indexes]
             val_set = new_train_features.iloc[val_indexes]
-            val_labels = training_labels.iloc[val_indexes]
+            val_labels = new_train_labels.iloc[val_indexes]
             # raw_images = []
-            model = make_1D_CNN_for_ensemble(train_set, val_set, train_labels, val_labels, patience=100, max_epochs=2000)
-            tf.keras.backend.clear_session() #COMMENT clears the memory from tensorflow session so that memory doesnt get full when training multiple models in a loop.
+            
+            #COMMENT clears the memory from tensorflow session so that memory doesnt get full when training multiple models in a loop.
+            tf.keras.backend.clear_session()
+            
+            model = make_1D_CNN_for_ensemble(train_set, val_set, train_labels, val_labels, patience=100, max_epochs=1000, lossfunc='mse')
+            
+            
+            #plot training predictions
+            print('here')
+            preds = model.predict(training_features)
+            
+            # plt.figure()
+            # plt.scatter(training_labels.to_numpy(), preds)
+            # plt.plot(training_labels.to_numpy(), training_labels.to_numpy(), c='r')
+            # plt.show()
+            
+
 
             
         if(model_type == 'ANN'):
-            save_ensemble_model(model, model_num, model_saving_folder)
+            file_names = os.listdir(model_saving_folder)
+            numbers = [int(re.search(r'_no(\d+)', file_name).group(1)) for file_name in file_names if re.search(r'_no(\d+)', file_name)]
+            if(len(numbers)==0):
+                largest_number = -1
+            else:            
+                largest_number = max(numbers, default=None)
+            save_ensemble_model(model, largest_number+1, model_saving_folder)
             # model.save(model_saving_folder + f"/trained_model_fold_{model_num}.h5")
             # print('do something now')
         else:
@@ -165,7 +207,8 @@ def Get_predictions_and_uncertainty_with_bagging(test_features_path, test_labels
         mean_prediction, std_prediction = np.mean(all_model_predictions[:, label_no]), np.std(all_model_predictions[:, label_no])
         ensemble_predictions.append(mean_prediction)
         ensemble_uncertanties.append(std_prediction)
-    r2 = parody_plot_with_std(test_labels.to_numpy(), ensemble_predictions, ensemble_uncertanties, saving_folder, label_to_predict, model_type)
+    ensemble_uncertanties = np.sqrt(ensemble_uncertanties)
+    r2 = parody_plot_with_std(test_labels.to_numpy(), ensemble_predictions, ensemble_uncertanties, saving_folder, label_to_predict, model_type, testtrain='Test')
     
     return r2, ensemble_predictions, ensemble_uncertanties, test_labels
 
@@ -205,7 +248,8 @@ def make_RVE_plots(model_type, test_predictions, test_uncertanties, test_true_la
         normalized_arr = []
         # Iterate through the array and normalize each value
         for num in arr:
-            normalized_value = (num - min_value) / (max_value - min_value)
+            # normalized_value = (num - min_value) / (max_value - min_value)
+            normalized_value = num / max_value
             normalized_arr.append(normalized_value)
         return normalized_arr
     
@@ -243,6 +287,7 @@ def make_RVE_plots(model_type, test_predictions, test_uncertanties, test_true_la
         slope = round(model.coef_[0], 2)
         # Get the intercept of the fitted line and round to two decimal places
         intercept = round(model.intercept_, 2)
+        
 
 
         # hist contains the count of uncertainties in each bin
@@ -265,8 +310,8 @@ def make_RVE_plots(model_type, test_predictions, test_uncertanties, test_true_la
     test_normalized_uncertainties = normalize_array(test_uncertanties, min(train_uncertanties), max(train_uncertanties))
     train_normalized_residuals = normalize_array(train_residuals.tolist(), min(train_residuals.tolist()), max(train_residuals.tolist()))
     train_normalized_uncertainties = normalize_array(train_uncertanties, min(train_uncertanties), max(train_uncertanties))
-    CAL_train_normalized_uncertainties = normalize_array(CAL_train_uncertainties, min(train_uncertanties), max(train_uncertanties)) #COMMENT pending...
-    CAL_test_normalized_uncertainties = normalize_array(CAL_test_uncertainties, min(train_uncertanties), max(train_uncertanties)) #COMMENT pending...
+    CAL_train_normalized_uncertainties = normalize_array(CAL_train_uncertainties, min(CAL_train_uncertainties), max(CAL_train_uncertainties)) #COMMENT pending...
+    CAL_test_normalized_uncertainties = normalize_array(CAL_test_uncertainties, min(CAL_train_uncertainties), max(CAL_train_uncertainties)) #COMMENT pending...
     
 
     train_average_uncertainties, train_RMS_residuals, train_slope, train_intercept, train_average_uncertainties, train_y_pred = bin_uncertainties_and_residuals(train_normalized_uncertainties, train_normalized_residuals, num_bins)
@@ -283,6 +328,7 @@ def make_RVE_plots(model_type, test_predictions, test_uncertanties, test_true_la
     ax1.plot([0,1], [0,1], c='red', label='Ideal fitted line')
     ax1.set_title(f'Train set Residual vs Error (RvE) plots for {num_bins} bins')
     ax1.legend()
+
     
     ax2.scatter(test_average_uncertainties, test_RMS_residuals, c='grey', label=f'Binned RvE slope = {test_slope}')
     ax2.scatter(CAL_test_average_uncertainties, CAL_test_RMS_residuals, c='blue', label=f'Calibrated Binned RvEslope = {CAL_test_slope}')
@@ -291,12 +337,16 @@ def make_RVE_plots(model_type, test_predictions, test_uncertanties, test_true_la
     ax2.plot([0,1], [0,1], c='red', label='Ideal fitted line')
     ax2.set_title(f'Test set Residual vs Error (RvE) plots for {num_bins} bins')
     ax2.legend()
+    plt.xlabel('Uncertainties')
+    plt.ylabel('RMS residuals')
     plt.tight_layout()
-    plt.show()
-
+    # plt.show()
+    plt.savefig(saving_folder + f'/RVE_plot_{num_bins}_bins_{model_type}.png')
     plt.close()
     
-    return
+    train_r2 = parody_plot_with_std(train_true_labels, train_predictions, train_uncertanties, saving_folder, label_to_predict, model_type, testtrain='Train')
+
+    return train_intercept, train_slope, CAL_train_intercept, CAL_train_slope, train_intercept, test_slope, CAL_test_intercept, CAL_test_slope
 
 ''' Plots the residuals and the uncertainties on the x and y axis respectively, giving an idea for how they correlate to eachother. '''
 def plot_residuals_vs_uncertainties(predictions, uncertainites, true_labels, saving_folder, model_type, label_to_predict):
@@ -314,100 +364,130 @@ def plot_residuals_vs_uncertainties(predictions, uncertainites, true_labels, sav
     
     return
 
+''' creates the 5-fold cross validation datasets for each label to predict in labels to predict in the path given. '''
+def make_5_fold_datasets(saving_folder, full_dataset_pathname, image_folder):
+    all_labels = ['height', 'phi', 'theta', 
+            'impact site x', 'impact site y', 'impact site z', 
+            'impact site r', 'impact site phi', 'impact site theta']
+
+    labels_to_predict = ['impact site x', 'impact site y', 'height']
+
+    for label_to_predict in labels_to_predict:
+        if(not os.path.exists(f'{saving_folder}/{label_to_predict}')): os.mkdir(f'{saving_folder}/{label_to_predict}')
+        full_dataset_features, full_dataset_labels, important_features = prepare_dataset_Single_Output_Regression(full_dataset_pathname, image_folder, label_to_predict, all_labels, saving_folder=None, maximum_p_value=1)
+        
+        rnge = range(1, len(full_dataset_features)+1)
+        kf5 = KFold(n_splits=5, shuffle=True)
+        fold_no = 1
+        for train_index, test_index in kf5.split(rnge):
+            if(not os.path.exists(f'{saving_folder}/{label_to_predict}/fold{fold_no}')): os.mkdir(f'{saving_folder}/{label_to_predict}/fold{fold_no}')
+            
+            train_df = full_dataset_features.iloc[train_index]
+            y_train = full_dataset_labels[train_index]
+            test_df = full_dataset_features.iloc[test_index]
+            y_test = full_dataset_labels[test_index]
+            
+            y_train = pd.DataFrame(y_train, columns=[label_to_predict])
+            y_test = pd.DataFrame(y_test, columns=[label_to_predict])
+
+            train_df.to_csv(f'{saving_folder}/{label_to_predict}/fold{fold_no}/train_features.csv')
+            y_train.to_csv(f'{saving_folder}/{label_to_predict}/fold{fold_no}/train_labels.csv')
+            test_df.to_csv(f'{saving_folder}/{label_to_predict}/fold{fold_no}/test_features.csv')
+            y_test.to_csv(f'{saving_folder}/{label_to_predict}/fold{fold_no}/test_labels.csv')
+
+            fold_no += 1
 
 
-
-# model_types = [linear, ridge, lasso, poly2, poly3, GPR, ANN]
-model_type = 'ANN'
-full_dataset_pathname = "/Users/jakehirst/Desktop/sfx/sfx_ML_data/New_Crack_Len_FULL_OG_dataframe_2023_07_14.csv"
-image_folder = '/Users/jakehirst/Desktop/sfx/sfx_ML_data/images_sfx/new_dataset/Visible_cracks'
-all_labels = ['height', 'phi', 'theta', 
-              'impact site x', 'impact site y', 'impact site z', 
-              'impact site r', 'impact site phi', 'impact site theta']
-
-
+''' makes all of the directories in a directory path if they dont exist. '''
+def make_dirs(directory_path):
+    splits = directory_path.split('/')
+    current_dir = ''
+    for i in range(1, len(splits)):
+        current_dir = current_dir + f'/{splits[i]}'
+        if(not os.path.exists(current_dir)): os.mkdir(current_dir)
+    return
 
 
-''' ************* impact site x ************'''
-label_to_predict = 'impact site x'
-data_saving_folder = f'/Volumes/Jake_ssd/ensembling_models/{label_to_predict}'
+    
+    
+    
+    
+model_types = ['linear', 'ridge', 'lasso', 'poly2', 'poly3', 'RF', 'GPR', 'ANN']
+model_types = ['linear', 'ridge', 'lasso', 'poly2', 'poly3', 'RF', 'GPR']
+model_types = ['GPR']
 
-# Level_1_test_train_split(full_dataset_pathname, image_folder, all_labels, label_to_predict, data_saving_folder)
-training_features = pd.read_csv('/Volumes/Jake_ssd/ensembling_models/impact site x/data/train_features.csv', index_col=0)
-training_labels = pd.read_csv('/Volumes/Jake_ssd/ensembling_models/impact site x/data/train_labels.csv', index_col=0)
+# for model_type in model_types:
+num_models_list = [10, 50, 100, 500, 1000]
+labels_to_predict = ['impact site x', 'impact site y']
+labels_to_predict = [ 'impact site y']
 
+model_folder = '/Volumes/Jake_ssd/5fold_ensemble_models'
+data_folder = '/Volumes/Jake_ssd/5fold_datasets'
+results_folder = '/Volumes/Jake_ssd/5_fold_ensemble_results'
 
-model_saving_folder = f'/Volumes/Jake_ssd/ensembling_models/impact site x/{model_type}'
-features_to_keep = ['crack len', 'init phi', 'init x']
-# make_linear_regression_models_for_ensemble(training_features, training_labels, model_saving_folder, label_to_predict, 50, features_to_keep, model_type=model_type)
+for fold_no in range(1,6):
+    for model_type in model_types:
+        for label_to_predict in labels_to_predict:
+            for num_models in num_models_list:
 
-test_features_path = f'/Volumes/Jake_ssd/ensembling_models/{label_to_predict}/data/test_features.csv'
-test_labels_path = f'/Volumes/Jake_ssd/ensembling_models/{label_to_predict}/data/test_labels.csv'
-train_features_path = f'/Volumes/Jake_ssd/ensembling_models/{label_to_predict}/data/train_features.csv'
-train_labels_path = f'/Volumes/Jake_ssd/ensembling_models/{label_to_predict}/data/train_labels.csv'
-model_folder = f'/Volumes/Jake_ssd/ensembling_models/{label_to_predict}/{model_type}'
-saving_folder = f'/Volumes/Jake_ssd/model_results/{label_to_predict}/{model_type}'
-train_r2, train_ensemble_predictions, train_ensemble_uncertanties, train_labels = Get_predictions_and_uncertainty_with_bagging(train_features_path, train_labels_path, model_folder, saving_folder, features_to_keep, label_to_predict, model_type)
-test_r2, test_ensemble_predictions, test_ensemble_uncertanties, test_labels = Get_predictions_and_uncertainty_with_bagging(test_features_path, test_labels_path, model_folder, saving_folder, features_to_keep, label_to_predict, model_type)
+                all_labels = ['height', 'phi', 'theta', 
+                            'impact site x', 'impact site y', 'impact site z', 
+                            'impact site r', 'impact site phi', 'impact site theta']
 
-plot_residuals_vs_uncertainties(test_ensemble_predictions, test_ensemble_uncertanties, test_labels, saving_folder, model_type, label_to_predict)
-plot_residuals_vs_uncertainties(train_ensemble_predictions, train_ensemble_uncertanties, train_labels, saving_folder, model_type, label_to_predict)
+                training_features = pd.read_csv(f'{data_folder}/{label_to_predict}/fold{fold_no}/train_features.csv', index_col=0).reset_index(drop=True)
+                training_labels = pd.read_csv(f'{data_folder}/{label_to_predict}/fold{fold_no}/train_labels.csv', index_col=0).reset_index(drop=True)
 
-for i in range(10,25,5):
-    print(i)
-    make_RVE_plots(model_type, test_ensemble_predictions, test_ensemble_uncertanties, test_labels, train_ensemble_predictions, train_ensemble_uncertanties, train_labels, saving_folder, num_bins=10)
+                model_saving_folder = f'{model_folder}/{label_to_predict}/{model_type}/{num_models}_models/fold_{fold_no}'
+                make_dirs(model_saving_folder)
+                results_saving_folder = f'{results_folder}/{label_to_predict}/{model_type}/{num_models}_models/fold_{fold_no}'
+                make_dirs(results_saving_folder)
 
-
-
-
-''' ************* impact site y ************'''
-label_to_predict = 'impact site y'
-data_saving_folder = f'/Volumes/Jake_ssd/ensembling_models/{label_to_predict}'
-
-# Level_1_test_train_split(full_dataset_pathname, image_folder, all_labels, label_to_predict, data_saving_folder)
-# training_features = pd.read_csv('/Volumes/Jake_ssd/ensembling_models/impact site y/data/train_features.csv', index_col=0)
-# training_labels = pd.read_csv('/Volumes/Jake_ssd/ensembling_models/impact site y/data/train_labels.csv', index_col=0)
-
-
-# model_saving_folder = f'/Volumes/Jake_ssd/ensembling_models/impact site y/{model_type}'
-features_to_keep = ['max_kink', 'init y', 'angle_btw']
-# make_linear_regression_models_for_ensemble(training_features, training_labels, model_saving_folder, label_to_predict, 50, features_to_keep, model_type=model_type)
-
-test_features_path = '/Volumes/Jake_ssd/ensembling_models/impact site y/data/test_features.csv'
-test_labels_path = '/Volumes/Jake_ssd/ensembling_models/impact site y/data/test_labels.csv'
-model_folder = f'/Volumes/Jake_ssd/ensembling_models/impact site y/{model_type}'
-saving_folder = f'/Volumes/Jake_ssd/model_results/impact site y/{model_type}'
-r2, ensemble_predictions, ensemble_uncertanties, test_labels = Get_predictions_and_uncertainty_with_bagging(test_features_path, test_labels_path, model_folder, saving_folder, features_to_keep, label_to_predict, model_type)
-print(f'r2 = {r2}')
-print('\n')
-for i in range(10,25,5):
-    print(i)
-    make_RVE_plot(model_type, ensemble_predictions, ensemble_uncertanties, test_labels, saving_folder, num_bins=i)
+                if(label_to_predict == 'impact site x'):
+                    '''for impact site x'''
+                    features_to_keep = ['crack len', 'init phi', 'init x'] 
+                elif(label_to_predict == 'impact site y'):
+                    '''for impact site y'''
+                    features_to_keep = ['max_kink', 'init y', 'angle_btw']
+                    # features_to_keep = ['angle_btw','init y'] 
+                elif(label_to_predict == 'height'):
+                    '''for height'''
+                    features_to_keep = ['abs_val_sum_kink']
 
 
+                make_linear_regression_models_for_ensemble(training_features, training_labels, model_saving_folder, label_to_predict, num_models, features_to_keep, model_type=model_type)
+
+                test_features_path = f'{data_folder}/{label_to_predict}/fold{fold_no}/test_features.csv'
+                test_labels_path = f'{data_folder}/{label_to_predict}/fold{fold_no}/test_labels.csv'
+                train_features_path = f'{data_folder}/{label_to_predict}/fold{fold_no}/train_features.csv'
+                train_labels_path = f'{data_folder}/{label_to_predict}/fold{fold_no}/train_labels.csv'
+                # model_folder = f'/Volumes/Jake_ssd/ensembling_models/{label_to_predict}/{model_type}'
+                # results_folder = f'/Volumes/Jake_ssd/model_results/{label_to_predict}/{model_type}'
+                
+                # test_features_path = f'/Volumes/Jake_ssd/how_many_models_should_i_do/ensembling_models/{label_to_predict}/data/test_features.csv'
+                # test_labels_path = f'/Volumes/Jake_ssd/how_many_models_should_i_do/ensembling_models/{label_to_predict}/data/test_labels.csv'
+                # train_features_path = f'/Volumes/Jake_ssd/how_many_models_should_i_do/ensembling_models/{label_to_predict}/data/train_features.csv'
+                # train_labels_path = f'/Volumes/Jake_ssd/how_many_models_should_i_do/ensembling_models/{label_to_predict}/data/train_labels.csv'
+                # model_folder = f'/Volumes/Jake_ssd/how_many_models_should_i_do/ensembling_models/{label_to_predict}/{model_type}/{num_models}_models'
+                # saving_folder = f'/Volumes/Jake_ssd/how_many_models_should_i_do/model_results/{label_to_predict}/{model_type}/{num_models}_models'
+                
+                train_r2, train_ensemble_predictions, train_ensemble_uncertanties, train_labels = Get_predictions_and_uncertainty_with_bagging(train_features_path, train_labels_path, model_saving_folder, results_saving_folder, features_to_keep, label_to_predict, model_type)
+                test_r2, test_ensemble_predictions, test_ensemble_uncertanties, test_labels = Get_predictions_and_uncertainty_with_bagging(test_features_path, test_labels_path, model_saving_folder, results_saving_folder, features_to_keep, label_to_predict, model_type)
+
+                data = []
+                # for i in range(10,25,5):
+                #     print(i)
+                #     # make_RVE_plots(model_type, test_ensemble_predictions, clipped_test_ensemble_uncertanties, test_labels, train_ensemble_predictions, clipped_train_ensemble_uncertanties, train_labels, saving_folder, num_bins=i)
+                #     train_intercept, train_slope, CAL_train_intercept, CAL_train_slope, train_intercept, test_slope, CAL_test_intercept, CAL_test_slope = make_RVE_plots(model_type, test_ensemble_predictions, test_ensemble_uncertanties, test_labels, train_ensemble_predictions, train_ensemble_uncertanties, train_labels, results_saving_folder, num_bins=i)
+                #     data.append([i, train_r2, test_r2, train_intercept, train_slope, CAL_train_intercept, CAL_train_slope, train_intercept, test_slope, CAL_test_intercept, CAL_test_slope])
+                train_intercept, train_slope, CAL_train_intercept, CAL_train_slope, train_intercept, test_slope, CAL_test_intercept, CAL_test_slope = make_RVE_plots(model_type, test_ensemble_predictions, test_ensemble_uncertanties, test_labels, train_ensemble_predictions, train_ensemble_uncertanties, train_labels, results_saving_folder, num_bins=15)
+                data.append([15, train_r2, test_r2, train_intercept, train_slope, CAL_train_intercept, CAL_train_slope, train_intercept, test_slope, CAL_test_intercept, CAL_test_slope])
+                
+                columns = ['num bins', 'train R2', 'test R2', 'train_intercept', 'train_slope', 'CAL_train_intercept', 'CAL_train_slope', 'train_intercept', 'test_slope', 'CAL_test_intercept', 'CAL_test_slope']
+                df = pd.DataFrame(columns=columns)
+                for row in data:
+                    df.loc[len(df)] = row
+                df.to_csv(results_saving_folder + f'/{label_to_predict}_{model_type}_{num_models}results.csv', index=False)
+
+            
 
 
-
-
-
-''' ************* height ************'''
-# label_to_predict = 'height'
-# data_saving_folder = f'/Volumes/Jake_ssd/ensembling_models/{label_to_predict}'
-
-# # Level_1_test_train_split(full_dataset_pathname, image_folder, all_labels, label_to_predict, data_saving_folder)
-# # training_features = pd.read_csv('/Volumes/Jake_ssd/ensembling_models/height/data/train_features.csv', index_col=0)
-# # training_labels = pd.read_csv('/Volumes/Jake_ssd/ensembling_models/height/data/train_labels.csv', index_col=0)
-
-
-# # model_saving_folder = f'/Volumes/Jake_ssd/ensembling_models/height/{model_type}'
-# features_to_keep = ['abs_val_sum_kink']
-# # make_linear_regression_models_for_ensemble(training_features, training_labels, model_saving_folder, label_to_predict, 50, features_to_keep, model_type=model_type)
-
-# test_features_path = '/Volumes/Jake_ssd/ensembling_models/height/data/test_features.csv'
-# test_labels_path = '/Volumes/Jake_ssd/ensembling_models/height/data/test_labels.csv'
-# model_folder = f'/Volumes/Jake_ssd/ensembling_models/height/{model_type}'
-# saving_folder = f'/Volumes/Jake_ssd/model_results/height/{model_type}'
-# r2, ensemble_predictions, ensemble_uncertanties, test_labels = Get_predictions_and_uncertainty_with_bagging(test_features_path, test_labels_path, model_folder, saving_folder, features_to_keep, label_to_predict, model_type)
-# for i in range(10,25,5):
-#     print(i)
-#     make_RVE_plot(model_type, ensemble_predictions, ensemble_uncertanties, test_labels, saving_folder, num_bins=i)

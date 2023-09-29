@@ -5,8 +5,9 @@ import seaborn as sns
 
 
 case_study_df = pd.read_excel('/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Coats_case_study_code/Coats_case_studies.xlsx')
-kdiff_df = pd.read_csv('/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Coats_case_study_code/Coats_kdiff_dataframe.csv')
-kdiff_df = pd.read_csv('/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Feature_gathering/New_Crack_Len_FULL_OG_dataframe.csv') #new crack lengths
+# kdiff_df = pd.read_csv('/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Coats_case_study_code/Coats_kdiff_dataframe.csv')
+# kdiff_df = pd.read_csv('/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Feature_gathering/New_Crack_Len_FULL_OG_dataframe.csv') #new crack lengths
+kdiff_df = pd.read_excel('/Users/jakehirst/Desktop/sfx/sfx_ML_data/New_Crack_Len_FULL_OG_dataframe_2023_09_27.xlsx', index_col=0)
 # kdiff_df = kdiff_df.drop('impact_sites', axis=1)
 
 
@@ -35,6 +36,15 @@ case_study_df = case_study_df[case_study_df['Age (mo)'] <= 5.0]
 """ Liminting the case studies to only hard surfaces """
 # case_study_df = case_study_df[case_study_df['Surface COR'] == 'high']
 print("here")
+
+''' Filtering the kdiff df so that there are no falls less than 1.5 feet '''
+# kdiff_df = kdiff_df[kdiff_df['height'] >= 1.5]
+
+'''Filtering the kdiff df so that there are no cracks less than 15 mm'''
+# kdiff_df = kdiff_df[kdiff_df['crack len'] >= 15]
+
+# case_study_df = case_study_df[case_study_df['BC height'] <= 4]
+
 
 
 """gets the number of occurances in df where the column "column_name" is equal to "value_to_count" """
@@ -122,25 +132,26 @@ def histogram(df1, column_name_df1, mean_1, std_1, what_are_we_comparing, x_limi
     plt.axvline(mean_1[column_name_df1] + std_1[column_name_df1], color='y', linestyle='--', label='Standard deviation')
     plt.axvline(mean_1[column_name_df1] - std_1[column_name_df1], color='y', linestyle='--')
     if(df1.columns[0] == 'Suture to Suture'):
-        title = f"Histogram of {what_are_we_comparing} from case studies"
+        title = f"{what_are_we_comparing} from case studies"
     else:
-        title = f'Histogram of {what_are_we_comparing} from simulation data'
+        title = f'{what_are_we_comparing} from simulation data'
     plt.title(title)
     plt.xlim(x_limits)
     plt.ylabel('Percentage of cases')
     plt.xlabel(what_are_we_comparing)
     plt.ylim(0, 0.4)
     plt.legend()
-    plt.show()
+    # plt.show()
     image_name = f"{title}.png".replace(" ", "_")
+    plt.savefig(f"/Users/jakehirst/Desktop/bjorn_figures/{image_name}")
     #plt.savefig(f"/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Coats_case_study_code/{image_name}")
     plt.close()
         
 def percentage_histogram(df, column_name, x_limits, y_limits, x_label):
     if(df.columns[0] == 'Suture to Suture'):
-        title = f"Histogram of Case study {x_label}"
+        title = f"{x_label} from Case Studies"
     else:
-        title = f'Histogram of k-diff {x_label}'
+        title = f'{x_label} from Simulations'
     # Calculate the mean and standard deviation
     mean = df[column_name].mean()
     std = df[column_name].std()
@@ -161,7 +172,7 @@ def percentage_histogram(df, column_name, x_limits, y_limits, x_label):
     #plt.text(mean-std+1, plt.gca().get_ylim()[1]*0.8, 'Standard Deviation', color='g')
 
     # Set the labels and title
-    plt.xlabel('Value')
+    plt.xlabel('Crack length')
     plt.ylabel('Percentage of Total Examples')
     plt.xlim(x_limits)
     plt.title(title)
@@ -172,7 +183,8 @@ def percentage_histogram(df, column_name, x_limits, y_limits, x_label):
     # Show the plot
     # plt.show()
     image_name = f"{title}.png".replace(" ", "_")
-    plt.savefig(f"/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Coats_case_study_code/PERCENTAGE_{image_name}")
+    # plt.savefig(f"/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Coats_case_study_code/PERCENTAGE_{image_name}")
+    plt.savefig(f"/Users/jakehirst/Desktop/bjorn_figures/{image_name}")
     plt.close()
 
 def boxplot(df, column_name, max, min):# Plotting boxplot with maximum and minimum values
@@ -246,9 +258,9 @@ def plot_crack_len_vs_height(kdiff_df, kdiff_crack_len_name, kdiff_height_name, 
     plt.legend()
     
     # plt.savefig('/Users/jakehirst/Desktop/sfx/Presentations_and_Papers/USNCCM/figures/younger_than_5_mo_fall_heights_vs_crack_len_BOTH.png')
-
+    plt.savefig(f"/Users/jakehirst/Desktop/bjorn_figures/crack_len_vs_height.png")
     # Display the scatter plot
-    plt.show()
+    # plt.show()
     plt.close()
 
 
@@ -281,26 +293,26 @@ histogram(kdiff_df, 'height', mean_2, std_2, 'fall height', x_limits=xlimits)
 
 
 # Histograms comparing Orientation
-xlimits = (0, 100)
-histogram(case_study_df, 'Final Orient', mean_1, std_1, 'Orientation', x_limits=xlimits)
-histogram(kdiff_df, 'coats_orientation', mean_2, std_2, 'Orientation', x_limits=xlimits)
+# xlimits = (0, 100)
+# histogram(case_study_df, 'Final Orient', mean_1, std_1, 'Orientation', x_limits=xlimits)
+# histogram(kdiff_df, 'coats_orientation', mean_2, std_2, 'Orientation', x_limits=xlimits)
 
-# Histograms comparing Height
+# # Histograms comparing Height
 
-xlimits = (0,5)
-histogram(case_study_df, 'BC height', mean_1, std_1, 'Height', x_limits=xlimits)
-histogram(kdiff_df, 'height', mean_2, std_2, 'Height', x_limits=xlimits)
-
-
-
-# side_by_side_plot(case_study_df, kdiff_df, kdiff_col='coats_orientation', coats_col="Final Orient", title="Orient vs height", ylim=(0,100))
-# side_by_side_plot(case_study_df, kdiff_df, kdiff_col='coats_linearity', coats_col="Linearity", title="linearity vs height", ylim=(0.9, 1.5))
-# side_by_side_plot(case_study_df, kdiff_df, kdiff_col='suture to suture', coats_col="Suture to Suture", title="S2S vs height", ylim=None)
-# side_by_side_plot(case_study_df, kdiff_df, kdiff_col='crack len', coats_col="Final True Line Length (mm)", title="Length vs height", ylim=(0,120))
+# xlimits = (0,5)
+# histogram(case_study_df, 'BC height', mean_1, std_1, 'Height', x_limits=xlimits)
+# histogram(kdiff_df, 'height', mean_2, std_2, 'Height', x_limits=xlimits)
 
 
-num_suture_to_suture_kdiff = get_number_of_occurances(kdiff_df, "suture to suture", 1)
-num_suture_to_suture_Coats = get_number_of_occurances(case_study_df, "Suture to Suture", 1)
+
+# # side_by_side_plot(case_study_df, kdiff_df, kdiff_col='coats_orientation', coats_col="Final Orient", title="Orient vs height", ylim=(0,100))
+# # side_by_side_plot(case_study_df, kdiff_df, kdiff_col='coats_linearity', coats_col="Linearity", title="linearity vs height", ylim=(0.9, 1.5))
+# # side_by_side_plot(case_study_df, kdiff_df, kdiff_col='suture to suture', coats_col="Suture to Suture", title="S2S vs height", ylim=None)
+# # side_by_side_plot(case_study_df, kdiff_df, kdiff_col='crack len', coats_col="Final True Line Length (mm)", title="Length vs height", ylim=(0,120))
+
+
+# num_suture_to_suture_kdiff = get_number_of_occurances(kdiff_df, "suture to suture", 1)
+# num_suture_to_suture_Coats = get_number_of_occurances(case_study_df, "Suture to Suture", 1)
 
 # print(f"Total k-diff S2S = {num_suture_to_suture_kdiff}. percentage = {num_suture_to_suture_kdiff / len(kdiff_df)}")
 # print(f"Total Case_study S2S = {num_suture_to_suture_Coats}. percentage = {num_suture_to_suture_Coats / len(case_study_df)}")

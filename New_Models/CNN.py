@@ -54,6 +54,8 @@ def CNN_1D(train_features_1D):
     csv_data_shape = train_features_1D.shape[1]
     csv_input = tf.keras.layers.Input(shape=csv_data_shape, name="csv")
     csv_model = normalizer(csv_input)
+    # csv_model = tf.keras.layers.Dense(256, activation='relu', name="csv_dense1")(csv_model)
+    # # csv_model = tf.keras.layers.BatchNormalization()(csv_model)
     # csv_model = tf.keras.layers.Dense(128, activation='relu', name="csv_dense2")(csv_model)
     # csv_model = tf.keras.layers.BatchNormalization()(csv_model)
     csv_model = tf.keras.layers.Dense(64, activation='relu', name="csv_dense3")(csv_model)
@@ -63,7 +65,7 @@ def CNN_1D(train_features_1D):
     csv_model = tf.keras.layers.Dense(16, activation='relu', name="csv_dense5")(csv_model)
     # csv_model = tf.keras.layers.BatchNormalization()(csv_model)
     csv_model = tf.keras.layers.Dense(8, activation='relu', name="csv_dense6")(csv_model)
-    csv_output = tf.keras.layers.Dropout(0.5, name="csv_output")(csv_model)
+    csv_output = tf.keras.layers.Dropout(0.05, name="csv_output")(csv_model)
     """############## 1D model ##############"""
 
     return csv_output, csv_input
@@ -218,7 +220,7 @@ def run_kfold_Categorical_CNN(full_dataset, raw_images, full_dataset_labels, pat
 '''
 makes ANN for regression and returns the model. This will be used for ensembling ANN's in order to provide UQ for parametric models.
 '''
-def make_1D_CNN_for_ensemble(train_df, val_df, train_labels, val_labels, patience=100, max_epochs=1000, num_outputs=1, lossfunc='mean_squared_error'):
+def make_1D_CNN_for_ensemble(train_df, val_df, train_labels, val_labels, patience=200, max_epochs=1000, num_outputs=1, lossfunc='mean_squared_error'):
     csv_output, csv_input = CNN_1D(train_df)
     x = csv_output
     predictions = tf.keras.layers.Dense(units=num_outputs)(x) 
@@ -236,7 +238,7 @@ def make_1D_CNN_for_ensemble(train_df, val_df, train_labels, val_labels, patienc
                             # monitor='loss',
                             monitor='val_loss',
                             patience=patience,
-                            restore_best_weights=True
+                            restore_best_weights=True#COMMENT trying to not restore the best weights so there is a bit of overfitting
                         )
                     ],
                     validation_data=((val_df), val_labels),
