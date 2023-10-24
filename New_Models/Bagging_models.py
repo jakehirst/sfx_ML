@@ -13,9 +13,13 @@ from ridge_regression import *
 from polynomial_regression import *
 from GPR import *
 from CNN import *
+from mastml.plots import *
+from mastml.models import *
+from mastml.error_analysis import *
 
-# full_dataset_pathname = "/Users/jakehirst/Desktop/sfx/sfx_ML_data/New_Crack_Len_FULL_OG_dataframe_2023_07_14.csv"
-# image_folder = '/Users/jakehirst/Desktop/sfx/sfx_ML_data/images_sfx/new_dataset/Visible_cracks'
+full_dataset_pathname = "/Users/jakehirst/Desktop/sfx/sfx_ML_data/New_Crack_Len_FULL_OG_dataframe_2023_10_14.csv"
+image_folder = '/Users/jakehirst/Desktop/sfx/sfx_ML_data/images_sfx/new_dataset/Visible_cracks'
+# full_dataset_pathname = "/Users/jakehirst/Desktop/sfx/sfx_ML_data/New_Crack_Len_FULL_OG_dataframe_2023_10_04.csv"
 
 '''
 makes a parody plot of the predictions from uncertainty model including the standard deviations
@@ -219,14 +223,28 @@ The calibration is calculated by minimizing the sum of the negative log likeliho
 '''
 def get_calibration_factors(residuals, uncertainties):
     # Define the objective function
+    '''linear'''
+    # def objective(params, R, sigma_uc):
+    #     a, b = params
+    #     loss = np.sum(np.log(2*np.pi) + np.log(a*sigma_uc + b)**2 + (R**2 / (a*sigma_uc + b)**2))
+    #     return .5 * loss / len(R)
+    '''non-linear'''
     def objective(params, R, sigma_uc):
         a, b = params
-        loss = np.sum(np.log(2*np.pi) + np.log(a*sigma_uc + b)**2 + (R**2 / (a*sigma_uc + b)**2))
-        return loss
+        loss = np.sum(np.log(2*np.pi) + np.log(a*(sigma_uc**((b/2) + 1)))**2 + (R**2 / (a*(sigma_uc**((b/2) + 1)))**2))
+        return .5 * loss / len(R)
+    
     # Provide initial guesses for a and b
     initial_guess = [1.0, 1.0]  # You may want to adjust these based on your problem
+    
+    ARE = residuals
+    SIGUC = uncertainties
+    # Define a callback function to print out the value of the objective function
+    def callback_func(xk):
+        print(f'Current value of objective function: {objective(xk, ARE, SIGUC)}')
 
     # Call the optimizer
+    # result = minimize(objective, initial_guess, args=(residuals, uncertainties), method='nelder-mead', callback=callback_func)
     result = minimize(objective, initial_guess, args=(residuals, uncertainties), method='nelder-mead')
 
     # Extract optimized values
@@ -373,7 +391,8 @@ def make_5_fold_datasets(saving_folder, full_dataset_pathname, image_folder):
     labels_to_predict = ['impact site x', 'impact site y', 'height']
 
     for label_to_predict in labels_to_predict:
-        if(not os.path.exists(f'{saving_folder}/{label_to_predict}')): os.mkdir(f'{saving_folder}/{label_to_predict}')
+        make_dirs(f'{saving_folder}/{label_to_predict}')
+        # if(not os.path.exists(f'{saving_folder}/{label_to_predict}')): os.mkdir(f'{saving_folder}/{label_to_predict}')
         full_dataset_features, full_dataset_labels, important_features = prepare_dataset_Single_Output_Regression(full_dataset_pathname, image_folder, label_to_predict, all_labels, saving_folder=None, maximum_p_value=1)
         
         rnge = range(1, len(full_dataset_features)+1)
@@ -414,22 +433,24 @@ def make_dirs(directory_path):
     
 model_types = ['linear', 'ridge', 'lasso', 'poly2', 'poly3', 'RF', 'GPR', 'ANN']
 model_types = ['linear', 'ridge', 'lasso', 'poly2', 'poly3', 'RF', 'GPR']
-model_types = ['GPR']
+# model_types = ['RF']
 
 # for model_type in model_types:
-num_models_list = [10, 50, 100, 500, 1000]
+num_models_list = [10, 50, 100]
 labels_to_predict = ['impact site x', 'impact site y']
-labels_to_predict = [ 'impact site y']
+# labels_to_predict = [ 'impact site y']
 
-model_folder = '/Volumes/Jake_ssd/5fold_ensemble_models'
-data_folder = '/Volumes/Jake_ssd/5fold_datasets'
-results_folder = '/Volumes/Jake_ssd/5_fold_ensemble_results'
+model_folder = '/Volumes/Jake_ssd/NONLINEAR_Compare_Code_5fold_ensemble_models'
+data_folder = '/Volumes/Jake_ssd/OCTOBER_DATASET/5fold_datasets'
+results_folder = '/Volumes/Jake_ssd/OCTOBER_DATASET/NONLINEAR_Compare_Code_5_fold_ensemble_results'
+
+make_5_fold_datasets(data_folder, full_dataset_pathname, image_folder)
 
 for fold_no in range(1,6):
     for model_type in model_types:
         for label_to_predict in labels_to_predict:
             for num_models in num_models_list:
-
+                
                 all_labels = ['height', 'phi', 'theta', 
                             'impact site x', 'impact site y', 'impact site z', 
                             'impact site r', 'impact site phi', 'impact site theta']
@@ -441,6 +462,8 @@ for fold_no in range(1,6):
                 make_dirs(model_saving_folder)
                 results_saving_folder = f'{results_folder}/{label_to_predict}/{model_type}/{num_models}_models/fold_{fold_no}'
                 make_dirs(results_saving_folder)
+
+                '''TODO gotta find out what features to use for each label before testing on new dataset'''
 
                 if(label_to_predict == 'impact site x'):
                     '''for impact site x'''
@@ -479,6 +502,58 @@ for fold_no in range(1,6):
                 #     # make_RVE_plots(model_type, test_ensemble_predictions, clipped_test_ensemble_uncertanties, test_labels, train_ensemble_predictions, clipped_train_ensemble_uncertanties, train_labels, saving_folder, num_bins=i)
                 #     train_intercept, train_slope, CAL_train_intercept, CAL_train_slope, train_intercept, test_slope, CAL_test_intercept, CAL_test_slope = make_RVE_plots(model_type, test_ensemble_predictions, test_ensemble_uncertanties, test_labels, train_ensemble_predictions, train_ensemble_uncertanties, train_labels, results_saving_folder, num_bins=i)
                 #     data.append([i, train_r2, test_r2, train_intercept, train_slope, CAL_train_intercept, CAL_train_slope, train_intercept, test_slope, CAL_test_intercept, CAL_test_slope])
+                
+                '''using their library to make an rve plot'''
+                #TODO figure out datset_stdev and residuals
+                
+                train_labels_arr = train_labels.to_numpy().T[0]
+                train_predictions_arr = np.array(train_ensemble_predictions)
+                test_labels_arr = test_labels.to_numpy().T[0]
+                test_predictions_arr = np.array(test_ensemble_predictions)
+                train_residuals = pd.Series(np.abs(train_labels_arr - train_predictions_arr))
+                test_residuals = pd.Series(np.abs(test_labels_arr - test_predictions_arr))
+
+                ''' getting calibration factors'''
+                # cf = CorrectionFactors(train_residuals, pd.Series(train_ensemble_uncertanties))
+                # a, b = cf.nll()
+                # print(f'a = {a} b = {b}')
+                # calibrated_train_uncertainties = pd.Series(a * train_ensemble_uncertanties + b, name='train_model_errors')
+                # calibrated_test_uncertainties = pd.Series(a * test_ensemble_uncertanties + b, name='test_model_errors')
+                
+                a, b = get_calibration_factors(train_residuals, train_ensemble_uncertanties)
+                print(f'a = {a} b = {b}')
+                calibrated_train_uncertainties = pd.Series(a * (train_ensemble_uncertanties**((b/2) + 1)), name='train_model_errors')
+                calibrated_test_uncertainties = pd.Series(a * (test_ensemble_uncertanties**((b/2) + 1)), name='test_model_errors')
+
+                
+                ''' inside of error_analysis.py, can use this to get rid of the outliers in the ensemble. need to implement this earlier though. (Get_predictions_and_uncertainty_with_bagging)'''
+                # _remove_outlier_preds(preds)
+                
+                blank_model_for_plot = SklearnModel('RandomForestRegressor')
+                mastml_RVE = Error()
+
+                mastml_RVE.plot_real_vs_predicted_error_uncal_cal_overlay(savepath=results_saving_folder, 
+                                                                        model=blank_model_for_plot, 
+                                                                        data_type='train', 
+                                                                        model_errors=pd.Series(train_ensemble_uncertanties) ,
+                                                                        model_errors_cal= calibrated_train_uncertainties,
+                                                                        residuals= train_residuals, 
+                                                                        dataset_stdev=np.std(train_labels.to_numpy()), 
+                                                                        show_figure=False,
+                                                                        well_sampled_number=0.025)
+                
+                print('here')
+                mastml_RVE.plot_real_vs_predicted_error_uncal_cal_overlay(savepath=results_saving_folder, 
+                                                                        model=blank_model_for_plot, 
+                                                                        data_type='test', 
+                                                                        model_errors=pd.Series(test_ensemble_uncertanties) ,
+                                                                        model_errors_cal= calibrated_test_uncertainties,
+                                                                        residuals= test_residuals, 
+                                                                        dataset_stdev=np.std(train_labels.to_numpy()), 
+                                                                        show_figure=False,
+                                                                        well_sampled_number=0.025)
+                '''using their library to make an rve plot'''
+
                 train_intercept, train_slope, CAL_train_intercept, CAL_train_slope, train_intercept, test_slope, CAL_test_intercept, CAL_test_slope = make_RVE_plots(model_type, test_ensemble_predictions, test_ensemble_uncertanties, test_labels, train_ensemble_predictions, train_ensemble_uncertanties, train_labels, results_saving_folder, num_bins=15)
                 data.append([15, train_r2, test_r2, train_intercept, train_slope, CAL_train_intercept, CAL_train_slope, train_intercept, test_slope, CAL_test_intercept, CAL_test_slope])
                 

@@ -4,9 +4,11 @@ from polynomial_regression import *
 from lasso_regression import *
 from ridge_regression import *
 from CNN import *
+from random_forest import *
 from itertools import combinations
 import seaborn as sns
 import matplotlib.pyplot as plt
+from Feature_engineering import *
 
 FORMAL_LABELS = {'init phi': '\u039E\u03A6',
                  'init z': '\u039Ez',
@@ -97,97 +99,98 @@ def plot_mean_r2_and_mse(subsets_and_r2s, subsets_and_mse_s, figure_folder, labe
     
 #TODO NEED TO MAKE THIS THING GENERIC INSTEAD OF HARD CODED
 ''' Runs all of the possible feature combinations of a given model type, saving the metrics to be analyzed later. '''
-def run_all_feature_combinations():
-
-    full_dataset_pathname = "/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Feature_gathering/New_Crack_Len_FULL_OG_dataframe.csv"
-    image_folder = '/Users/jakehirst/Desktop/sfx/sfx_pics/jake/images_sfx/new_dataset/Visible_cracks'
+def run_all_feature_combinations(Model_types, label_to_predict, feature_df, label_df, model_folder, height_range):
     all_labels = ['height', 'phi', 'theta', 
                 'impact site x', 'impact site y', 'impact site z', 
                 'impact site r', 'impact site phi', 'impact site theta']
 
-    # LTP = ['impact site x', 'impact site y', 'height']
-    # feats = [['crack len', 'init phi', 'avg_ori', 'init x'], ['max_kink', 'angle_btw', 'init y'], ['abs_val_sum_kink', 'crack len', 'max_kink', 'linearity', 'max thickness']]
-
-    # LTP = ['impact site y', 'height']
-    # feats = [['max_kink', 'angle_btw', 'init y'], ['abs_val_sum_kink', 'crack len', 'max_kink', 'linearity', 'max thickness']]
-
-    LTP = ['impact site phi', 'impact site theta', 'height']
-    feats = [['crack len', 'init phi', 'avg_ori', 'init x'], ['max_kink', 'angle_btw', 'init y'], ['abs_val_sum_kink', 'crack len', 'max_kink', 'linearity', 'max thickness']]
-
-    for i in range(len(LTP)):
-        label_to_predict = LTP[i]
-        All_features = feats[i]
-        
-        #TODO change the label to predict from impact site x to impact site y to height for each model type
-        #when predicting impact site x
-        # label_to_predict = 'impact site x' 
-        # All_features = ['crack len', 'init phi', 'avg_ori', 'init x']
-        #when predicting impact site y
-        # label_to_predict = 'impact site y'
-        # All_features = ['max_kink', 'angle_btw', 'init y']
-        #when predicting impact site z
-        # label_to_predict = 'impact site z'
-        # All_features = ['init z', 'init theta']
-        #when predicting height
-        # label_to_predict = 'height'
-        # All_features = ['abs_val_sum_kink', 'crack len', 'max_kink', 'linearity', 'max thickness']
-
-        model_folder = '/Users/jakehirst/Desktop/Feature_subset_study/GPR_100_restarts'#TODO change the saving folder if the model type changes
-        if(not os.path.exists(model_folder)): os.mkdir(model_folder)
-        saving_folder = model_folder + f'/{label_to_predict}' 
-        if(not os.path.exists(saving_folder)): os.mkdir(saving_folder)
-        correlated_featureset, full_dataset_labels, important_features = prepare_dataset_Single_Output_Regression(full_dataset_pathname, image_folder, label_to_predict, all_labels, saving_folder=None, maximum_p_value=0.1)
-        #correlated_featureset = remove_ABAQUS_features(correlated_featureset)
+    '''zero centering and normalizing data'''
+    # Zero-center the data
+    featureset_centered = feature_df - feature_df.mean()
+    # Normalize to the range [-1, 1]
+    featureset_normalized = featureset_centered / featureset_centered.abs().max()
+    feature_df = featureset_normalized
+    
+    '''limiting data to a range of heights for predictions and for labels'''
+    # Filter label_df based on 'height' column
+    label_df = label_df[(label_df['height'] >= height_range[0]) & (label_df['height'] <= height_range[1])]
+    # Get the indices of the filtered rows in label_df
+    indices = label_df.index
+    # Use loc to align feature_df with the filtered indices
+    feature_df = feature_df.loc[indices]
+    '''limiting data to a range of heights for predictions and for labels'''
 
 
+    All_features = feature_df.columns
+    
+    if(not os.path.exists(model_folder)): os.makedirs(model_folder)
+    saving_folder = model_folder + f'/{label_to_predict}' 
+    if(not os.path.exists(saving_folder)): os.mkdir(saving_folder)
 
-        # figure_folder = f'/Users/jakehirst/Desktop/Feature_subset_study/predicting_{label_to_predict}'
-        figure_folder = saving_folder
-        if(not os.path.exists(figure_folder)):
-            os.mkdir(figure_folder)
+    figure_folder = saving_folder
+    if(not os.path.exists(figure_folder)):
+        os.mkdir(figure_folder)
 
-        # Get all possible subsets
-        feature_subsets = []
-        for i in range(1, len(All_features) + 1):
-            feature_subsets.extend(list(combinations(All_features, i)))
 
-        subsets_and_performances = {}
-        subsets_and_r2s = {}
-        subsets_and_mse_s = {}
+    # Get all possible subsets
+    feature_subsets = []
+    for i in range(1, len(All_features) + 1):
+        feature_subsets.extend(list(combinations(All_features, i)))
+    #TODO: get rid of this and uncomment above
+    # feature_subsets = [All_features.to_list()]
+    
+    subsets_and_performances = {}
+    subsets_and_r2s = {}
+    subsets_and_mse_s = {}
+    for model_type in Model_types:
         subset_no = 0
+
+        model_folder = saving_folder + f'/{model_type}'
+        if(not os.path.exists(model_folder)):     os.mkdir(model_folder)
         
-        for subset in feature_subsets: #TODO switch between these for the ANN if it freezes
-            subset_no += 1
-        # for i in range(28,len(feature_subsets)): #TODO switch between these for the ANN if it freezes
-        #     subset_no = i
-        #     subset = feature_subsets[i-1]
+        # for subset in feature_subsets: #TODO switch between these for the ANN if it freezes
+        #     subset_no += 1
+        for i in range(len(feature_subsets), 0 , -1): #TODO switch between these for the ANN if it freezes
+            subset_no = i
+            subset = feature_subsets[i-1]
             
             
-            subset_saving_folder = saving_folder + f'/{subset_no}'
+            subset_saving_folder = model_folder + f'/{subset_no}'
             if(not os.path.exists(subset_saving_folder)):     os.mkdir(subset_saving_folder)
             
             print(f'\nfeatures = {list(subset)}')
-            featureset = correlated_featureset[list(subset)]
+            featureset = feature_df[list(subset)] #only including the columns included in the feature subset
             raw_images = []
             
             alpha = 0.1
             
+            #Model_types = ['RF', 'ANN', 'GPR', 'Lasso', 'Linear', 'Poly2', 'Poly3', 'Poly4', 'Ridge']
+            full_dataset_labels = label_df[label_to_predict].to_numpy()
             #TODO change the kfold call if the model type changes
-            Kfold_Gaussian_Process_Regression(featureset, raw_images, full_dataset_labels, important_features, subset_saving_folder, label_to_predict, save_data=True)
-            # Kfold_Linear_Regression(featureset, raw_images, full_dataset_labels, important_features, subset_saving_folder, label_to_predict, save_data=True)
-            # Kfold_Ridge_Regression(alpha, featureset, raw_images, full_dataset_labels, important_features, subset_saving_folder, label_to_predict, save_data=True)
-            # Kfold_Lasso_Regression(alpha, featureset, raw_images, full_dataset_labels, important_features, subset_saving_folder, label_to_predict, save_data=True)
-            # Kfold_Polynomial_Regression(2, featureset, raw_images, full_dataset_labels, important_features, subset_saving_folder, label_to_predict, save_data=True)
-            # Kfold_Polynomial_Regression(3, featureset, raw_images, full_dataset_labels, important_features, subset_saving_folder, label_to_predict, save_data=True)
-            # Kfold_Polynomial_Regression(4, featureset, raw_images, full_dataset_labels, important_features, subset_saving_folder, label_to_predict, save_data=True)
-            # run_kfold_Regression_CNN(featureset, raw_images, full_dataset_labels, patience=100, max_epochs=2000, num_outputs=1, lossfunc='mean_squared_error', saving_folder=subset_saving_folder, use_images=False) #TODO fix how metrics are saved in the CNN
+            if(model_type == 'GPR'):
+                Kfold_Gaussian_Process_Regression(featureset, full_dataset_labels, [], subset_saving_folder, label_to_predict, save_data=True)
+            elif(model_type == 'Linear'):
+                Kfold_Linear_Regression(featureset, full_dataset_labels, [], subset_saving_folder, label_to_predict, save_data=True)
+            elif(model_type == 'Ridge'):
+                Kfold_Ridge_Regression(alpha, featureset, full_dataset_labels, [], subset_saving_folder, label_to_predict, save_data=True)
+            elif(model_type == 'Lasso'):
+                Kfold_Lasso_Regression(alpha, featureset, full_dataset_labels, [], subset_saving_folder, label_to_predict, save_data=True)
+            elif(model_type == 'Poly2'):
+                Kfold_Polynomial_Regression(2, featureset, full_dataset_labels, [], subset_saving_folder, label_to_predict, save_data=True)
+            elif(model_type == 'Poly3'):
+                Kfold_Polynomial_Regression(3, featureset, full_dataset_labels, [], subset_saving_folder, label_to_predict, save_data=True)
+            elif(model_type == 'RF'):
+                Kfold_RF_Regression(featureset, full_dataset_labels, [], subset_saving_folder, label_to_predict, save_data=True)
+            elif(model_type == 'ANN'):
+                # Zero-center the data
+                featureset_centered = featureset - featureset.mean()
+
+                # Normalize to the range [-1, 1]
+                featureset_normalized = featureset_centered / featureset_centered.abs().max()
+                run_kfold_Regression_CNN(featureset_normalized, raw_images, full_dataset_labels, patience=50, max_epochs=2000, num_outputs=1, lossfunc='mean_squared_error', saving_folder=subset_saving_folder, use_images=False) 
 
             
-    #         subsets_and_performances[str(list(subset))] = performances
-    #         subsets_and_r2s[str(list(subset))] = r2s
-    #         subsets_and_mse_s[str(list(subset))] = mse_s
 
-    # plot_mean_r2_and_mse(subsets_and_r2s, subsets_and_mse_s, figure_folder, label_to_predict)
     
 ''' returns the informal list of features in a new formal form '''
 def replace_features_with_formal_names(feature_list):
@@ -219,7 +222,7 @@ def barplot_model_and_metric_for_feature_combinations(Model_type, label_to_predi
 
 ''' Finds the best 5 feature combinations based on R^2, adj_r^2 and MSE from the test datasets '''
 def find_best_feature_combination(parent_folder, Model_type, label_to_predict):
-    folder_path = parent_folder + f'/{Model_type}/{label_to_predict}'
+    folder_path = parent_folder + f'/{label_to_predict}/{Model_type}'
     combinations_and_r2s = {}
     combinations_and_adj_r2s = {}
     combinations_and_mses = {}
@@ -290,36 +293,57 @@ def barplots_for_best_on_best(label_to_predict, best_on_best, figure_path):
         plt.xticks(fontsize=8, fontweight='bold', wrap=True)
         plt.subplots_adjust(bottom=0.2)  # Adjust bottom margin to create room for x-axis labels
 
-        plt.show()
-        # plt.savefig(figure_path + f'/{metric}_best_on_best_predicting_{label_to_predict}.png')
+        # plt.show()
+        plt.savefig(figure_path + f'/{metric}_best_on_best_predicting_{label_to_predict}.png')
         plt.close()
     
     return
 
+''' Very brute force way to find best features for each model. Takes a very long time though.
+- runs all feature combinations for all model types
+- finds the best feature combination
+- plots the best feature combination for each model type
+'''
+def find_best_on_best_for_all_metrics(Model_types, parent_folder, labels_to_predict):
 
-run_all_feature_combinations()
+    for label_to_predict in labels_to_predict:
+        best_on_best = {'R^2':{}, 'adj_R^2': {}, 'MSE': {}, 'MAE': {}}
+        for Model_type in Model_types:
+            t5_r2, t5_adj_r2, t5_mses, t5_maes = find_best_feature_combination(parent_folder, Model_type, label_to_predict)
+            best_on_best['R^2'][Model_type] = t5_r2[0]
+            best_on_best['adj_R^2'][Model_type] = t5_adj_r2[0]
+            best_on_best['MSE'][Model_type] = t5_mses[0]
+            best_on_best['MAE'][Model_type] = t5_maes[0]
 
-parent_folder = '/Users/jakehirst/Desktop/Feature_subset_study'
-Model_types = ['ANN', 'GPR', 'Lasso', 'Linear', 'Poly2', 'Poly3', 'Poly4', 'Ridge']
+
+        
+        barplots_for_best_on_best(label_to_predict, best_on_best, parent_folder+f'/{label_to_predict}')
+    return
+# run_all_feature_combinations()
+
+parent_folder = '/Volumes/Jake_ssd/OCTOBER_DATASET/What_features_to_use'
+Model_types = ['GPR', 'RF', 'Lasso', 'Linear', 'Poly2', 'Poly3', 'Ridge']
+Model_types = ['RF', 'Lasso', 'Linear', 'Poly2', 'Poly3', 'Ridge', 'GPR']
+
+# Model_types = ['ANN']
 labels_to_predict = ['height', 'impact site x', 'impact site y']
-
-#run_all_feature_combinations()
-
-for label_to_predict in labels_to_predict:
-    best_on_best = {'R^2':{}, 'adj_R^2': {}, 'MSE': {}, 'MAE': {}}
-    for Model_type in Model_types:
-        if(Model_type == 'Linear' or Model_type == 'Poly4'):
-            print('here')
-        t5_r2, t5_adj_r2, t5_mses, t5_maes = find_best_feature_combination(parent_folder, Model_type, label_to_predict)
-        best_on_best['R^2'][Model_type] = t5_r2[0]
-        best_on_best['adj_R^2'][Model_type] = t5_adj_r2[0]
-        best_on_best['MSE'][Model_type] = t5_mses[0]
-        best_on_best['MAE'][Model_type] = t5_maes[0]
+# find_best_on_best_for_all_metrics(Model_types, parent_folder, labels_to_predict)
 
 
-    
-    barplots_for_best_on_best(label_to_predict, best_on_best, parent_folder)
 
+folder_with_data_transformations = '/Volumes/Jake_ssd/OCTOBER_DATASET/feature_transformations' #TODO: dont change this unless your feature transformations are somewhere else
+# label_to_predict = 'impact site x'
+
+label_to_predict = 'height'
+all_labels = ['height', 'phi', 'theta', 
+                'impact site x', 'impact site y', 'impact site z', 
+                'impact site r', 'impact site phi', 'impact site theta']
+feature_df, label_df = get_best_features_to_use(folder_with_data_transformations, label_to_predict, all_labels, maximum_redundancy=0.6, minimum_corr_to_label=0.2)
+# feature_df, label_df = get_best_features_to_use(folder_with_data_transformations, label_to_predict, all_labels, maximum_redundancy=0.5, minimum_corr_to_label=0.1)
+
+height_range = (1.5,4)
+model_folder = f'/Volumes/Jake_ssd/OCTOBER_DATASET/Fall_height_chunks/{height_range}'
+run_all_feature_combinations(Model_types, label_to_predict, feature_df, label_df, model_folder=model_folder, height_range=height_range)
+find_best_on_best_for_all_metrics(Model_types, model_folder, labels_to_predict)
         
-        
-# print('done')
+
