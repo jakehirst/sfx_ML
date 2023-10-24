@@ -4,6 +4,7 @@ from lasso_regression import *
 from ridge_regression import *
 from polynomial_regression import *
 from linear_regression import *
+from random_forest import *
 import math as m
 
 
@@ -27,38 +28,44 @@ FORMAL_LABELS = {'init phi': '\u039E\u03A6',
                  'abs_val_sum_kink': '\u03A3|\u0393|'
                  }
 
-full_dataset_pathname = "/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Feature_gathering/New_Crack_Len_FULL_OG_dataframe.csv"
+full_dataset_pathname = "/Users/jakehirst/Desktop/sfx/sfx_ML_data/New_Crack_Len_FULL_OG_dataframe_2023_10_14.csv"
 image_folder = '/Users/jakehirst/Desktop/sfx/sfx_pics/jake/images_sfx/new_dataset/Visible_cracks'
 all_labels = ['height', 'phi', 'theta', 
             'impact site x', 'impact site y', 'impact site z', 
             'impact site r', 'impact site phi', 'impact site theta']
 
-models_and_features_impact_site_x = {'ANN': ['crack len', 'init x'],
-                                     'GPR': ['crack len', 'init x'],
-                                     '2nd deg poly': ['init phi', 'init x'],
-                                     '3rd deg poly': ['crack len', 'init x', 'avg_ori'],
-                                     '4th deg poly': ['init x'],
-                                     'Ridge': ['crack len', 'init phi', 'avg_ori', 'init x'],
-                                     'Lasso': ['crack len', 'init phi', 'avg_ori', 'init x'],
-                                     'Linear': ['init phi', 'avg_ori', 'init x']
+models_and_features_impact_site_x = {
+                                    #  'ANN': ['crack len', 'init x'],
+                                     'GPR': ['init x', 'max thickness', 'mean thickness', 'init r', 'init theta'],
+                                     'RF': ['init x', 'max thickness', 'mean thickness', 'init theta'],
+                                     '2nd deg poly': ['init x', 'max thickness', 'mean thickness', 'init r'],
+                                     '3rd deg poly': ['mean thickness', 'init r', 'linearity'],
+                                    #  '4th deg poly': ['init x'],
+                                     'Ridge': ['init x', 'max thickness', 'init r'],
+                                     'Lasso': ['init x', 'mean thickness', 'init r'],
+                                     'Linear': ['init x', 'init r', 'init theta', 'linearity']
                                      }
-models_and_features_impact_site_y = {'ANN': ['max_kink', 'init y'],
-                                     'GPR': ['max_kink', 'angle_btw', 'init y'],
-                                     '2nd deg poly': ['max_kink', 'init y'],
-                                     '3rd deg poly': ['max_kink', 'init y'],
-                                     '4th deg poly': ['init y'],
-                                     'Ridge': ['max_kink', 'angle_btw', 'init y'],
-                                     'Lasso': ['max_kink', 'angle_btw', 'init y'],
-                                     'Linear': ['max_kink', 'angle_btw', 'init y']
+models_and_features_impact_site_y = {
+                                    #  'ANN': ['max_kink', 'init y'],
+                                     'GPR': ['init y', 'avg_ori', 'init theta'],
+                                     'RF': ['init y', 'avg_ori', 'init theta', 'mean thickness'],
+                                     '2nd deg poly': ['init y', 'dist btw frts', 'init theta', 'mean thickness'],
+                                     '3rd deg poly': ['init y', 'crack len', 'dist btw frts'],
+                                    #  '4th deg poly': ['init y'],
+                                     'Ridge': ['init y', 'crack len', 'mean thickness', ],
+                                     'Lasso': ['init y', 'dist btw frts','mean thickness'],
+                                     'Linear': ['init y', 'crack len', 'dist btw frts', 'avg_ori', 'mean thickness']
                                      }
-models_and_features_height = {'ANN': ['abs_val_sum_kink'],
-                                'GPR': ['abs_val_sum_kink'],
-                                '2nd deg poly': ['abs_val_sum_kink'],
-                                '3rd deg poly': ['max_kink'],
-                                '4th deg poly': ['abs_val_sum_kink', 'max thickness'],
-                                'Ridge': ['abs_val_sum_kink', 'max thickness'],
-                                'Lasso': ['abs_val_sum_kink', 'max thickness'],
-                                'Linear': ['abs_val_sum_kink']
+models_and_features_height = {
+                                # 'ANN': ['abs_val_sum_kink'],
+                                'GPR': ['angle_btw'],
+                                'RF': ['abs_val_sum_kink', 'crack len', 'max_kink'],
+                                '2nd deg poly': ['crack len'],
+                                '3rd deg poly': ['crack len'],
+                                # '4th deg poly': ['abs_val_sum_kink', 'max thickness'],
+                                'Ridge': ['abs_val_sum_kink', 'dist btw frts', 'angle_btw'],
+                                'Lasso': ['abs_val_sum_kink', 'crack len', 'max_kink', 'dist btw frts'],
+                                'Linear': ['abs_val_sum_kink', 'dist btw frts', 'crack len']
                                 }
 
 ''' 
@@ -67,14 +74,16 @@ until the full dataset is used. The metrics are saved just like any other traini
 saving_folder --> label_to_predict --> model_type -->  num_training_points     
 '''
 def run_data_experiment(models_and_features_label, label_to_predict, saving_folder, full_dataset_pathname, image_folder, all_labels):
-    correlated_featureset, full_dataset_labels, important_features = prepare_dataset_Single_Output_Regression(full_dataset_pathname, image_folder, label_to_predict, all_labels, saving_folder=None, maximum_p_value=0.1)
+    correlated_featureset, full_dataset_labels, important_features = prepare_dataset_Single_Output_Regression(full_dataset_pathname, image_folder, label_to_predict, all_labels, saving_folder=None, maximum_p_value=1)
     max_training_examples = m.floor(len(correlated_featureset) * 0.8 / 10) * 10
-    multiples_of_20 = [i for i in range(20, max_training_examples + 1, 20)] + [max_training_examples] #getting all multiples of 20 in a list along with the max amount of training datapoints
+    
+    n = 10 #the nubmer of trainin examples starts at n and increases by multiples of n
+    multiples_of_n = [i for i in range(10, max_training_examples + 1, 10)] + [max_training_examples] #getting all multiples of 20 in a list along with the max amount of training datapoints
 
     # multiples_of_20 = [20,40,60]
     performances = {key: [] for key in models_and_features_label}
     for model_type in models_and_features_label.keys():
-        for num_training_points in multiples_of_20:
+        for num_training_points in multiples_of_n:
             featureset = correlated_featureset[models_and_features_label[model_type]]
             print(model_type)
             if(not os.path.exists(saving_folder + f'/{label_to_predict}')):     os.mkdir(saving_folder + f'/{label_to_predict}')
@@ -85,6 +94,8 @@ def run_data_experiment(models_and_features_label, label_to_predict, saving_fold
             alpha = 0.1
             if(model_type == 'GPR'):
                 Kfold_Gaussian_Process_Regression(featureset, full_dataset_labels, important_features, real_saving_folder, label_to_predict, save_data=True, num_training_points=num_training_points)
+            elif(model_type == 'RF'):
+                Kfold_RF_Regression(featureset, full_dataset_labels, important_features, real_saving_folder, label_to_predict, save_data=True, num_training_points=num_training_points)
             elif(model_type == 'Linear'):
                 Kfold_Linear_Regression(featureset, full_dataset_labels, important_features, real_saving_folder , label_to_predict, save_data=True, num_training_points=num_training_points)
             elif(model_type == 'Ridge'):
@@ -111,6 +122,7 @@ models_and_data --> dict with model types as keys --> dict with num_train_pts as
 """
 def parse_data_experiment(directory_with_experiments, label_to_predict):
     dir = directory_with_experiments + f"/{label_to_predict}"
+    if(not os.path.exists(dir)): os.mkdir(dir)
     model_types = [name for name in os.listdir(dir) if os.path.isdir(os.path.join(dir, name))]
     models_and_data = {}
     for model_type in model_types:
@@ -166,21 +178,24 @@ def scatterplot_models_and_data_over_all_num_training_pts(models_and_data, savin
     return
 
 
+saving_folder = '/Volumes/Jake_ssd/OCTOBER_DATASET/do_we_have_enough_data'
+run_data_experiment(models_and_features_impact_site_x, 'impact site x', saving_folder, full_dataset_pathname, image_folder, all_labels)
+height_models_and_data_impact_site_x = parse_data_experiment(saving_folder, 'impact site x')
+scatterplot_models_and_data_over_all_num_training_pts(height_models_and_data_impact_site_x, saving_folder + '/impact site x', 'impact site x', 'Test R^2')
+scatterplot_models_and_data_over_all_num_training_pts(height_models_and_data_impact_site_x, saving_folder + '/impact site x', 'impact site x', 'Test adj_R^2')
+scatterplot_models_and_data_over_all_num_training_pts(height_models_and_data_impact_site_x, saving_folder + '/impact site x', 'impact site x', 'Test MAE')
+scatterplot_models_and_data_over_all_num_training_pts(height_models_and_data_impact_site_x, saving_folder + '/impact site x', 'impact site x', 'Test MSE')
 
-height_models_and_data_impact_site_x = parse_data_experiment('/Users/jakehirst/Desktop/sfx/do_we_have_enough_data', 'impact site x')
-scatterplot_models_and_data_over_all_num_training_pts(height_models_and_data_impact_site_x, '/Users/jakehirst/Desktop/sfx/do_we_have_enough_data/impact site x', 'impact site x', 'Test R^2')
-scatterplot_models_and_data_over_all_num_training_pts(height_models_and_data_impact_site_x, '/Users/jakehirst/Desktop/sfx/do_we_have_enough_data/impact site x', 'impact site x', 'Test adj_R^2')
-scatterplot_models_and_data_over_all_num_training_pts(height_models_and_data_impact_site_x, '/Users/jakehirst/Desktop/sfx/do_we_have_enough_data/impact site x', 'impact site x', 'Test MAE')
-scatterplot_models_and_data_over_all_num_training_pts(height_models_and_data_impact_site_x, '/Users/jakehirst/Desktop/sfx/do_we_have_enough_data/impact site x', 'impact site x', 'Test MSE')
+run_data_experiment(models_and_features_impact_site_y, 'impact site y', saving_folder, full_dataset_pathname, image_folder, all_labels)
+height_models_and_data_impact_site_y = parse_data_experiment(saving_folder, 'impact site y')
+scatterplot_models_and_data_over_all_num_training_pts(height_models_and_data_impact_site_y, saving_folder + '/impact site y', 'impact site y', 'Test R^2')
+scatterplot_models_and_data_over_all_num_training_pts(height_models_and_data_impact_site_y, saving_folder + '/impact site y', 'impact site y', 'Test adj_R^2')
+scatterplot_models_and_data_over_all_num_training_pts(height_models_and_data_impact_site_y, saving_folder + '/impact site y', 'impact site y', 'Test MAE')
+scatterplot_models_and_data_over_all_num_training_pts(height_models_and_data_impact_site_y, saving_folder + '/impact site y', 'impact site y', 'Test MSE')
 
-height_models_and_data_impact_site_x = parse_data_experiment('/Users/jakehirst/Desktop/sfx/do_we_have_enough_data', 'impact site y')
-scatterplot_models_and_data_over_all_num_training_pts(height_models_and_data_impact_site_x, '/Users/jakehirst/Desktop/sfx/do_we_have_enough_data/impact site y', 'impact site y', 'Test R^2')
-scatterplot_models_and_data_over_all_num_training_pts(height_models_and_data_impact_site_x, '/Users/jakehirst/Desktop/sfx/do_we_have_enough_data/impact site y', 'impact site y', 'Test adj_R^2')
-scatterplot_models_and_data_over_all_num_training_pts(height_models_and_data_impact_site_x, '/Users/jakehirst/Desktop/sfx/do_we_have_enough_data/impact site y', 'impact site y', 'Test MAE')
-scatterplot_models_and_data_over_all_num_training_pts(height_models_and_data_impact_site_x, '/Users/jakehirst/Desktop/sfx/do_we_have_enough_data/impact site y', 'impact site y', 'Test MSE')
-
-height_models_and_data_impact_site_x = parse_data_experiment('/Users/jakehirst/Desktop/sfx/do_we_have_enough_data', 'height')
-scatterplot_models_and_data_over_all_num_training_pts(height_models_and_data_impact_site_x, '/Users/jakehirst/Desktop/sfx/do_we_have_enough_data/height', 'height', 'Test R^2')
-scatterplot_models_and_data_over_all_num_training_pts(height_models_and_data_impact_site_x, '/Users/jakehirst/Desktop/sfx/do_we_have_enough_data/height', 'height', 'Test adj_R^2')
-scatterplot_models_and_data_over_all_num_training_pts(height_models_and_data_impact_site_x, '/Users/jakehirst/Desktop/sfx/do_we_have_enough_data/height', 'height', 'Test MAE')
-scatterplot_models_and_data_over_all_num_training_pts(height_models_and_data_impact_site_x, '/Users/jakehirst/Desktop/sfx/do_we_have_enough_data/height', 'height', 'Test MSE')
+run_data_experiment(models_and_features_height, 'height', saving_folder, full_dataset_pathname, image_folder, all_labels)
+height_models_and_data_height = parse_data_experiment(saving_folder, 'height')
+scatterplot_models_and_data_over_all_num_training_pts(height_models_and_data_height, saving_folder + '/height', 'height', 'Test R^2')
+scatterplot_models_and_data_over_all_num_training_pts(height_models_and_data_height, saving_folder + '/height', 'height', 'Test adj_R^2')
+scatterplot_models_and_data_over_all_num_training_pts(height_models_and_data_height, saving_folder + '/height', 'height', 'Test MAE')
+scatterplot_models_and_data_over_all_num_training_pts(height_models_and_data_height, saving_folder + '/height', 'height', 'Test MSE')

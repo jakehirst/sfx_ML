@@ -58,18 +58,49 @@ def CNN_1D(train_features_1D):
     # # csv_model = tf.keras.layers.BatchNormalization()(csv_model)
     # csv_model = tf.keras.layers.Dense(128, activation='relu', name="csv_dense2")(csv_model)
     # csv_model = tf.keras.layers.BatchNormalization()(csv_model)
-    csv_model = tf.keras.layers.Dense(64, activation='relu', name="csv_dense3")(csv_model)
+    csv_model = tf.keras.layers.Dense(128, activation='relu', name="csv_dense3",kernel_regularizer=tf.keras.regularizers.L1(0.01), activity_regularizer=tf.keras.regularizers.L2(0.05))(csv_model)
+    csv_model = tf.keras.layers.BatchNormalization()(csv_model)
+    csv_model = tf.keras.layers.Dense(128, activation='relu', name="csv_dense4", kernel_regularizer=tf.keras.regularizers.L1(0.01), activity_regularizer=tf.keras.regularizers.L2(0.05))(csv_model)
+    csv_model = tf.keras.layers.BatchNormalization()(csv_model)
+    csv_model = tf.keras.layers.Dense(128, activation='relu', name="csv_dense5", kernel_regularizer=tf.keras.regularizers.L1(0.01), activity_regularizer=tf.keras.regularizers.L2(0.05))(csv_model)
     # csv_model = tf.keras.layers.BatchNormalization()(csv_model)
-    csv_model = tf.keras.layers.Dense(32, activation='relu', name="csv_dense4")(csv_model)
-    # csv_model = tf.keras.layers.BatchNormalization()(csv_model)
-    csv_model = tf.keras.layers.Dense(16, activation='relu', name="csv_dense5")(csv_model)
-    # csv_model = tf.keras.layers.BatchNormalization()(csv_model)
-    csv_model = tf.keras.layers.Dense(8, activation='relu', name="csv_dense6")(csv_model)
+    # csv_model = tf.keras.layers.Dense(8, activation='relu', name="csv_dense6")(csv_model)
     csv_output = tf.keras.layers.Dropout(0.05, name="csv_output")(csv_model)
     """############## 1D model ##############"""
 
     return csv_output, csv_input
 
+
+# def CNN_1D(train_features_1D):
+#     #quote from tensorflow:
+#     """One reason this is important is because the features are multiplied by the model weights. So, the scale of the outputs and the scale of the gradients are affected by the scale of the inputs.
+#     Although a model might converge without feature normalization, normalization makes training much more stable"""
+#     """ normalizing features and labels """
+
+#     normalizer = tf.keras.layers.Normalization(axis=-1) #creating normalization layer
+#     normalizer.adapt(np.array(train_features_1D)) #fitting the state of the preprocessing layer
+        
+#     numfeatures = len(train_features_1D.columns)
+
+#     """############## 1D model ##############"""
+#     csv_data_shape = train_features_1D.shape[1]
+#     csv_input = tf.keras.layers.Input(shape=csv_data_shape, name="csv")
+#     csv_model = normalizer(csv_input)
+#     # csv_model = tf.keras.layers.Dense(256, activation='relu', name="csv_dense1")(csv_model)
+#     # # csv_model = tf.keras.layers.BatchNormalization()(csv_model)
+#     # csv_model = tf.keras.layers.Dense(128, activation='relu', name="csv_dense2")(csv_model)
+#     # csv_model = tf.keras.layers.BatchNormalization()(csv_model)
+#     csv_model = tf.keras.layers.Dense(64, activation='relu', name="csv_dense3", activity_regularizer=tf.keras.regularizers.L2(0.01))(csv_model)
+#     csv_model = tf.keras.layers.BatchNormalization()(csv_model)
+#     csv_model = tf.keras.layers.Dense(32, activation='relu', name="csv_dense4", activity_regularizer=tf.keras.regularizers.L2(0.01))(csv_model)
+#     csv_model = tf.keras.layers.BatchNormalization()(csv_model)
+#     csv_model = tf.keras.layers.Dense(32, activation='relu', name="csv_dense5", activity_regularizer=tf.keras.regularizers.L2(0.01))(csv_model)
+#     # csv_model = tf.keras.layers.BatchNormalization()(csv_model)
+#     # csv_model = tf.keras.layers.Dense(8, activation='relu', name="csv_dense6")(csv_model)
+#     csv_output = tf.keras.layers.Dropout(0.05, name="csv_output")(csv_model)
+#     """############## 1D model ##############"""
+
+#     return csv_output, csv_input
 
 
 
@@ -369,16 +400,30 @@ def run_kfold_Regression_CNN(full_dataset, raw_images, full_dataset_labels, pati
         # test_mae = mean_absolute_error(y_test, test_pred)
         # test_mse = mean_squared_error(y_test, test_pred)
         # test_rmse = np.sqrt(test_mse)
-        
+        def plot_loss(history, file_to_save=None):
+            plt.figure(figsize=(10, 6))
+            plt.plot(history.history['loss'], label='Training Loss')
+            plt.plot(history.history['val_loss'], label='Validation Loss')
+            plt.xlabel('Epochs')
+            plt.ylabel('Loss')
+            plt.title('Loss Over Epochs')
+            plt.legend()
+            if(file_to_save==None):
+                plt.show()
+            else:
+                plt.savefig(file_to_save)
+                plt.close()
+                
         def parody_plot(true_values, predictions, file_to_save=None):
             true_values = true_values.reshape(predictions.shape)
+            r2 = r2_score(true_values, predictions)
             # Plot the parody plot
             plt.scatter(true_values, predictions, color='blue', label='True vs. Predicted')
             plt.plot(true_values, true_values, color='red', linestyle='--', label='Parity Line')
             # Add labels and title
             plt.ylabel('Predictions')
             plt.xlabel('True Values')
-            plt.title('Parody Plot')
+            plt.title(f'Parody Plot, R2 = {r2}')
 
             # Add legend
             plt.legend()
@@ -390,7 +435,7 @@ def run_kfold_Regression_CNN(full_dataset, raw_images, full_dataset_labels, pati
             
         parody_plot(y_test, test_pred, saving_folder + f'/parody_plot_test_fold{fold_no}.png')
         parody_plot(y_val, val_pred, saving_folder + f'/parody_plot_val_fold{fold_no}.png')
-        
+        plot_loss(history, file_to_save=saving_folder + f'/loss_history_fold{fold_no}.png')
         # # open the file for writing
         # with open(saving_folder + f"/model_metrics_fold_{fold_no}.csv", 'w', newline='') as file:
         #     writer = csv.writer(file)

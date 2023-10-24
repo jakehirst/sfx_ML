@@ -229,7 +229,7 @@ def Kfold_Gaussian_Process_Regression(full_dataset, full_dataset_labels, importa
         # kernel = ConstantKernel(1.0) + ConstantKernel(1.0) * RBF() + ConstantKernel(1.0) * ExpSineSquared()+ WhiteKernel(noise_level=1)
         # kernel = ConstantKernel(1.0) + ConstantKernel(1.0) * ExpSineSquared()+ WhiteKernel(noise_level=1)
         
-        model = GaussianProcessRegressor(kernel=kernel, random_state=0, alpha=50, n_restarts_optimizer=25)
+        model = GaussianProcessRegressor(kernel=kernel, random_state=0, alpha=50, n_restarts_optimizer=2)
         # model = GaussianProcessRegressor(kernel=kernel, random_state=0, alpha=50)
         
         """ fitting and making predictions based on non-scaled data """
@@ -275,9 +275,9 @@ def Kfold_Gaussian_Process_Regression(full_dataset, full_dataset_labels, importa
         y_pred_test, y_pred_test_std = model.predict(X_scaled_test, return_std=True)
         
         train_uncertainty, train_uncertainty_values = evaluate_uncertainty(y_pred_train, y_pred_train_std, y_train, 'Train')
-        print(f'\ntrain uncertainty = \n {train_uncertainty}')
+        # print(f'\ntrain uncertainty = \n {train_uncertainty}')
         test_uncertainty, test_uncertainty_values = evaluate_uncertainty(y_pred_test, y_pred_test_std, y_test, 'Test')
-        print(f'\ntest uncertainty = \n {test_uncertainty}')
+        # print(f'\ntest uncertainty = \n {test_uncertainty}')
 
         
         if(save_data):
