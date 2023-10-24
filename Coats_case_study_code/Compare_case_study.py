@@ -38,10 +38,10 @@ case_study_df = case_study_df[case_study_df['Age (mo)'] <= 5.0]
 print("here")
 
 ''' Filtering the kdiff df so that there are no falls less than 1.5 feet '''
-# kdiff_df = kdiff_df[kdiff_df['height'] >= 1.5]
+# kdiff_df = kdiff_df[kdiff_df['height'] > 1.5]
 
 '''Filtering the kdiff df so that there are no cracks less than 15 mm'''
-# kdiff_df = kdiff_df[kdiff_df['crack len'] >= 15]
+# kdiff_df = kdiff_df[kdiff_df['crack len'] >= 20]
 
 # case_study_df = case_study_df[case_study_df['BC height'] <= 4]
 
@@ -141,9 +141,9 @@ def histogram(df1, column_name_df1, mean_1, std_1, what_are_we_comparing, x_limi
     plt.xlabel(what_are_we_comparing)
     plt.ylim(0, 0.4)
     plt.legend()
-    # plt.show()
+    plt.show()
     image_name = f"{title}.png".replace(" ", "_")
-    plt.savefig(f"/Users/jakehirst/Desktop/bjorn_figures/{image_name}")
+    # plt.savefig(f"/Users/jakehirst/Desktop/bjorn_figures/{image_name}")
     #plt.savefig(f"/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Coats_case_study_code/{image_name}")
     plt.close()
         
@@ -181,10 +181,10 @@ def percentage_histogram(df, column_name, x_limits, y_limits, x_label):
     plt.legend()
 
     # Show the plot
-    # plt.show()
+    plt.show()
     image_name = f"{title}.png".replace(" ", "_")
     # plt.savefig(f"/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Coats_case_study_code/PERCENTAGE_{image_name}")
-    plt.savefig(f"/Users/jakehirst/Desktop/bjorn_figures/{image_name}")
+    # plt.savefig(f"/Users/jakehirst/Desktop/bjorn_figures/{image_name}")
     plt.close()
 
 def boxplot(df, column_name, max, min):# Plotting boxplot with maximum and minimum values
@@ -277,9 +277,7 @@ plot_crack_len_vs_height(kdiff_df, 'crack len', 'height', case_study_df, 'Final 
 # Histograms comparing crack len
 xlimits = (0, 140)
 ylimits = (0, 25)
-# histogram(case_study_df, 'Final True Line Length (mm)', mean_1, std_1, 'crack length', x_limits=xlimits)
-percentage_histogram(case_study_df, 'Final True Line Length (mm)', xlimits, ylimits, 'crack length')
-# histogram(kdiff_df, 'crack len', mean_2, std_2, 'crack length', x_limits=xlimits)
+# percentage_histogram(case_study_df, 'Final True Line Length (mm)', xlimits, ylimits, 'crack length')
 percentage_histogram(kdiff_df, 'crack len', xlimits, ylimits, 'crack length')
 
 xlimits = (0, 5)
