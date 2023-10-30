@@ -6,7 +6,7 @@ import os
 import datetime
 
 
-full_dataset_pathname = "/Users/jakehirst/Desktop/sfx/sfx_ML_data/New_Crack_Len_FULL_OG_dataframe_2023_10_23.csv"
+full_dataset_pathname = "/Users/jakehirst/Desktop/sfx/sfx_ML_data/New_Crack_Len_FULL_OG_dataframe_2023_10_28.csv"
 image_folder = '/Users/jakehirst/Desktop/sfx/sfx_pics/jake/images_sfx/new_dataset/Visible_cracks'
 all_labels = ['height', 'phi', 'theta', 
             'impact site x', 'impact site y', 'impact site z', 
@@ -40,7 +40,7 @@ def add_feature_to_df(df, column_to_add, column_name):
 
 
 
-
+'''feature interactions'''
 def multiply_two_features(df, feature1, feature2):
     column = df[feature1] * df[feature2]
     column_name = f'{feature1} * {feature2}'
@@ -53,6 +53,20 @@ def divide_two_features(df, feature1, feature2):
     column_names.append(f'{feature1} / {feature2}')
     columns.append(df[feature2] / (df[feature1]+0.1))
     column_names.append(f'{feature2} / {feature1}')
+    return columns, column_names
+
+def add_two_features(df, feature1, feature2):
+    column = (df[feature1] + (df[feature2]))
+    column_name = f'{feature1} + {feature2}'
+    return column, column_name
+
+def subtract_two_features(df, feature1, feature2):
+    columns = []
+    column_names = []
+    columns.append(df[feature1] - (df[feature2]))
+    column_names.append(f'{feature1} - {feature2}')
+    columns.append(df[feature2] - (df[feature1]))
+    column_names.append(f'{feature2} - {feature1}')
     return columns, column_names
 
 def get_exp_of_two_df_columns(df, base_feat, exp_feat, negative_exp=False):
@@ -71,7 +85,7 @@ def get_exp_of_two_df_columns(df, base_feat, exp_feat, negative_exp=False):
 
 
 
-
+'''feature transformations'''
 def exp_two_features(df, feature1, feature2):
     columns = []
     column_names = []
@@ -134,6 +148,7 @@ def save_new_features(folder, new_features, new_features_df, label, combination_
     sorted_df.to_csv(folder + f'/{combination_type}_feature_correlation_results.csv', index=False)
     return
 
+
 ''' 
 does a feature interaction between two features, and then saves the correlation between the label and the new feature 
 
@@ -173,7 +188,15 @@ def get_feature_interactions(df, list_of_multiplying_features, combination_type,
                 new_columns, column_names = exp_two_features(new_features_df, feat1, feat2)
                 for i in range(len(new_columns)):
                     new_features_df = add_feature_to_df(new_features_df, new_columns[i], column_names[i])
-                print('here')
+            elif(combination_type == 'subtract_two_feats'):
+                new_columns, column_names = subtract_two_features(new_features_df, feat1, feat2)
+                for i in range(len(new_columns)):
+                    new_features_df = add_feature_to_df(new_features_df, new_columns[i], column_names[i])
+            elif(combination_type == 'add_two_feats'):
+                new_column, column_name = add_two_features(new_features_df, feat1, feat2)
+                new_features_df = add_feature_to_df(new_features_df, new_column, column_name)
+
+
                     
     new_features_df = new_features_df.drop(columns=original_features)
     folder = saving_folder + f'/{label}/{combination_type}'
@@ -318,50 +341,54 @@ def get_best_features_to_use(folder, label, all_labels, maximum_redundancy, mini
     return well_corr_features_df, label_df
 
 
-list_of_multiplying_features = ['dist btw frts', 'crack len', 'max thickness', 'max_kink', 'abs_val_sum_kink', 'avg_ori', 'angle_btw']
-df = pd.read_csv(full_dataset_pathname, index_col=0)
-cols = df.columns
-feat_cols = cols.difference(all_labels)
-list_of_multiplying_features = list(feat_cols[~feat_cols.str.contains('front')])
+
+
+# list_of_multiplying_features = ['dist btw frts', 'crack len', 'max thickness', 'max_kink', 'abs_val_sum_kink', 'avg_ori', 'angle_btw']
+# df = pd.read_csv(full_dataset_pathname, index_col=0)
+# cols = df.columns
+# feat_cols = cols.difference(all_labels)
+# list_of_multiplying_features = list(feat_cols[~feat_cols.str.contains('front')])
 
 
 
-# saving_folder changes with the date
-current_date = datetime.datetime.now().strftime("%Y-%m-%d")
-saving_folder = f'/Volumes/Jake_ssd/OCTOBER_DATASET/feature_transformations_{current_date}'
+# # saving_folder changes with the date
+# current_date = datetime.datetime.now().strftime("%Y-%m-%d")
+# saving_folder = f'/Volumes/Jake_ssd/OCTOBER_DATASET/feature_transformations_{current_date}'
 
-label = 'height'
+# label = 'height'
 # label = 'impact site x'
 # label = 'impact site y'
 
 
-get_feature_transformation(df, list_of_multiplying_features, 'square', label, saving_folder)
-get_feature_transformation(df, list_of_multiplying_features, 'cube', label, saving_folder)
-get_feature_transformation(df, list_of_multiplying_features, 'sqrt', label, saving_folder)
-get_feature_transformation(df, list_of_multiplying_features, 'exp', label, saving_folder)
-get_feature_transformation(df, list_of_multiplying_features, 'log', label, saving_folder)
-get_feature_transformation(df, list_of_multiplying_features, 'nothin', label, saving_folder)
+# get_feature_transformation(df, list_of_multiplying_features, 'square', label, saving_folder)
+# get_feature_transformation(df, list_of_multiplying_features, 'cube', label, saving_folder)
+# get_feature_transformation(df, list_of_multiplying_features, 'sqrt', label, saving_folder)
+# get_feature_transformation(df, list_of_multiplying_features, 'exp', label, saving_folder)
+# get_feature_transformation(df, list_of_multiplying_features, 'log', label, saving_folder)
+# get_feature_transformation(df, list_of_multiplying_features, 'nothin', label, saving_folder)
 
-# saving_folder = '/Volumes/Jake_ssd/OCTOBER_DATASET/feature_interactions'
+# # saving_folder = '/Volumes/Jake_ssd/OCTOBER_DATASET/feature_interactions'
 
-get_feature_interactions(df, list_of_multiplying_features, 'multiply_two_feats', label, saving_folder)
-get_feature_interactions(df, list_of_multiplying_features, 'divide_two_feats', label, saving_folder)
-get_feature_interactions(df, list_of_multiplying_features, 'exponential_two_feats', label, saving_folder)
+# get_feature_interactions(df, list_of_multiplying_features, 'multiply_two_feats', label, saving_folder)
+# get_feature_interactions(df, list_of_multiplying_features, 'divide_two_feats', label, saving_folder)
+# get_feature_interactions(df, list_of_multiplying_features, 'exponential_two_feats', label, saving_folder)
+# get_feature_interactions(df, list_of_multiplying_features, 'add_two_feats', label, saving_folder)
+# get_feature_interactions(df, list_of_multiplying_features, 'subtract_two_feats', label, saving_folder)
 
-# get_feature_interactions(df, list_of_multiplying_features, 'multiply_two_feats', 'impact site x', saving_folder)
-# get_feature_interactions(df, list_of_multiplying_features, 'divide_two_feats', 'impact site x', saving_folder)
-# get_feature_interactions(df, list_of_multiplying_features, 'exponential_two_feats', 'impact site x', saving_folder)
+# # get_feature_interactions(df, list_of_multiplying_features, 'multiply_two_feats', 'impact site x', saving_folder)
+# # get_feature_interactions(df, list_of_multiplying_features, 'divide_two_feats', 'impact site x', saving_folder)
+# # get_feature_interactions(df, list_of_multiplying_features, 'exponential_two_feats', 'impact site x', saving_folder)
 
 
-# get_feature_interactions(df, list_of_multiplying_features, 'multiply_two_feats', 'impact site y', saving_folder)
-# get_feature_interactions(df, list_of_multiplying_features, 'divide_two_feats', 'impact site y', saving_folder)
-# get_feature_interactions(df, list_of_multiplying_features, 'exponential_two_feats', 'impact site y', saving_folder)
+# # get_feature_interactions(df, list_of_multiplying_features, 'multiply_two_feats', 'impact site y', saving_folder)
+# # get_feature_interactions(df, list_of_multiplying_features, 'divide_two_feats', 'impact site y', saving_folder)
+# # get_feature_interactions(df, list_of_multiplying_features, 'exponential_two_feats', 'impact site y', saving_folder)
 
-put_everything_into_a_single_csv(saving_folder, 'height')
-# put_everything_into_a_single_csv(saving_folder, 'impact site x')
-# put_everything_into_a_single_csv(saving_folder, 'impact site y')
+# put_everything_into_a_single_csv(saving_folder, label)
+# # put_everything_into_a_single_csv(saving_folder, 'impact site x')
+# # put_everything_into_a_single_csv(saving_folder, 'impact site y')
 
-get_best_features_to_use(saving_folder, label, all_labels, 0.8, 0.25)
+# get_best_features_to_use(saving_folder, label, all_labels, 0.8, 0.25)
 
 
 
