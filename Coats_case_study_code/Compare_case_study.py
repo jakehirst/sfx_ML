@@ -7,7 +7,8 @@ import seaborn as sns
 case_study_df = pd.read_excel('/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Coats_case_study_code/Coats_case_studies.xlsx')
 # kdiff_df = pd.read_csv('/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Coats_case_study_code/Coats_kdiff_dataframe.csv')
 # kdiff_df = pd.read_csv('/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Feature_gathering/New_Crack_Len_FULL_OG_dataframe.csv') #new crack lengths
-kdiff_df = pd.read_excel('/Users/jakehirst/Desktop/sfx/sfx_ML_data/New_Crack_Len_FULL_OG_dataframe_2023_09_27.xlsx', index_col=0)
+# kdiff_df = pd.read_excel('/Users/jakehirst/Desktop/sfx/sfx_ML_data/New_Crack_Len_FULL_OG_dataframe_2023_09_27.xlsx', index_col=0)
+kdiff_df = pd.read_csv("/Users/jakehirst/Desktop/sfx/sfx_ML_data/New_Crack_Len_FULL_OG_dataframe_2023_10_28.csv")
 # kdiff_df = kdiff_df.drop('impact_sites', axis=1)
 
 
@@ -258,10 +259,10 @@ def plot_crack_len_vs_height(kdiff_df, kdiff_crack_len_name, kdiff_height_name, 
     plt.legend()
     
     # plt.savefig('/Users/jakehirst/Desktop/sfx/Presentations_and_Papers/USNCCM/figures/younger_than_5_mo_fall_heights_vs_crack_len_BOTH.png')
-    plt.savefig(f"/Users/jakehirst/Desktop/bjorn_figures/crack_len_vs_height.png")
+    # plt.savefig(f"/Users/jakehirst/Desktop/bjorn_figures/crack_len_vs_height.png")
     # Display the scatter plot
-    # plt.show()
-    plt.close()
+    plt.show()
+    # plt.close()
 
 
     return
