@@ -2,6 +2,13 @@ from linear_regression import *
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.pipeline import make_pipeline
 from sklearn.ensemble import RandomForestRegressor
+from skopt import BayesSearchCV
+from sklearn.model_selection import train_test_split
+from sklearn.preprocessing import StandardScaler
+from sklearn.metrics import r2_score
+from Cluster_coordinates import *
+
+
 '''
 splits the data into 5 different k-folds of test and training sets
 then runs GPR on each of the training sets
@@ -54,3 +61,203 @@ def Kfold_RF_Regression(full_dataset, full_dataset_labels, important_features, s
         
         
 
+def plot_hyperparameter_performance(opt, hyperparameter_name, saving_folder):
+    '''
+    Plots the performance of a model for each value of a specified hyperparameter.
+
+    Parameters:
+    opt (BayesSearchCV): The fitted BayesSearchCV object after running the optimization.
+    hyperparameter_name (str): The name of the hyperparameter to plot.
+    '''
+    
+    # Extract the scores from the optimization results
+    results = opt.cv_results_
+    scores = results['mean_test_score']
+    
+    # Extract the hyperparameter values tried during optimization
+    hyperparameter_values = [
+        params[hyperparameter_name] for params in results['params']
+    ]
+    
+    # Create the plot
+    plt.figure(figsize=(10, 5))
+    plt.scatter(hyperparameter_values, scores, color='red', alpha=0.4)
+    # plt.plot(hyperparameter_values, scores, color='lightblue', linestyle='--', marker='o')
+
+    # Label the plot
+    plt.title(f'Performance for different values of hyperparameter: {hyperparameter_name}')
+    plt.xlabel(hyperparameter_name)
+    plt.ylabel('Validation R^2')
+    
+    # Show the plot
+    plt.grid(True)
+    # plt.show()
+    plt.savefig(f'{saving_folder}/{hyperparameter_name}.png')
+    plt.close()
+
+
+def do_bayesian_optimization(feature_df, label_df, num_tries=100, saving_folder='/Users/jakehirst/Desktop'):
+    '''
+    example how to run this code:
+    
+    when predicting impact site y
+    top_3_features = [ 'avg_prop_speed * crack len',
+                        'avg_prop_speed * init y',
+                        'avg_prop_speed * linearity']
+
+    labels_to_predict = ['height', 'impact site x', 'impact site y']
+
+    # Generate some synthetic data for demonstration purposes
+    df = pd.read_csv("/Volumes/Jake_ssd/OCTOBER_DATASET/feature_transformations_2023-10-28/height/HEIGHTALL_TRANSFORMED_FEATURES.csv")
+    label_df = df.copy()[labels_to_predict]
+    df = df.drop(labels_to_predict, axis=1)
+    if(df.columns.__contains__('timestep_init')):
+        df = df.drop('timestep_init', axis=1)
+
+
+    label = 'impact site y'
+    do_bayesian_optimization(df, label_df[label], 100)
+    '''
+    
+    '''zero centering and normalizing features'''
+    # To zero-center, subtract the mean of each column from the column
+    df_centered = feature_df - feature_df.mean()
+    # To normalize, divide each column by its standard deviation
+    df_normalized = df_centered / df_centered.std()
+    feature_df = df_normalized
+    
+    X = feature_df.to_numpy()
+    y = label_df.to_numpy()
+
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+    # Define the parameter space for the Random Forest
+    param_space = {
+        'n_estimators': (1000, 10000),  # Number of trees in the forest.
+        'max_depth': (2, 50),       # Maximum depth of the tree.
+        'min_samples_split': (2, 50),
+        'min_samples_leaf': (1, 50),
+        'max_features': (1, X_train.shape[1]),  # Where X_train.shape[1] is the number of features
+    }
+
+    # Create a RandomForestRegressor instance
+    rf = RandomForestRegressor(random_state=0)
+
+    # Wrap the model with BayesSearchCV
+    opt = BayesSearchCV(rf, 
+                        param_space, 
+                        n_iter=num_tries, 
+                        random_state=0, 
+                        cv=5) #COMMENT cv=5 indicates a 5 fold cross validation
+
+    # Run the Bayesian optimization
+    opt.fit(X_train, y_train)
+
+    # Best parameter set found
+    print("\nBest parameters found: ", opt.best_params_)
+
+    # Predict using the best model
+    y_pred = opt.predict(X_test)
+
+    # Compute the performance metric, e.g., R^2 score
+    print('Train R^2 score:', r2_score(y_train, opt.predict(X_train)))
+    print('Test R^2 score:', r2_score(y_test, opt.predict(X_test)))
+    
+    hyperparameter_names = ['n_estimators', 'max_depth', 'min_samples_split', 'min_samples_leaf', 'max_features']
+    for name in hyperparameter_names:
+        plot_hyperparameter_performance(opt, name, saving_folder)
+
+    
+    with open(f'{saving_folder}/best_hyperparams.txt', 'w') as file:
+        file.write(str(opt.best_params_))
+    return opt
+    
+    
+    
+    
+    
+    
+    
+'''all of these top 10 features were collected by first doing feature transformations and interactions, then by doing the backward feature selection technique. '''
+'''when predicting height'''
+# top_10_features = ['abs_val_sum_kink * mean thickness',
+#                     'abs_val_sum_kink / avg_prop_speed',
+#                     'abs_val_sum_kink / thickness_at_init',
+#                     'abs_val_sum_kink + init y',
+#                     'crack len + init y',
+#                     'crack len (unchanged)',
+#                     'dist btw frts + init y',
+#                     'abs_val_sum_kink - avg_prop_speed',
+#                     'avg_prop_speed - abs_val_sum_kink',
+#                     'abs_val_sum_kink - init z',
+#                     'init z - abs_val_sum_kink']
+
+top_10_features = ['abs_val_sum_kink^2', 
+                   'dist btw frts * max_kink',
+                   'abs_val_sum_kink / init z', 
+                   'abs_val_sum_kink / thickness_at_init',
+                   'abs_val_mean_kink + abs_val_sum_kink', 
+                   'abs_val_sum_kink + init y',
+                   'abs_val_sum_kink + linearity',
+                   'abs_val_sum_kink + mean thickness',
+                   'dist btw frts + max_kink',
+                   'abs_val_mean_kink - abs_val_sum_kink',
+                   'abs_val_sum_kink - avg_prop_speed',
+                   'abs_val_sum_kink - init z', 
+                   'linearity - abs_val_sum_kink',
+                   'abs_val_sum_kink - mean thickness',
+                   'abs_val_sum_kink - thickness_at_init',
+                   'thickness_at_init - abs_val_sum_kink']
+
+'''when predicting impact site x'''
+# top_10_features = [ 'dist btw frts * init x',
+#                     'init x * linearity',
+#                     'init x * max thickness',
+#                     'init x * mean thickness',
+#                     'init x * thickness_at_init',
+#                     'abs_val_mean_kink + init x',
+#                     'avg_prop_speed + init x',
+#                     'init x + max thickness',
+#                     'init x + mean thickness',
+#                     'init x + thickness_at_init']
+top_10_features = ['init x^3', 
+                   'init x (unchanged)', 
+                   'init x * init z', 
+                   'init x * linearity',
+                   'init x * max thickness',
+                   'init x * mean thickness',
+                   'init x * thickness_at_init', 
+                   'init x + linearity', 
+                   'init x + max thickness']
+
+'''when predicting impact site y'''
+# top_10_features = [ 'avg_prop_speed * crack len',
+#                     'avg_prop_speed * init y',
+#                     'avg_prop_speed * linearity',
+#                     'init y * mean thickness',
+#                     'init y * thickness_at_init',
+#                     'linearity * thickness_at_init',
+#                     'avg_prop_speed + init y',
+#                     'init y + linearity',
+#                     'init y + thickness_at_init',
+#                     'init y - abs_val_mean_kink']
+
+labels_to_predict = ['height', 'impact site x', 'impact site y']
+
+# Generate some synthetic data for demonstration purposes
+# df = pd.read_csv("/Volumes/Jake_ssd/OCTOBER_DATASET/feature_transformations_2023-10-28/height/HEIGHTALL_TRANSFORMED_FEATURES.csv")
+df = pd.read_csv("/Volumes/Jake_ssd/feature_datasets/feature_transformations_2023-11-05/height/HEIGHTALL_TRANSFORMED_FEATURES.csv")
+label_df = df.copy()[labels_to_predict]
+df = df.drop(labels_to_predict, axis=1)
+if(df.columns.__contains__('timestep_init')):
+    df = df.drop('timestep_init', axis=1)
+
+top_10_df = df.copy()[top_10_features]
+
+clusters = cluster_coordinates(df, 'init x (unchanged)', 'init y (unchanged)', num_clusters=5)
+# top_10_df = add_clusters_to_df(top_10_df, clusters)
+
+label = 'impact site x'
+saving_folder = f'/Volumes/Jake_ssd/bayesian_optimization/RF/{label}'
+if(not os.path.exists(saving_folder)): os.makedirs(saving_folder)
+optimal_stuff = do_bayesian_optimization(top_10_df, label_df[label], 10, saving_folder= saving_folder)

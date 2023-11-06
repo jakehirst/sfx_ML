@@ -92,11 +92,13 @@ def CNN_1D(train_features_1D):
     # # csv_model = tf.keras.layers.BatchNormalization()(csv_model)
     # csv_model = tf.keras.layers.Dense(128, activation='relu', name="csv_dense2")(csv_model)
     # csv_model = tf.keras.layers.BatchNormalization()(csv_model)
-    csv_model = tf.keras.layers.Dense(128, activation='relu', name="csv_dense3",kernel_regularizer=tf.keras.regularizers.L1(0.01), activity_regularizer=tf.keras.regularizers.L2(0.05))(csv_model)
+    '''kernel_regularizer=tf.keras.regularizers.L1(0.01), activity_regularizer=tf.keras.regularizers.L2(0.05)'''
+    
+    csv_model = tf.keras.layers.Dense(128, activation='relu', name="csv_dense3", activity_regularizer=tf.keras.regularizers.L2(0.10))(csv_model)
     csv_model = tf.keras.layers.BatchNormalization()(csv_model)
-    csv_model = tf.keras.layers.Dense(128, activation='relu', name="csv_dense4", kernel_regularizer=tf.keras.regularizers.L1(0.01), activity_regularizer=tf.keras.regularizers.L2(0.05))(csv_model)
+    csv_model = tf.keras.layers.Dense(128, activation='relu', name="csv_dense4", activity_regularizer=tf.keras.regularizers.L2(0.10))(csv_model)
     csv_model = tf.keras.layers.BatchNormalization()(csv_model)
-    csv_model = tf.keras.layers.Dense(128, activation='relu', name="csv_dense5", kernel_regularizer=tf.keras.regularizers.L1(0.01), activity_regularizer=tf.keras.regularizers.L2(0.05))(csv_model)
+    csv_model = tf.keras.layers.Dense(128, activation='relu', name="csv_dense5", activity_regularizer=tf.keras.regularizers.L2(0.10))(csv_model)
     # csv_model = tf.keras.layers.BatchNormalization()(csv_model)
     # csv_model = tf.keras.layers.Dense(8, activation='relu', name="csv_dense6")(csv_model)
     csv_output = tf.keras.layers.Dropout(0.05, name="csv_output")(csv_model)
@@ -519,3 +521,53 @@ def run_kfold_Regression_CNN(full_dataset, raw_images, full_dataset_labels, pati
     
     return models
 
+
+
+
+''' trying to train height CNN with the 10 features RF selected'''
+# folds_data_folder = '/Volumes/Jake_ssd/Backward_feature_selection/5fold_datasets'
+# full_dataset_pathname = "/Volumes/Jake_ssd/OCTOBER_DATASET/feature_transformations_2023-10-28/height/HEIGHTALL_TRANSFORMED_FEATURES.csv"
+# label_to_predict = 'height'
+# kept_features = ['abs_val_sum_kink * mean thickness',
+#                 'abs_val_sum_kink / avg_prop_speed',
+#                 'abs_val_sum_kink / thickness_at_init',
+#                 'abs_val_sum_kink + init y',
+#                 'crack len + init y',
+#                 'dist btw frts + init y',
+#                 'abs_val_sum_kink - avg_prop_speed',
+#                 'avg_prop_speed - abs_val_sum_kink',
+#                 'abs_val_sum_kink - init z',
+#                 'init z - abs_val_sum_kink']
+
+# for kfold in range(1,6):
+#     train_features = pd.read_csv(folds_data_folder + f'/{label_to_predict}/fold{kfold}/train_features.csv')
+#     test_features = pd.read_csv(folds_data_folder + f'/{label_to_predict}/fold{kfold}/test_features.csv')
+#     train_labels = pd.read_csv(folds_data_folder + f'/{label_to_predict}/fold{kfold}/train_labels.csv')
+#     test_labels = pd.read_csv(folds_data_folder + f'/{label_to_predict}/fold{kfold}/test_labels.csv')
+#     train_features = train_features[kept_features]
+#     test_features = test_features[kept_features]
+#     train_features_for_ANN, val_features_for_ANN, train_labels_for_ANN, val_labels_for_ANN = train_test_split(
+#         train_features, train_labels, test_size=0.2, random_state=42)
+#     model = make_1D_CNN_for_ensemble(train_features_for_ANN, 
+#                                     val_features_for_ANN, 
+#                                     train_labels_for_ANN.to_numpy(), 
+#                                     val_labels_for_ANN.to_numpy(), 
+#                                     patience=100, 
+#                                     max_epochs=1000, num_outputs=1, lossfunc='mean_squared_error')
+#     train_preds = model.predict(train_features)
+#     test_preds = model.predict(test_features)
+#     print(f'TRAIN FOLD {kfold} \nR^2 = {r2_score(train_labels, train_preds)}')
+#     print(f'TEST FOLD {kfold} \nR^2 = {r2_score(test_labels, test_preds)}')
+#     # plt.scatter(train_labels, train_preds)
+#     # plt.xlabel('train true heights')
+#     # plt.ylabel('train predictions')
+#     # plt.title(f'TRAIN FOLD {kfold} \nR^2 = {r2_score(train_labels, train_preds)}')
+#     # plt.show()
+#     # plt.close()
+#     # plt.scatter(test_labels, test_preds)
+#     # plt.xlabel('test true heights')
+#     # plt.ylabel('test predictions')
+#     # plt.title(f'TEST FOLD {kfold} \nR^2 = {r2_score(test_labels, test_preds)}')
+#     # plt.show()
+#     # plt.close()
+#     print('here')
