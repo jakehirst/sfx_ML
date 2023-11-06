@@ -3,7 +3,7 @@ from prepare_data import *
 from CNN import *
 from sklearn.model_selection import KFold
 from sklearn.gaussian_process import GaussianProcessRegressor
-from sklearn.gaussian_process.kernels import RBF, ConstantKernel, WhiteKernel, ExpSineSquared, DotProduct, Matern
+from sklearn.gaussian_process.kernels import RBF, ConstantKernel, WhiteKernel, ExpSineSquared, DotProduct, Matern, RationalQuadratic
 import matplotlib.pyplot as plt
 from sklearn.metrics import r2_score, precision_score, confusion_matrix, recall_score, f1_score
 import os
@@ -12,6 +12,12 @@ import matplotlib.animation as animation
 from Metric_collection import *
 from sklearn import preprocessing
 
+import numpy as np
+from skopt import BayesSearchCV
+from skopt.space import Real, Categorical, Integer
+import pandas as pd
+from skopt import gp_minimize
+from skopt.utils import use_named_args
 
 
 '''
@@ -311,33 +317,135 @@ def Kfold_Gaussian_Process_Regression(full_dataset, full_dataset_labels, importa
     return models, performances, r2s, mse_s
 
 
-# full_dataset_pathname = "/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Feature_gathering/New_Crack_Len_FULL_OG_dataframe.csv"
-# # full_dataset_pathname = "/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Feature_gathering/FULL_OG_dataframe_with_impact_sites_and_Jimmy_RF.csv"
-# image_folder = '/Users/jakehirst/Desktop/sfx/sfx_pics/jake/images_sfx/new_dataset/Visible_cracks'
-# all_labels = ['height', 'phi', 'theta', 
-#               'impact site x', 'impact site y', 'impact site z', 
-#               'impact site r', 'impact site phi', 'impact site theta']
+
+
+def do_bayesian_optimization(feature_df, label_df, num_tries=100, features_to_keep='ALL'):
+    if features_to_keep != 'ALL':
+        feature_df = feature_df[features_to_keep]
+
+    # Zero centering and normalizing features
+    df_centered = feature_df - feature_df.mean()
+    df_normalized = df_centered / df_centered.std()
+    feature_df = df_normalized
+
+    X = feature_df.to_numpy()
+    y = label_df.to_numpy()
+
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+    '''parameter space... we are optimizing the length scale and the noise level'''
+    param_space = [
+        Real(1e-9, 1e5, name='length_scale'), 
+        # Real(1e-9, 1e2, name='alpha'), #Scale Mixture Parameter
+        Real(1e-10, 1e2, name='noise_level')
+    ]
+
+    # Initial kernel
+    kernel = 1.0 * RBF(length_scale=1.0) + WhiteKernel(noise_level=1e-1)
+
+    @use_named_args(param_space)
+    def objective(**params):
+        gp = GaussianProcessRegressor(
+            kernel=ConstantKernel(1.0) * RBF(length_scale=params['length_scale']) + 
+                  WhiteKernel(noise_level=params['noise_level']),
+            # kernel=ConstantKernel(1.0) * RationalQuadratic(length_scale=params['length_scale'], alpha=params['alpha']) + 
+            #       WhiteKernel(noise_level=params['noise_level']),
+            
+            alpha=0.0,
+            normalize_y=True,
+            random_state=0
+        )
+        gp.fit(X_train, y_train)
+        return -gp.score(X_test, y_test)  # Negative because gp_minimize seeks to minimize the objective
+
+    # Perform Bayesian optimization
+    results = gp_minimize(objective, param_space, n_calls=num_tries, random_state=0)
+
+    # Best parameters found
+    print("\nBest parameters found: ", results.x)
+
+    # Train the model with the best parameters found
+    gp = GaussianProcessRegressor(
+        kernel=ConstantKernel(1.0) * RBF(length_scale=results.x[0]) + 
+              WhiteKernel(noise_level=results.x[1]),
+        alpha=0.0,
+        normalize_y=True,
+        random_state=0
+    )
+    gp.fit(X_train, y_train)
+
+    # Predict using the best model
+    y_pred = gp.predict(X_test)
+
+    # Compute the performance metric, e.g., R^2 score
+    print('Train R^2 score:', gp.score(X_train, y_train))
+    print('Test R^2 score:', gp.score(X_test, y_test))
+
+    return gp
 
 
 
 
-# label_to_predict = 'impact site r'
-# saving_folder=f'/Users/jakehirst/Desktop/model_results/GPR_RBF_and_white_{label_to_predict}/'
-# if(not os.path.exists(saving_folder)): os.mkdir(saving_folder)
-# correlated_featureset, full_dataset_labels, important_features = prepare_dataset_Single_Output_Regression(full_dataset_pathname, image_folder, label_to_predict, [], saving_folder=None, maximum_p_value=0.5)
-# #correlated_featureset = remove_ABAQUS_features(correlated_featureset)
-# labels_to_predict = ['impact site x', 'impact site y']
-# # features_to_keep = ['crack len', 'init x']
-# # features_to_keep = ['max_kink', 'init y']
 
-# # correlated_featureset = correlated_featureset[features_to_keep]
-# all_important_features = {'impact site x': ['crack len', 'init x'],
-#                           'impact site y': ['max_kink', 'init y']}
+''' when predicting impact site x'''
+# top_10_features = ['sqrt(mean thickness)',
+#                    'init x * init z',
+#                     'init z * max thickness',
+#                     'init z * thickness_at_init',
+#                     'linearity * mean thickness',
+#                     'angle_btw ^ avg_ori',
+#                     'avg_ori + init x',
+#                     'init x + init y',
+#                     'init x + max_prop_speed',
+#                     'linearity + max thickness']
 
-# models_fold_to_pull = {'impact site x': 2,
-#                        'impact site y': 4}
-# raw_images = []
+''' when predicting impact site y '''
+# top_10_features =['sqrt(avg_prop_speed)',
+#                 'init y * init z',
+#                 'init y * mean thickness',
+#                 'max_kink / abs_val_sum_kink',
+#                 'avg_ori ^ crack len',
+#                 'thickness_at_init ^ avg_ori',
+#                 'abs_val_mean_kink ^ init z',
+#                 'avg_prop_speed + init y',
+#                 'init y + mean_kink',
+#                 'init y + thickness_at_init']
 
-# plot_test_predictions_heatmap(correlated_featureset, labels_to_predict, all_labels, all_important_features, models_fold_to_pull, saving_folder)
+''' when predicting height'''
+# top_10_features = ['sqrt(angle_btw)',
+#                     'sqrt(crack len)',
+#                     'sqrt(dist btw frts)',
+#                     'log(crack len)',
+#                     'abs_val_mean_kink ^ abs_val_sum_kink',
+#                     'avg_ori ^ crack len',
+#                     'avg_ori ^ dist btw frts',
+#                     'abs_val_sum_kink ^ angle_btw',
+#                     'angle_btw ^ abs_val_sum_kink',
+#                     'abs_val_mean_kink ^ angle_btw']
+
+'''when predicting height''' #use this with the RBF kernel... best params so far: RBF_lengthscale = 158, Whitekernel_noiselevel = 44.6
+top_10_features = ['abs_val_sum_kink * mean thickness',
+                    'abs_val_sum_kink / avg_prop_speed',
+                    'abs_val_sum_kink / thickness_at_init',
+                    'abs_val_sum_kink + init y',
+                    'crack len + init y',
+                    'dist btw frts + init y',
+                    'abs_val_sum_kink - avg_prop_speed',
+                    'avg_prop_speed - abs_val_sum_kink',
+                    'abs_val_sum_kink - init z',
+                    'init z - abs_val_sum_kink']
 
 
+labels_to_predict = ['height', 'impact site x', 'impact site y']
+
+# Generate some synthetic data for demonstration purposes
+# df = pd.read_csv("/Volumes/Jake_ssd/OCTOBER_DATASET/feature_transformations_2023-10-28/height/HEIGHTALL_TRANSFORMED_FEATURES.csv")
+# df = pd.read_csv("/Volumes/Jake_ssd/feature_datasets/feature_transformations_2023-11-05/height/HEIGHTALL_TRANSFORMED_FEATURES.csv")
+# label_df = df.copy()[labels_to_predict]
+# df = df.drop(labels_to_predict, axis=1)
+# if(df.columns.__contains__('timestep_init')):
+#     df = df.drop('timestep_init', axis=1)
+
+
+# label = 'height'
+# optimal_stuff = do_bayesian_optimization(df, label_df[label], 100, features_to_keep=top_10_features)

@@ -118,9 +118,9 @@ def run_all_feature_combinations(Model_types, label_to_predict, feature_df, labe
     indices = label_df.index
     # Use loc to align feature_df with the filtered indices
     feature_df = feature_df.loc[indices]
+    
+    
     '''limiting data to a range of heights for predictions and for labels'''
-
-
     All_features = feature_df.columns
     
     if(not os.path.exists(model_folder)): os.makedirs(model_folder)

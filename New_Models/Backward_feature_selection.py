@@ -47,7 +47,7 @@ def get_non_significant_features(dataframe, label_to_predict, all_labels):
 
 ''' creates the 5-fold cross validation datasets for each label to predict in labels to predict in the path given. 
     If remove_small_cracks=True, then it removes all of the simulations that have cracks less than 10mm in length.'''
-def make_5_fold_datasets(saving_folder, full_dataset_pathname, image_folder, normalize=True, remove_small_cracks=False):
+def make_5_fold_datasets(saving_folder, full_dataset_pathname, image_folder, normalize=True, remove_small_cracks=False, label_chunks=None):
     all_labels = ['height', 'phi', 'theta', 
             'impact site x', 'impact site y', 'impact site z', 
             'impact site r', 'impact site phi', 'impact site theta']
@@ -56,6 +56,7 @@ def make_5_fold_datasets(saving_folder, full_dataset_pathname, image_folder, nor
 
     for label_to_predict in labels_to_predict:
         if(not os.path.exists(f'{saving_folder}/{label_to_predict}')): os.makedirs(f'{saving_folder}/{label_to_predict}')
+        
         # if(not os.path.exists(f'{saving_folder}/{label_to_predict}')): os.mkdir(f'{saving_folder}/{label_to_predict}')
         # full_dataset_features, full_dataset_labels, important_features = prepare_dataset_Single_Output_Regression(full_dataset_pathname, image_folder, label_to_predict, all_labels, saving_folder=None, maximum_p_value=1)
         data = pd.read_csv(full_dataset_pathname)
@@ -120,8 +121,8 @@ def train_model(model_type, train_features, train_labels):
             train_features, train_labels, test_size=0.2, random_state=42)
         model = make_1D_CNN_for_feature_selection(train_features, val_features, train_labels.to_numpy(), val_labels.to_numpy(), patience=100, max_epochs=1000, num_outputs=1, lossfunc='mean_squared_error')
     elif(model_type == 'RF'):
-        # model =  RandomForestRegressor(max_depth=5, n_estimators=10000, random_state=42, max_features=5)
-        model =  RandomForestRegressor(max_depth=5, n_estimators=1000, random_state=42, max_features=5)
+        #  OrderedDict([('max_depth', 2), ('max_features', 1), ('min_samples_leaf', 20), ('min_samples_split', 2), ('n_estimators', 2334)])
+        model =  RandomForestRegressor(max_depth=2, max_features=1, min_samples_leaf = 20, min_samples_split = 2, n_estimators=2334, random_state=42)
     elif(model_type == 'linear'):
         model = LinearRegression() 
     elif(model_type == 'lasso'):
@@ -181,17 +182,17 @@ def plot_performances_vs_number_of_features(label_to_predict, model_type, result
 
     # Scatter plot each fold's performance in the same color
     for col in df.columns[1:]:
-        plt.scatter(num_features, df[col], color='blue', alpha=0.7, label=col if "fold0" in col else "")
+        plt.scatter(num_features, df[col], color='blue', alpha=0.7)
 
     # Scatter plot the mean performance in a different color
     mean_performance = df.iloc[:, 1:].mean(axis=1)
-    plt.scatter(num_features, mean_performance, color='red', s=100, label='Mean Performance')
+    plt.scatter(num_features, mean_performance, color='red', label='Mean R2')
 
     # Set plot labels and title
-    plt.xlabel('Number of Features')
+    plt.xlabel('Number of features')
     plt.ylabel(r'R$^2$ Performance')  # using LaTeX syntax for superscript
-    plt.title('Performance by Number of Features')
-    plt.legend(loc='best')
+    plt.title(f'{train_or_test} set \nR2 for varying number of features')
+    plt.legend()
 
     # Display the plot
     fig_path = filepath.removesuffix(f'{train_or_test}_performances.csv')
@@ -201,19 +202,27 @@ def plot_performances_vs_number_of_features(label_to_predict, model_type, result
 
 '''uses the dataset to train the model_type model, then removes the bottom 10% important features. Then trains the model again, and repeats the process until 
     there are only num_features_to_keep features left. returns those features and the performances (R^2) on the test and training sets.'''
-def start_backward_feature_selection(dataset, label_to_predict, model_type, all_labels, all_features, results_folder, num_features_to_keep):
+def start_backward_feature_selection(folds_data_folder, full_dataset, label_to_predict, model_type, all_labels, all_features, results_folder, num_features_to_keep):
     '''remove all of the features that do not have a p-value of less than 0.05 with the label. this is the first filter... '''
-    non_significant_features = get_non_significant_features(dataset, label_to_predict, all_labels)
+    non_significant_features = get_non_significant_features(full_dataset, label_to_predict, all_labels)
     kept_features = [item for item in all_features if item not in non_significant_features]
     '''remove all of the features that do not have a correlation above 0.2 with the label. this is the second filter... '''
-    low_correlated_features = get_low_correlation_features(dataset[kept_features + all_labels], label_to_predict, all_labels, 0.2)
+    low_correlated_features = get_low_correlation_features(full_dataset[kept_features + all_labels], label_to_predict, all_labels, 0.2)
     kept_features = [item for item in kept_features if item not in low_correlated_features]
     # kept_features = kept_features[0:20] #TODO remove this...
     
+    # kept_features = all_features #TODO remove this when doing research
+    
     all_feature_metrics = {}
+    
+    all_kept_features = []
 
     num_features_and_performances_TRAIN = {}
     num_features_and_performances_TEST = {}
+    num_features_and_MSE_TRAIN  = {}
+    num_features_and_MSE_TEST = {}
+    num_features_and_MAE_TRAIN = {}
+    num_features_and_MAE_TEST = {}
 
     '''keep taking features out until the proper number of features to keep is achieved.'''
     while(len(kept_features) > num_features_to_keep):  
@@ -224,14 +233,14 @@ def start_backward_feature_selection(dataset, label_to_predict, model_type, all_
                                     'train_R2':  [],
                                     'train_MSE': [],
                                     'train_MAE': []}
-        
+        all_kept_features.append((len(kept_features), kept_features))
         kfold_performances = {feature: [] for feature in kept_features}
         for kfold in range(1,6):
             print(f'Working on fold {kfold}')
-            train_features = pd.read_csv(data_folder + f'/{label_to_predict}/fold{kfold}/train_features.csv')
-            test_features = pd.read_csv(data_folder + f'/{label_to_predict}/fold{kfold}/test_features.csv')
-            train_labels = pd.read_csv(data_folder + f'/{label_to_predict}/fold{kfold}/train_labels.csv')
-            test_labels = pd.read_csv(data_folder + f'/{label_to_predict}/fold{kfold}/test_labels.csv')
+            train_features = pd.read_csv(folds_data_folder + f'/{label_to_predict}/fold{kfold}/train_features.csv')
+            test_features = pd.read_csv(folds_data_folder + f'/{label_to_predict}/fold{kfold}/test_features.csv')
+            train_labels = pd.read_csv(folds_data_folder + f'/{label_to_predict}/fold{kfold}/train_labels.csv')
+            test_labels = pd.read_csv(folds_data_folder + f'/{label_to_predict}/fold{kfold}/test_labels.csv')
             train_features = train_features[kept_features]
             test_features = test_features[kept_features]
             
@@ -245,6 +254,10 @@ def start_backward_feature_selection(dataset, label_to_predict, model_type, all_
         '''keep track of the performance on the training set and then number of features'''
         num_features_and_performances_TRAIN[len(kept_features)] = current_features_metrics['train_R2']
         num_features_and_performances_TEST[len(kept_features)] = current_features_metrics['test_R2']
+        num_features_and_MSE_TRAIN[len(kept_features)] = current_features_metrics['train_MSE']
+        num_features_and_MSE_TEST[len(kept_features)] = current_features_metrics['test_MSE']
+        num_features_and_MAE_TRAIN[len(kept_features)] = current_features_metrics['train_MAE']
+        num_features_and_MAE_TEST[len(kept_features)] = current_features_metrics['test_MAE']
 
         # num_features_and_performances[len(kept_features)] = {'train': current_features_metrics['train_R2'], 'test': current_features_metrics['test_R2']}
         '''average the differences in performance for each randomized feature across the 5folds'''
@@ -252,8 +265,8 @@ def start_backward_feature_selection(dataset, label_to_predict, model_type, all_
 
         '''remove 20% of the features that have the least effect on the predictions until theres only a little left.'''
         average_kfold_performances = dict(sorted(average_kfold_performances.items(), key=lambda item: item[1], reverse=True))
-        if(len(average_kfold_performances) > num_features_to_keep*1.5):
-            how_many_to_remove = int(np.ceil(len(average_kfold_performances) * 0.10))
+        if(len(average_kfold_performances) > num_features_to_keep*1.5):#TODO change this back to 1.5 when doing research
+            how_many_to_remove = int(np.ceil(len(average_kfold_performances) * 0.20))#TODO change this back to 0.2 when doing research
         else: 
             how_many_to_remove = len(average_kfold_performances) - num_features_to_keep
             
@@ -264,18 +277,36 @@ def start_backward_feature_selection(dataset, label_to_predict, model_type, all_
         
         
     '''save the performances for each number of features'''
-    train_df = pd.DataFrame(num_features_and_performances_TRAIN).T
-    test_df = pd.DataFrame(num_features_and_performances_TEST).T
+    train_R2_df = pd.DataFrame(num_features_and_performances_TRAIN).T
+    test_R2_df = pd.DataFrame(num_features_and_performances_TEST).T
+    train_MSE_df = pd.DataFrame(num_features_and_MSE_TRAIN).T
+    test_MSE_df = pd.DataFrame(num_features_and_MSE_TEST).T
+    train_MAE_df = pd.DataFrame(num_features_and_MAE_TRAIN).T
+    test_MAE_df = pd.DataFrame(num_features_and_MAE_TEST).T
+
     # Rename columns
-    new_columns = ['fold' + str(i) for i in range(train_df.shape[1])]
-    train_df.columns = new_columns
-    test_df.columns = new_columns
+    new_columns = ['fold' + str(i) for i in range(train_R2_df.shape[1])]
+    train_R2_df.columns = new_columns
+    test_R2_df.columns = new_columns
+    train_MSE_df.columns = new_columns
+    test_MSE_df.columns = new_columns
+    train_MAE_df.columns = new_columns
+    test_MAE_df.columns = new_columns
+    
     performance_results_path = f'{results_folder}/{label_to_predict}/{model_type}/performances'
     features_results_path = f'{results_folder}/{label_to_predict}/{model_type}'
     if(not os.path.exists(performance_results_path)): os.makedirs(performance_results_path)
     
-    train_df.to_csv(f'{performance_results_path}/train_performances.csv')
-    test_df.to_csv(f'{performance_results_path}/test_performances.csv' )
+    feature_df = pd.DataFrame(all_kept_features, columns=['Num features remaining', 'features remaining'])
+
+    feature_df.to_csv(f'{performance_results_path}/features_kept.csv')
+    train_R2_df.to_csv(f'{performance_results_path}/train_performances.csv')
+    test_R2_df.to_csv(f'{performance_results_path}/test_performances.csv' )
+    train_MSE_df.to_csv(f'{performance_results_path}/train_MSE.csv')
+    test_MSE_df.to_csv(f'{performance_results_path}/test_MSE.csv' )
+    train_MAE_df.to_csv(f'{performance_results_path}/train_MAE.csv')
+    test_MAE_df.to_csv(f'{performance_results_path}/test_MAE.csv' )
+    
     kept_features_df = pd.DataFrame(kept_features, columns=['features'])
     kept_features_df.to_csv(features_results_path + f'/top_{num_features_to_keep}_features.csv')
 
@@ -287,18 +318,29 @@ def start_backward_feature_selection(dataset, label_to_predict, model_type, all_
 
 
 
-
+# chunk = 'chunk_2p5_5'
 
 data_folder = '/Volumes/Jake_ssd/Backward_feature_selection/5fold_datasets'
+# data_folder = f'/Volumes/Jake_ssd/height_chunks/data/5fold_datasets/{chunk}'
+# data_folder = "/Volumes/Jake_ssd/no_tiny_cracks/data/5fold_datasets"
+
 if(not os.path.exists(data_folder)): os.makedirs(data_folder)
-full_dataset_pathname = "/Users/jakehirst/Desktop/sfx/sfx_ML_data/New_Crack_Len_FULL_OG_dataframe_2023_10_28.csv"
-full_dataset_pathname = "/Volumes/Jake_ssd/OCTOBER_DATASET/feature_transformations_2023-10-28/height/HEIGHTALL_TRANSFORMED_FEATURES.csv"
+full_dataset_pathname = "/Volumes/Jake_ssd/feature_datasets/feature_transformations_2023-11-05/height/HEIGHTALL_TRANSFORMED_FEATURES.csv"
+# full_dataset_pathname = "/Volumes/Jake_ssd/OCTOBER_DATASET/feature_transformations_2023-10-28/height/HEIGHTALL_TRANSFORMED_FEATURES.csv"
+# full_dataset_pathname = f"/Volumes/Jake_ssd/height_chunks/data/{chunk}.csv"
+# full_dataset_pathname = "/Volumes/Jake_ssd/no_tiny_cracks/data/no_cracks_below_10mm.csv"
+
+
 image_folder = '/Users/jakehirst/Desktop/sfx/sfx_ML_data/images_sfx/new_dataset/Visible_cracks'
 
+# results_folder = '/Volumes/Jake_ssd/Backward_feature_selection/results'
 results_folder = '/Volumes/Jake_ssd/Backward_feature_selection/results'
+# results_folder = f'/Volumes/Jake_ssd/height_chunks/results/{chunk}'
+# results_folder = f'/Volumes/Jake_ssd/no_tiny_cracks/results'
+
 
 '''only have to make the datasets once'''
-# make_5_fold_datasets(data_folder, full_dataset_pathname, image_folder, remove_small_cracks=False)
+make_5_fold_datasets(data_folder, full_dataset_pathname, image_folder, remove_small_cracks=False, normalize=True)
 all_labels = ['height', 'phi', 'theta', 
         'impact site x', 'impact site y', 'impact site z', 
         'impact site r', 'impact site phi', 'impact site theta']
@@ -313,7 +355,7 @@ remove that feature from feature candidates
 '''
 
 label_to_predict = 'height'
-label_to_predict = 'impact site x'
+label_to_predict = 'height'
 model_type = 'ANN'
 model_type = 'RF'
 dataset = pd.read_csv(full_dataset_pathname)
@@ -324,10 +366,11 @@ all_features = [string for string in all_features if 'timestep_init' not in stri
 # all_features = all_features[0:20]
 
 labels = ['height', 'impact site x', 'impact site y']
-labels = ['height']
+# labels = ['impact site x']
 
 model_types = ['RF', 'GPR', 'linear', 'lasso', 'ridge', 'poly2', 'poly3']
-model_types = ['ANN']
+model_types = ['linear', 'RF', 'GPR', 'lasso', 'ridge', 'poly2']
+# model_types = ['ANN']
 
 all_kept_features = {}
 all_performances = {}
@@ -337,8 +380,9 @@ for label_to_predict in labels:
     for model_type in model_types:
         print(f'\n$$$$$$$$$$ NOW FOR PREDICTING {label_to_predict} WITH {model_type} $$$$$$$$$$\n')
 
-        kept_features, num_features_and_performances_TRAIN, num_features_and_performances_TEST = start_backward_feature_selection(dataset, label_to_predict, model_type, all_labels, all_features, results_folder, num_features_to_keep=10)
-
+        kept_features, num_features_and_performances_TRAIN, num_features_and_performances_TEST = start_backward_feature_selection(data_folder, dataset, label_to_predict, model_type, all_labels, all_features, results_folder, num_features_to_keep=3)
+        # plot_performances_vs_number_of_features(label_to_predict, model_type, results_folder, 'train')
+        # plot_performances_vs_number_of_features(label_to_predict, model_type, results_folder, 'test')
         print('\n...next model type... ')
             
 print('here')

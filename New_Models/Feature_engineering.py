@@ -6,19 +6,7 @@ import os
 import datetime
 
 
-full_dataset_pathname = "/Users/jakehirst/Desktop/sfx/sfx_ML_data/New_Crack_Len_FULL_OG_dataframe_2023_10_28.csv"
-image_folder = '/Users/jakehirst/Desktop/sfx/sfx_pics/jake/images_sfx/new_dataset/Visible_cracks'
-all_labels = ['height', 'phi', 'theta', 
-            'impact site x', 'impact site y', 'impact site z', 
-            'impact site r', 'impact site phi', 'impact site theta']
 
-# features = ['init theta', 'init phi',
-#        'init r', 'init z', 'init y', 'init x', 'dist btw frts', 'crack len',
-#        'linearity', 'max thickness', 'mean thickness', 'max_kink',
-#        'abs_val_mean_kink', 'mean_kink', 'sum_kink', 'abs_val_sum_kink',
-#        'avg_ori', 'angle_btw', 'height', 'phi', 'theta', 'impact site theta',
-#        'impact site phi', 'impact site r', 'impact site z', 'impact site y',
-#        'impact site x']
 
 def plot_feature_vs_label(df, feature, label):
     x = df[label].to_numpy()
@@ -341,54 +329,59 @@ def get_best_features_to_use(folder, label, all_labels, maximum_redundancy, mini
     return well_corr_features_df, label_df
 
 
+def execute_all_feature_engineering(df, list_of_multiplying_features, label, saving_folder):
+    get_feature_transformation(df, list_of_multiplying_features, 'square', label, saving_folder)
+    get_feature_transformation(df, list_of_multiplying_features, 'cube', label, saving_folder)
+    get_feature_transformation(df, list_of_multiplying_features, 'sqrt', label, saving_folder)
+    get_feature_transformation(df, list_of_multiplying_features, 'exp', label, saving_folder)
+    get_feature_transformation(df, list_of_multiplying_features, 'log', label, saving_folder)
+    get_feature_transformation(df, list_of_multiplying_features, 'nothin', label, saving_folder)
+
+    # saving_folder = '/Volumes/Jake_ssd/OCTOBER_DATASET/feature_interactions'
+
+    get_feature_interactions(df, list_of_multiplying_features, 'multiply_two_feats', label, saving_folder)
+    get_feature_interactions(df, list_of_multiplying_features, 'divide_two_feats', label, saving_folder)
+    get_feature_interactions(df, list_of_multiplying_features, 'exponential_two_feats', label, saving_folder)
+    get_feature_interactions(df, list_of_multiplying_features, 'add_two_feats', label, saving_folder)
+    get_feature_interactions(df, list_of_multiplying_features, 'subtract_two_feats', label, saving_folder)
+
+    put_everything_into_a_single_csv(saving_folder, label)
+
+full_dataset_pathname = "/Users/jakehirst/Desktop/sfx/sfx_ML_data/New_Crack_Len_FULL_OG_dataframe_2023_10_28.csv"
+full_dataset_pathname = "/Volumes/Jake_ssd/feature_datasets/New_Crack_Len_FULL_OG_dataframe_2023_11_05.csv"
+image_folder = '/Users/jakehirst/Desktop/sfx/sfx_pics/jake/images_sfx/new_dataset/Visible_cracks'
+all_labels = ['height', 'phi', 'theta', 
+            'impact site x', 'impact site y', 'impact site z', 
+            'impact site r', 'impact site phi', 'impact site theta']
+
+# features = ['init theta', 'init phi',
+#        'init r', 'init z', 'init y', 'init x', 'dist btw frts', 'crack len',
+#        'linearity', 'max thickness', 'mean thickness', 'max_kink',
+#        'abs_val_mean_kink', 'mean_kink', 'sum_kink', 'abs_val_sum_kink',
+#        'avg_ori', 'angle_btw', 'height', 'phi', 'theta', 'impact site theta',
+#        'impact site phi', 'impact site r', 'impact site z', 'impact site y',
+#        'impact site x']
+
+list_of_multiplying_features = ['dist btw frts', 'crack len', 'max thickness', 'max_kink', 'abs_val_sum_kink', 'avg_ori', 'angle_btw']
+df = pd.read_csv(full_dataset_pathname, index_col=0)
+cols = df.columns
+feat_cols = cols.difference(all_labels)
+list_of_multiplying_features = list(feat_cols[~feat_cols.str.contains('front')])
 
 
-# list_of_multiplying_features = ['dist btw frts', 'crack len', 'max thickness', 'max_kink', 'abs_val_sum_kink', 'avg_ori', 'angle_btw']
-# df = pd.read_csv(full_dataset_pathname, index_col=0)
-# cols = df.columns
-# feat_cols = cols.difference(all_labels)
-# list_of_multiplying_features = list(feat_cols[~feat_cols.str.contains('front')])
+
+# saving_folder changes with the date
+current_date = datetime.datetime.now().strftime("%Y-%m-%d")
+saving_folder = f'/Volumes/Jake_ssd/feature_datasets/feature_transformations_{current_date}'
 
 
-
-# # saving_folder changes with the date
-# current_date = datetime.datetime.now().strftime("%Y-%m-%d")
-# saving_folder = f'/Volumes/Jake_ssd/OCTOBER_DATASET/feature_transformations_{current_date}'
-
-# label = 'height'
-# label = 'impact site x'
+label = 'height'
+label = 'impact site x'
 # label = 'impact site y'
 
 
-# get_feature_transformation(df, list_of_multiplying_features, 'square', label, saving_folder)
-# get_feature_transformation(df, list_of_multiplying_features, 'cube', label, saving_folder)
-# get_feature_transformation(df, list_of_multiplying_features, 'sqrt', label, saving_folder)
-# get_feature_transformation(df, list_of_multiplying_features, 'exp', label, saving_folder)
-# get_feature_transformation(df, list_of_multiplying_features, 'log', label, saving_folder)
-# get_feature_transformation(df, list_of_multiplying_features, 'nothin', label, saving_folder)
-
-# # saving_folder = '/Volumes/Jake_ssd/OCTOBER_DATASET/feature_interactions'
-
-# get_feature_interactions(df, list_of_multiplying_features, 'multiply_two_feats', label, saving_folder)
-# get_feature_interactions(df, list_of_multiplying_features, 'divide_two_feats', label, saving_folder)
-# get_feature_interactions(df, list_of_multiplying_features, 'exponential_two_feats', label, saving_folder)
-# get_feature_interactions(df, list_of_multiplying_features, 'add_two_feats', label, saving_folder)
-# get_feature_interactions(df, list_of_multiplying_features, 'subtract_two_feats', label, saving_folder)
-
-# # get_feature_interactions(df, list_of_multiplying_features, 'multiply_two_feats', 'impact site x', saving_folder)
-# # get_feature_interactions(df, list_of_multiplying_features, 'divide_two_feats', 'impact site x', saving_folder)
-# # get_feature_interactions(df, list_of_multiplying_features, 'exponential_two_feats', 'impact site x', saving_folder)
-
-
-# # get_feature_interactions(df, list_of_multiplying_features, 'multiply_two_feats', 'impact site y', saving_folder)
-# # get_feature_interactions(df, list_of_multiplying_features, 'divide_two_feats', 'impact site y', saving_folder)
-# # get_feature_interactions(df, list_of_multiplying_features, 'exponential_two_feats', 'impact site y', saving_folder)
-
-# put_everything_into_a_single_csv(saving_folder, label)
-# # put_everything_into_a_single_csv(saving_folder, 'impact site x')
-# # put_everything_into_a_single_csv(saving_folder, 'impact site y')
-
-# get_best_features_to_use(saving_folder, label, all_labels, 0.8, 0.25)
+'''this does it all'''
+# execute_all_feature_engineering(df, list_of_multiplying_features, label, saving_folder)
 
 
 
