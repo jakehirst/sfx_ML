@@ -70,9 +70,6 @@ def get_exp_of_two_df_columns(df, base_feat, exp_feat, negative_exp=False):
     return result
 
 
-
-
-
 '''feature transformations'''
 def exp_two_features(df, feature1, feature2):
     columns = []
@@ -346,42 +343,6 @@ def execute_all_feature_engineering(df, list_of_multiplying_features, label, sav
     get_feature_interactions(df, list_of_multiplying_features, 'subtract_two_feats', label, saving_folder)
 
     put_everything_into_a_single_csv(saving_folder, label)
-
-full_dataset_pathname = "/Users/jakehirst/Desktop/sfx/sfx_ML_data/New_Crack_Len_FULL_OG_dataframe_2023_10_28.csv"
-full_dataset_pathname = "/Volumes/Jake_ssd/feature_datasets/New_Crack_Len_FULL_OG_dataframe_2023_11_05.csv"
-image_folder = '/Users/jakehirst/Desktop/sfx/sfx_pics/jake/images_sfx/new_dataset/Visible_cracks'
-all_labels = ['height', 'phi', 'theta', 
-            'impact site x', 'impact site y', 'impact site z', 
-            'impact site r', 'impact site phi', 'impact site theta']
-
-# features = ['init theta', 'init phi',
-#        'init r', 'init z', 'init y', 'init x', 'dist btw frts', 'crack len',
-#        'linearity', 'max thickness', 'mean thickness', 'max_kink',
-#        'abs_val_mean_kink', 'mean_kink', 'sum_kink', 'abs_val_sum_kink',
-#        'avg_ori', 'angle_btw', 'height', 'phi', 'theta', 'impact site theta',
-#        'impact site phi', 'impact site r', 'impact site z', 'impact site y',
-#        'impact site x']
-
-list_of_multiplying_features = ['dist btw frts', 'crack len', 'max thickness', 'max_kink', 'abs_val_sum_kink', 'avg_ori', 'angle_btw']
-df = pd.read_csv(full_dataset_pathname, index_col=0)
-cols = df.columns
-feat_cols = cols.difference(all_labels)
-list_of_multiplying_features = list(feat_cols[~feat_cols.str.contains('front')])
-
-
-
-# saving_folder changes with the date
-current_date = datetime.datetime.now().strftime("%Y-%m-%d")
-saving_folder = f'/Volumes/Jake_ssd/feature_datasets/feature_transformations_{current_date}'
-
-
-label = 'height'
-label = 'impact site x'
-# label = 'impact site y'
-
-
-'''this does it all'''
-# execute_all_feature_engineering(df, list_of_multiplying_features, label, saving_folder)
 
 
 

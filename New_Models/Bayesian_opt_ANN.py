@@ -6,6 +6,9 @@ from tensorflow.keras.layers import Dense, BatchNormalization, Dropout
 from tensorflow.keras.optimizers import Adam
 from tensorflow.keras.regularizers import l1_l2
 from kerastuner.tuners import BayesianOptimization
+import os
+from sklearn.model_selection import train_test_split
+
 
 
 # Define the Keras model building function
@@ -13,7 +16,7 @@ def build_model(hp):
     model = Sequential()
     
     # Input layer
-    model.add(Dense(128, input_shape=(input_shape,), activation='relu'))
+    model.add(Dense(128, input_shape=input_shape, activation='relu'))
     model.add(BatchNormalization())
     model.add(Dropout(hp.Float('dropout_1', min_value=0.0, max_value=0.5, step=0.1)))
     
@@ -126,7 +129,7 @@ if(df.columns.__contains__('timestep_init')):
 
 
 label = 'impact site x'
-optimal_stuff = do_bayesian_optimization(df, label_df[label], 100, features_to_keep=top_10_features)
+# optimal_stuff = do_bayesian_optimization(df, label_df[label], 100, features_to_keep=top_10_features)
 
 ''' get input features and labels'''
 
@@ -135,35 +138,41 @@ optimal_stuff = do_bayesian_optimization(df, label_df[label], 100, features_to_k
 
 
 '''kfold stuff'''
+dir = '/Volumes/Jake_ssd/bayesian_optimization/ANN'
+if(not os.path.exists(dir)): os.makedirs(dir)
 # Assuming 'df_features' and 'df_labels' are your dataframes
-X = df_features.values
-y = df_labels.values.ravel()  # Assuming your labels are in one column
+X = df[top_10_features].values
+y = label_df[label].values.ravel()  # Assuming your labels are in one column
+
+
 
 # Define the number of splits for K-Fold
-num_folds = 5
-kf = KFold(n_splits=num_folds, shuffle=True, random_state=42)
+# num_folds = 5
+# kf = KFold(n_splits=num_folds, shuffle=True, random_state=42)
 
-# Instantiate the BayesianOptimization tuner
-tuner = BayesianOptimization(
-    build_model,
-    objective=cross_val_score,
-    max_trials=10,
-    executions_per_trial=1,
-    directory='bayesian_optimization',
-    project_name='keras_regression_cv'
-)
+# # Instantiate the BayesianOptimization tuner
+# tuner = BayesianOptimization(
+#     build_model,
+#     objective=cross_val_score,
+#     max_trials=10,
+#     executions_per_trial=1,
+#     directory=dir,
+#     project_name='keras_regression_cv'
+# )
 
-# Start the Bayesian Optimization
-tuner.search_space_summary()
-tuner.search()
+# # Start the Bayesian Optimization
+# tuner.search_space_summary()
+# tuner.search()
 
-# Get the best hyperparameters
-best_hps = tuner.get_best_hyperparameters()[0]
+# # Get the best hyperparameters
+# best_hps = tuner.get_best_hyperparameters()[0]
+
+# print('here')
 '''kfold stuff'''
 
 
 
-
+num_features = len(top_10_features)
 # Specify the input shape (number of features in your dataset)
 input_shape = (num_features,)
 
@@ -173,16 +182,17 @@ tuner = BayesianOptimization(
     objective='val_loss',
     max_trials=10,
     executions_per_trial=1,
-    directory='bayesian_optimization',
+    directory=dir,
     project_name='keras_regression'
 )
 
+
 # Define the data here
-# X_train, y_train, X_val, y_val = ...
+X_train, X_val, y_train, y_val = train_test_split(X, y, test_size=0.2, random_state=42)
 
 # Start the Bayesian Optimization
 tuner.search(X_train, y_train,
-             epochs=50,
+             epochs=100,
              validation_data=(X_val, y_val),
              verbose=1)
 

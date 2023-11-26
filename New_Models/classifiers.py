@@ -1,7 +1,7 @@
 import pandas as pd
 import numpy as np
 import matplotlib.pyplot as plt
-from sklearn.metrics import confusion_matrix, plot_confusion_matrix
+from sklearn.metrics import confusion_matrix
 from Logistic_regression import *
 from Random_forest_classification import *
 from SVM_classification import *
@@ -48,35 +48,42 @@ def make_confusion_matrix(y, X, model, train_test, save='', show=False):
         
         
         
-data_folder = '/Volumes/Jake_ssd/Backward_feature_selection/5fold_datasets'
-label_to_predict = 'height'
-label_to_predict = 'impact site x'
-model_types = ['logistic_regression', 'RF_classifier', 'SVM_classifier']
-# model_types = ['SVM_classifier']
-num_bins = 10
-
-for model_type in model_types:
-    print(f'\n$$$$$$ MODEL TYPE = {model_type} $$$$$$')
-    for fold_no in range(1,6):
-        print(f'fold = {fold_no}')
-        train_features_path = f'{data_folder}/{label_to_predict}/fold{fold_no}/train_features.csv'
-        test_features_path = f'{data_folder}/{label_to_predict}/fold{fold_no}/test_features.csv'
-        train_labels_path = f'{data_folder}/{label_to_predict}/fold{fold_no}/train_labels.csv'
-        test_labels_path = f'{data_folder}/{label_to_predict}/fold{fold_no}/test_labels.csv'
         
-        train_features, test_features, train_labels, test_labels = bin_data(label_to_predict, train_features_path, test_features_path, train_labels_path, test_labels_path, num_bins=num_bins)
-        '''remove all of the timestep_init features'''
-        train_features = train_features.loc[:, ~train_features.columns.str.contains('timestep_init')]
-        test_features = test_features.loc[:, ~test_features.columns.str.contains('timestep_init')]
         
         
 
         
-        if(model_type == 'logistic_regression'):
-            model, y_pred_train, y_pred_test = make_log_regression_model(train_features, train_labels, test_features, test_labels, 1000, L1=0, L2=1)
-        elif(model_type == 'RF_classifier'):
-            model, y_pred_train, y_pred_test = make_random_forest_classifier(train_features, train_labels, test_features, test_labels, n_estimators=5000, max_depth=10, bootstrap=True)
-        elif(model_type == 'SVM_classifier'):
-            model, y_pred_train, y_pred_test = make_non_linear_svm_model(train_features, train_labels, test_features, test_labels, C=0.3, kernel='rbf', degree=3, random_state=None)
-        make_confusion_matrix(train_labels, train_features, model, 'train', show=True)
-        make_confusion_matrix(test_labels, test_features, model, 'test', show=True)
+        
+# data_folder = '/Volumes/Jake_ssd/Backward_feature_selection/5fold_datasets'
+# label_to_predict = 'height'
+# label_to_predict = 'impact site x'
+# model_types = ['logistic_regression', 'RF_classifier', 'SVM_classifier']
+# # model_types = ['SVM_classifier']
+# num_bins = 10
+# results_folder = f'/Volumes/Jake_ssd/Classification/{label_to_predict}'
+
+# for model_type in model_types:
+#     print(f'\n$$$$$$ MODEL TYPE = {model_type} $$$$$$')
+#     for fold_no in range(1,6):
+#         print(f'fold = {fold_no}')
+#         train_features_path = f'{data_folder}/{label_to_predict}/fold{fold_no}/train_features.csv'
+#         test_features_path = f'{data_folder}/{label_to_predict}/fold{fold_no}/test_features.csv'
+#         train_labels_path = f'{data_folder}/{label_to_predict}/fold{fold_no}/train_labels.csv'
+#         test_labels_path = f'{data_folder}/{label_to_predict}/fold{fold_no}/test_labels.csv'
+        
+#         train_features, test_features, train_labels, test_labels = bin_data(label_to_predict, train_features_path, test_features_path, train_labels_path, test_labels_path, num_bins=num_bins)
+#         '''remove all of the timestep_init features'''
+#         train_features = train_features.loc[:, ~train_features.columns.str.contains('timestep_init')]
+#         test_features = test_features.loc[:, ~test_features.columns.str.contains('timestep_init')]
+        
+        
+
+        
+#         if(model_type == 'logistic_regression'):
+#             model, y_pred_train, y_pred_test = make_log_regression_model(train_features, train_labels, test_features, test_labels, 1000, L1=0, L2=1)
+#         elif(model_type == 'RF_classifier'):
+#             model, y_pred_train, y_pred_test = make_random_forest_classifier(train_features, train_labels, test_features, test_labels, n_estimators=5000, max_depth=10, bootstrap=True)
+#         elif(model_type == 'SVM_classifier'):
+#             model, y_pred_train, y_pred_test = make_non_linear_svm_model(train_features, train_labels, test_features, test_labels, C=0.3, kernel='rbf', degree=3, random_state=None)
+#         make_confusion_matrix(train_labels, train_features, model, 'train', show=True)
+#         make_confusion_matrix(test_labels, test_features, model, 'test', show=True)
