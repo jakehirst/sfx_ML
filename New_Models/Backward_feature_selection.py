@@ -9,7 +9,6 @@ from itertools import combinations
 import seaborn as sns
 import matplotlib.pyplot as plt
 from Feature_engineering import *
-from Bagging_models import make_5_fold_datasets
 from sklearn.model_selection import train_test_split
 from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
 from scipy.stats import pearsonr
@@ -47,7 +46,7 @@ def get_non_significant_features(dataframe, label_to_predict, all_labels):
 
 ''' creates the 5-fold cross validation datasets for each label to predict in labels to predict in the path given. 
     If remove_small_cracks=True, then it removes all of the simulations that have cracks less than 10mm in length.'''
-def make_5_fold_datasets(saving_folder, full_dataset_pathname, image_folder, normalize=True, remove_small_cracks=False, label_chunks=None):
+def make_5_fold_datasets(saving_folder, full_dataset_pathname, normalize=True, remove_small_cracks=False, label_chunks=None):
     all_labels = ['height', 'phi', 'theta', 
             'impact site x', 'impact site y', 'impact site z', 
             'impact site r', 'impact site phi', 'impact site theta']
@@ -189,10 +188,12 @@ def plot_performances_vs_number_of_features(label_to_predict, model_type, result
     plt.scatter(num_features, mean_performance, color='red', label='Mean R2')
 
     # Set plot labels and title
+    plt.ylim((0, 1))
     plt.xlabel('Number of features')
     plt.ylabel(r'R$^2$ Performance')  # using LaTeX syntax for superscript
     plt.title(f'{train_or_test} set \nR2 for varying number of features')
     plt.legend()
+    
 
     # Display the plot
     fig_path = filepath.removesuffix(f'{train_or_test}_performances.csv')
@@ -209,9 +210,6 @@ def start_backward_feature_selection(folds_data_folder, full_dataset, label_to_p
     '''remove all of the features that do not have a correlation above 0.2 with the label. this is the second filter... '''
     low_correlated_features = get_low_correlation_features(full_dataset[kept_features + all_labels], label_to_predict, all_labels, 0.2)
     kept_features = [item for item in kept_features if item not in low_correlated_features]
-    # kept_features = kept_features[0:20] #TODO remove this...
-    
-    # kept_features = all_features #TODO remove this when doing research
     
     all_feature_metrics = {}
     
@@ -265,8 +263,8 @@ def start_backward_feature_selection(folds_data_folder, full_dataset, label_to_p
 
         '''remove 20% of the features that have the least effect on the predictions until theres only a little left.'''
         average_kfold_performances = dict(sorted(average_kfold_performances.items(), key=lambda item: item[1], reverse=True))
-        if(len(average_kfold_performances) > num_features_to_keep*1.5):#TODO change this back to 1.5 when doing research
-            how_many_to_remove = int(np.ceil(len(average_kfold_performances) * 0.20))#TODO change this back to 0.2 when doing research
+        if(len(average_kfold_performances) > num_features_to_keep*1.5):
+            how_many_to_remove = int(np.ceil(len(average_kfold_performances) * 0.20))
         else: 
             how_many_to_remove = len(average_kfold_performances) - num_features_to_keep
             
@@ -316,76 +314,6 @@ def start_backward_feature_selection(folds_data_folder, full_dataset, label_to_p
     return kept_features, num_features_and_performances_TRAIN, num_features_and_performances_TEST
 
 
-
-
-# chunk = 'chunk_2p5_5'
-
-data_folder = '/Volumes/Jake_ssd/Backward_feature_selection/5fold_datasets'
-# data_folder = f'/Volumes/Jake_ssd/height_chunks/data/5fold_datasets/{chunk}'
-# data_folder = "/Volumes/Jake_ssd/no_tiny_cracks/data/5fold_datasets"
-
-if(not os.path.exists(data_folder)): os.makedirs(data_folder)
-full_dataset_pathname = "/Volumes/Jake_ssd/feature_datasets/feature_transformations_2023-11-05/height/HEIGHTALL_TRANSFORMED_FEATURES.csv"
-# full_dataset_pathname = "/Volumes/Jake_ssd/OCTOBER_DATASET/feature_transformations_2023-10-28/height/HEIGHTALL_TRANSFORMED_FEATURES.csv"
-# full_dataset_pathname = f"/Volumes/Jake_ssd/height_chunks/data/{chunk}.csv"
-# full_dataset_pathname = "/Volumes/Jake_ssd/no_tiny_cracks/data/no_cracks_below_10mm.csv"
-
-
-image_folder = '/Users/jakehirst/Desktop/sfx/sfx_ML_data/images_sfx/new_dataset/Visible_cracks'
-
-# results_folder = '/Volumes/Jake_ssd/Backward_feature_selection/results'
-results_folder = '/Volumes/Jake_ssd/Backward_feature_selection/results'
-# results_folder = f'/Volumes/Jake_ssd/height_chunks/results/{chunk}'
-# results_folder = f'/Volumes/Jake_ssd/no_tiny_cracks/results'
-
-
-'''only have to make the datasets once'''
-make_5_fold_datasets(data_folder, full_dataset_pathname, image_folder, remove_small_cracks=False, normalize=True)
-all_labels = ['height', 'phi', 'theta', 
-        'impact site x', 'impact site y', 'impact site z', 
-        'impact site r', 'impact site phi', 'impact site theta']
-'''
-load the data
-get a list of the features
-go through each feature and train the model
-only keep the best performing model
-
-add a feature to the list of kept features
-remove that feature from feature candidates
-'''
-
-label_to_predict = 'height'
-label_to_predict = 'height'
-model_type = 'ANN'
-model_type = 'RF'
-dataset = pd.read_csv(full_dataset_pathname)
-feature_set = dataset.drop(all_labels, axis=1)
-# feature_candidates = feature_set.columns.to_list() #all of the features that will be considered
-all_features = feature_set.columns.to_list() #all of the features that will be considered
-all_features = [string for string in all_features if 'timestep_init' not in string]
-# all_features = all_features[0:20]
-
-labels = ['height', 'impact site x', 'impact site y']
-# labels = ['impact site x']
-
-model_types = ['RF', 'GPR', 'linear', 'lasso', 'ridge', 'poly2', 'poly3']
-model_types = ['linear', 'RF', 'GPR', 'lasso', 'ridge', 'poly2']
-# model_types = ['ANN']
-
-all_kept_features = {}
-all_performances = {}
-for label_to_predict in labels:
-    all_kept_features[label_to_predict] = {}
-    all_performances[label_to_predict] = {}
-    for model_type in model_types:
-        print(f'\n$$$$$$$$$$ NOW FOR PREDICTING {label_to_predict} WITH {model_type} $$$$$$$$$$\n')
-
-        kept_features, num_features_and_performances_TRAIN, num_features_and_performances_TEST = start_backward_feature_selection(data_folder, dataset, label_to_predict, model_type, all_labels, all_features, results_folder, num_features_to_keep=3)
-        # plot_performances_vs_number_of_features(label_to_predict, model_type, results_folder, 'train')
-        # plot_performances_vs_number_of_features(label_to_predict, model_type, results_folder, 'test')
-        print('\n...next model type... ')
-            
-print('here')
             
             
             

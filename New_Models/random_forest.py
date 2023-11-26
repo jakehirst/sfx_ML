@@ -133,11 +133,13 @@ def do_bayesian_optimization(feature_df, label_df, num_tries=100, saving_folder=
 
     # Define the parameter space for the Random Forest
     param_space = {
-        'n_estimators': (1000, 10000),  # Number of trees in the forest.
-        'max_depth': (2, 50),       # Maximum depth of the tree.
-        'min_samples_split': (2, 50),
-        'min_samples_leaf': (1, 50),
-        'max_features': (1, X_train.shape[1]),  # Where X_train.shape[1] is the number of features
+        'n_estimators': (5000, 10000),  #Higher for generalization, lower for overfitting
+        'max_depth': (2,3),  #Higher for overfitting, lower for generaliztion
+        'min_samples_split': (25, 50),  #Higher for generalization, lower for overfitting
+        'min_samples_leaf': (20, 25), #Higher for generalization, lower for overfitting
+        # 'max_features': (1, X_train.shape[1]), #Higher for overfitting, lower for generalization
+        'max_features': (2,3), #Higher for overfitting, lower for generalization
+
     }
 
     # Create a RandomForestRegressor instance
@@ -148,7 +150,8 @@ def do_bayesian_optimization(feature_df, label_df, num_tries=100, saving_folder=
                         param_space, 
                         n_iter=num_tries, 
                         random_state=0, 
-                        cv=5) #COMMENT cv=5 indicates a 5 fold cross validation
+                        cv=5,
+                        verbose=True) #COMMENT cv=5 indicates a 5 fold cross validation
 
     # Run the Bayesian optimization
     opt.fit(X_train, y_train)
@@ -220,15 +223,15 @@ top_10_features = ['abs_val_sum_kink^2',
 #                     'init x + max thickness',
 #                     'init x + mean thickness',
 #                     'init x + thickness_at_init']
-top_10_features = ['init x^3', 
-                   'init x (unchanged)', 
-                   'init x * init z', 
-                   'init x * linearity',
-                   'init x * max thickness',
-                   'init x * mean thickness',
-                   'init x * thickness_at_init', 
-                   'init x + linearity', 
-                   'init x + max thickness']
+# top_10_features = ['init x^3', 
+#                    'init x (unchanged)', 
+#                    'init x * init z', 
+#                    'init x * linearity',
+#                    'init x * max thickness',
+#                    'init x * mean thickness',
+#                    'init x * thickness_at_init', 
+#                    'init x + linearity', 
+#                    'init x + max thickness']
 
 '''when predicting impact site y'''
 # top_10_features = [ 'avg_prop_speed * crack len',
@@ -246,18 +249,24 @@ labels_to_predict = ['height', 'impact site x', 'impact site y']
 
 # Generate some synthetic data for demonstration purposes
 # df = pd.read_csv("/Volumes/Jake_ssd/OCTOBER_DATASET/feature_transformations_2023-10-28/height/HEIGHTALL_TRANSFORMED_FEATURES.csv")
-df = pd.read_csv("/Volumes/Jake_ssd/feature_datasets/feature_transformations_2023-11-05/height/HEIGHTALL_TRANSFORMED_FEATURES.csv")
-label_df = df.copy()[labels_to_predict]
-df = df.drop(labels_to_predict, axis=1)
-if(df.columns.__contains__('timestep_init')):
-    df = df.drop('timestep_init', axis=1)
+# df = pd.read_csv("/Volumes/Jake_ssd/feature_datasets/feature_transformations_2023-11-05/height/HEIGHTALL_TRANSFORMED_FEATURES.csv")
+# label_df = df.copy()[labels_to_predict]
+# df = df.drop(labels_to_predict, axis=1)
+# if(df.columns.__contains__('timestep_init')):
+#     df = df.drop('timestep_init', axis=1)
 
-top_10_df = df.copy()[top_10_features]
+# top_10_df = df.copy()[top_10_features]
 
-clusters = cluster_coordinates(df, 'init x (unchanged)', 'init y (unchanged)', num_clusters=5)
+# clusters = cluster_coordinates(df, 'init x (unchanged)', 'init y (unchanged)', num_clusters=5)
 # top_10_df = add_clusters_to_df(top_10_df, clusters)
 
-label = 'impact site x'
-saving_folder = f'/Volumes/Jake_ssd/bayesian_optimization/RF/{label}'
-if(not os.path.exists(saving_folder)): os.makedirs(saving_folder)
-optimal_stuff = do_bayesian_optimization(top_10_df, label_df[label], 10, saving_folder= saving_folder)
+# label = 'height'
+# saving_folder = f'/Volumes/Jake_ssd/bayesian_optimization/RF/{label}'
+# if(not os.path.exists(saving_folder)): os.makedirs(saving_folder)
+# optimal_stuff = do_bayesian_optimization(top_10_df, label_df[label], 10, saving_folder= saving_folder)
+
+# df = pd.read_csv('/Users/jakehirst/Desktop/UMAP_EMBEDDING.csv', index_col=0)
+# label_df = df.copy()['height']
+# df.drop(['height'], axis=1, inplace=True)
+# optimal_stuff = do_bayesian_optimization(df, label_df, 200, saving_folder= '/Users/jakehirst/Desktop/UMAP_regression_trial')
+# print('here')

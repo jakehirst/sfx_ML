@@ -73,7 +73,7 @@ def CNN_1D_L1_reg(train_features_1D):
 ''' 
 CNN architecture before output layer for 1D features
 '''
-def CNN_1D(train_features_1D):
+def CNN_1D(train_features_1D, L2_reg=0, L1_reg=0, dropout=0.05):
     #quote from tensorflow:
     """One reason this is important is because the features are multiplied by the model weights. So, the scale of the outputs and the scale of the gradients are affected by the scale of the inputs.
     Although a model might converge without feature normalization, normalization makes training much more stable"""
@@ -94,49 +94,22 @@ def CNN_1D(train_features_1D):
     # csv_model = tf.keras.layers.BatchNormalization()(csv_model)
     '''kernel_regularizer=tf.keras.regularizers.L1(0.01), activity_regularizer=tf.keras.regularizers.L2(0.05)'''
     
-    csv_model = tf.keras.layers.Dense(128, activation='relu', name="csv_dense3", activity_regularizer=tf.keras.regularizers.L2(0.10))(csv_model)
+    csv_model = tf.keras.layers.Dense(64, activation='relu', name="csv_dense3", kernel_regularizer=tf.keras.regularizers.L1L2(l1=L1_reg, l2=L2_reg))(csv_model)
     csv_model = tf.keras.layers.BatchNormalization()(csv_model)
-    csv_model = tf.keras.layers.Dense(128, activation='relu', name="csv_dense4", activity_regularizer=tf.keras.regularizers.L2(0.10))(csv_model)
+    csv_model = tf.keras.layers.Dropout(dropout, name="dropout1")(csv_model)
+    csv_model = tf.keras.layers.Dense(64, activation='relu', name="csv_dense4", kernel_regularizer=tf.keras.regularizers.L1L2(l1=L1_reg, l2=L2_reg))(csv_model)
     csv_model = tf.keras.layers.BatchNormalization()(csv_model)
-    csv_model = tf.keras.layers.Dense(128, activation='relu', name="csv_dense5", activity_regularizer=tf.keras.regularizers.L2(0.10))(csv_model)
-    # csv_model = tf.keras.layers.BatchNormalization()(csv_model)
+    csv_model = tf.keras.layers.Dropout(dropout, name="dropout2")(csv_model)
+    csv_model = tf.keras.layers.Dense(64, activation='relu', name="csv_dense5", kernel_regularizer=tf.keras.regularizers.L1L2(l1=L1_reg, l2=L2_reg))(csv_model)
+    csv_model = tf.keras.layers.BatchNormalization()(csv_model)
+    csv_output = tf.keras.layers.Dropout(dropout, name="csv_output")(csv_model)
+
     # csv_model = tf.keras.layers.Dense(8, activation='relu', name="csv_dense6")(csv_model)
-    csv_output = tf.keras.layers.Dropout(0.05, name="csv_output")(csv_model)
     """############## 1D model ##############"""
 
     return csv_output, csv_input
 
 
-# def CNN_1D(train_features_1D):
-#     #quote from tensorflow:
-#     """One reason this is important is because the features are multiplied by the model weights. So, the scale of the outputs and the scale of the gradients are affected by the scale of the inputs.
-#     Although a model might converge without feature normalization, normalization makes training much more stable"""
-#     """ normalizing features and labels """
-
-#     normalizer = tf.keras.layers.Normalization(axis=-1) #creating normalization layer
-#     normalizer.adapt(np.array(train_features_1D)) #fitting the state of the preprocessing layer
-        
-#     numfeatures = len(train_features_1D.columns)
-
-#     """############## 1D model ##############"""
-#     csv_data_shape = train_features_1D.shape[1]
-#     csv_input = tf.keras.layers.Input(shape=csv_data_shape, name="csv")
-#     csv_model = normalizer(csv_input)
-#     # csv_model = tf.keras.layers.Dense(256, activation='relu', name="csv_dense1")(csv_model)
-#     # # csv_model = tf.keras.layers.BatchNormalization()(csv_model)
-#     # csv_model = tf.keras.layers.Dense(128, activation='relu', name="csv_dense2")(csv_model)
-#     # csv_model = tf.keras.layers.BatchNormalization()(csv_model)
-#     csv_model = tf.keras.layers.Dense(64, activation='relu', name="csv_dense3", activity_regularizer=tf.keras.regularizers.L2(0.01))(csv_model)
-#     csv_model = tf.keras.layers.BatchNormalization()(csv_model)
-#     csv_model = tf.keras.layers.Dense(32, activation='relu', name="csv_dense4", activity_regularizer=tf.keras.regularizers.L2(0.01))(csv_model)
-#     csv_model = tf.keras.layers.BatchNormalization()(csv_model)
-#     csv_model = tf.keras.layers.Dense(32, activation='relu', name="csv_dense5", activity_regularizer=tf.keras.regularizers.L2(0.01))(csv_model)
-#     # csv_model = tf.keras.layers.BatchNormalization()(csv_model)
-#     # csv_model = tf.keras.layers.Dense(8, activation='relu', name="csv_dense6")(csv_model)
-#     csv_output = tf.keras.layers.Dropout(0.05, name="csv_output")(csv_model)
-#     """############## 1D model ##############"""
-
-#     return csv_output, csv_input
 
 
 
@@ -287,8 +260,11 @@ def run_kfold_Categorical_CNN(full_dataset, raw_images, full_dataset_labels, pat
 '''
 makes ANN for regression and returns the model. This will be used for ensembling ANN's in order to provide UQ for parametric models.
 '''
-def make_1D_CNN_for_ensemble(train_df, val_df, train_labels, val_labels, patience=200, max_epochs=1000, num_outputs=1, lossfunc='mean_squared_error'):
-    csv_output, csv_input = CNN_1D(train_df)
+def make_1D_CNN_for_ensemble(train_df, val_df, train_labels, val_labels, patience=200, 
+                             max_epochs=1000, num_outputs=1, lossfunc='mean_squared_error', verbose=True,
+                             L1=0, L2=0, dropout=0.05):
+    
+    csv_output, csv_input = CNN_1D(train_df, L2_reg=0, L1_reg=L1, dropout=dropout)
     x = csv_output
     predictions = tf.keras.layers.Dense(units=num_outputs)(x) 
     model = tf.keras.Model(inputs = [csv_input], outputs = [predictions])
@@ -309,10 +285,10 @@ def make_1D_CNN_for_ensemble(train_df, val_df, train_labels, val_labels, patienc
                         )
                     ],
                     validation_data=((val_df), val_labels),
-                    verbose=1,
+                    verbose=verbose,
                     )
 
-    return model
+    return model, history
 
 
 
