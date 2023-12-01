@@ -1,6 +1,12 @@
 from linear_regression import *
 from sklearn.preprocessing import PolynomialFeatures
 from sklearn.pipeline import make_pipeline
+from sklearn.linear_model import ElasticNet
+from sklearn.model_selection import train_test_split, cross_val_score
+from skopt import BayesSearchCV
+from skopt.space import Real
+from sklearn.metrics import r2_score
+import pandas as pd
 
 '''
 splits the data into 5 different k-folds of test and training sets
@@ -49,4 +55,90 @@ def Kfold_Polynomial_Regression(degree, full_dataset, full_dataset_labels, impor
         fold_no += 1
         
         
+def plot_hyperparameter_performance(opt, hyperparameter_name, saving_folder):
+    '''
+    Plots the performance of a model for each value of a specified hyperparameter.
+
+    Parameters:
+    opt (BayesSearchCV): The fitted BayesSearchCV object after running the optimization.
+    hyperparameter_name (str): The name of the hyperparameter to plot.
+    '''
+    
+    # Extract the scores from the optimization results
+    results = opt.cv_results_
+    scores = results['mean_test_score']
+    
+    # Extract the hyperparameter values tried during optimization
+    hyperparameter_values = [
+        params[hyperparameter_name] for params in results['params']
+    ]
+    
+    # Create the plot
+    plt.figure(figsize=(10, 5))
+    plt.scatter(hyperparameter_values, scores, color='red', alpha=0.4)
+    # plt.plot(hyperparameter_values, scores, color='lightblue', linestyle='--', marker='o')
+
+    # Label the plot
+    plt.title(f'Performance for different values of hyperparameter: {hyperparameter_name}')
+    plt.xlabel(hyperparameter_name)
+    plt.ylabel('Validation R^2')
+    
+    # Show the plot
+    plt.grid(True)
+    # plt.show()
+    plt.savefig(f'{saving_folder}/{hyperparameter_name}.png')
+    plt.close()
+
+
+
+
+def do_bayesian_optimization_poly_reg(feature_df, label_df, num_tries=100, saving_folder='/Users/jakehirst/Desktop'):
+    # Preprocessing as before
+    df_centered = feature_df - feature_df.mean()
+    df_normalized = df_centered / df_centered.std()
+    feature_df = df_normalized
+    
+    X = feature_df.to_numpy()
+    y = label_df.to_numpy()
+
+    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+
+    # Define the parameter space for the ElasticNet within a polynomial regression
+    param_space = {
+        # 'polynomialfeatures__degree': Integer(2,2),  # Degree of the polynomial
+        'elasticnet__alpha': Real(0.0001, 1.0, 'log-uniform'),  # Regularization strength
+        'elasticnet__l1_ratio': Real(0.0, 1.0)  # Balance between L1 and L2 regularization
+    }
+
+    # Create a pipeline with PolynomialFeatures and ElasticNet
+    polynomial_elasticnet = make_pipeline(PolynomialFeatures(degree=2), ElasticNet(random_state=0))
+
+    # Wrap the model with BayesSearchCV
+    opt = BayesSearchCV(polynomial_elasticnet, 
+                        param_space, 
+                        n_iter=num_tries, 
+                        random_state=0, 
+                        cv=5,
+                        verbose=3)
+
+    # Run the Bayesian optimization
+    opt.fit(X_train, y_train)
+
+    # Best parameter set found
+    print("\nBest parameters found: ", opt.best_params_)
+
+    # Predict and compute metrics
+    print('Train R^2 score:', r2_score(y_train, opt.predict(X_train)))
+    print('Test R^2 score:', r2_score(y_test, opt.predict(X_test)))
+
+
+    hyperparameter_names = ['elasticnet__alpha', 'elasticnet__l1_ratio']
+    for name in hyperparameter_names:
+        plot_hyperparameter_performance(opt, name, saving_folder)
+        
+    # Saving the best parameters
+    with open(f'{saving_folder}/best_hyperparams.txt', 'w') as file:
+        file.write(str(opt.best_params_))
+    
+    return opt
 

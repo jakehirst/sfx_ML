@@ -96,7 +96,7 @@ def plot_hyperparameter_performance(opt, hyperparameter_name, saving_folder):
     plt.close()
 
 
-def do_bayesian_optimization(feature_df, label_df, num_tries=100, saving_folder='/Users/jakehirst/Desktop'):
+def do_bayesian_optimization_RF(feature_df, label_df, num_tries=100, saving_folder='/Users/jakehirst/Desktop'):
     '''
     example how to run this code:
     
@@ -151,7 +151,7 @@ def do_bayesian_optimization(feature_df, label_df, num_tries=100, saving_folder=
                         n_iter=num_tries, 
                         random_state=0, 
                         cv=5,
-                        verbose=True) #COMMENT cv=5 indicates a 5 fold cross validation
+                        verbose=3) #COMMENT cv=5 indicates a 5 fold cross validation
 
     # Run the Bayesian optimization
     opt.fit(X_train, y_train)

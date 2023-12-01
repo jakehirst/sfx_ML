@@ -14,6 +14,7 @@ from sklearn.metrics import r2_score, mean_absolute_error, mean_squared_error
 from scipy.stats import pearsonr
 import concurrent.futures
 from scipy import stats
+import ast
 
 '''gets all of the poorly correlated features. they have a pearson correlation that is less than the threshold'''
 def get_low_correlation_features(dataset, label_to_predict, all_labels, threshold):
@@ -118,7 +119,20 @@ def train_model(model_type, train_features, train_labels):
     if(model_type == 'ANN'):
         train_features, val_features, train_labels, val_labels = train_test_split(
             train_features, train_labels, test_size=0.2, random_state=42)
-        model = make_1D_CNN_for_feature_selection(train_features, val_features, train_labels.to_numpy(), val_labels.to_numpy(), patience=100, max_epochs=1000, num_outputs=1, lossfunc='mean_squared_error')
+        model, history = make_1D_CNN_for_ensemble(train_features, 
+                                     val_features, 
+                                    #  train_labels[label_predicted], 
+                                    #  val_labels[label_predicted], 
+                                     train_labels,
+                                     val_labels,
+                                     patience=50, 
+                                     max_epochs=400, 
+                                     num_outputs=1, 
+                                     lossfunc='mean_absolute_error',#mean_absolute_error for height
+                                     verbose=True,
+                                     L1=0.01, #0.01 for height
+                                     L2=0.01, #0.01 for height
+                                     dropout=0.2) #0.2 for height
     elif(model_type == 'RF'):
         #  OrderedDict([('max_depth', 2), ('max_features', 1), ('min_samples_leaf', 20), ('min_samples_split', 2), ('n_estimators', 2334)])
         model =  RandomForestRegressor(max_depth=2, max_features=1, min_samples_leaf = 20, min_samples_split = 2, n_estimators=2334, random_state=42)
@@ -132,7 +146,7 @@ def train_model(model_type, train_features, train_labels):
         model = Ridge(alpha=a)
     elif(model_type == 'poly2'):
         degree = 2
-        model = make_pipeline(PolynomialFeatures(degree),LinearRegression())
+        model = make_pipeline(PolynomialFeatures(degree=2), ElasticNet(alpha = 0.06805476162251822, l1_ratio = 0.9087272306229307, random_state=0))
     elif(model_type == 'poly3'):
         degree = 3
         model = make_pipeline(PolynomialFeatures(degree),LinearRegression())
@@ -142,10 +156,9 @@ def train_model(model_type, train_features, train_labels):
     elif(model_type == 'GPR'):
         kernel = ConstantKernel(1.0) + ConstantKernel(1.0) * RBF() + WhiteKernel(noise_level=1) # this one works well
         model = GaussianProcessRegressor(kernel=kernel, random_state=0, alpha=50, n_restarts_optimizer=25) 
-    
-    if(model != 'ANN'):
-        model.fit(train_features.to_numpy(), train_labels.to_numpy()) 
 
+    if(model != 'ANN'):
+        model.fit(train_features, train_labels)
     return model
 
 
@@ -221,6 +234,27 @@ def start_backward_feature_selection(folds_data_folder, full_dataset, label_to_p
     num_features_and_MSE_TEST = {}
     num_features_and_MAE_TRAIN = {}
     num_features_and_MAE_TEST = {}
+    
+    performance_results_path = f'{results_folder}/{label_to_predict}/{model_type}/performances'
+    if(os.path.exists(f'{performance_results_path}/features_kept.csv')):
+        features_remaining_df = pd.read_csv(f'{performance_results_path}/features_kept.csv', index_col=0)
+        kept_features = ast.literal_eval(features_remaining_df['features remaining'].iloc[-1])
+        all_kept_features = [(num, ast.literal_eval(features)) for num, features in zip(features_remaining_df['Num features remaining'], features_remaining_df['features remaining'])]
+
+        df = pd.read_csv(f'{performance_results_path}/train_performances.csv')
+        num_features_and_performances_TRAIN = {df['Unnamed: 0'][i]: df.loc[i, 'fold0':'fold4'].tolist() for i in df.index}
+        df = pd.read_csv(f'{performance_results_path}/test_performances.csv')
+        num_features_and_performances_TEST = {df['Unnamed: 0'][i]: df.loc[i, 'fold0':'fold4'].tolist() for i in df.index}
+        df = pd.read_csv(f'{performance_results_path}/train_MSE.csv')
+        num_features_and_MSE_TRAIN = {df['Unnamed: 0'][i]: df.loc[i, 'fold0':'fold4'].tolist() for i in df.index}
+        df = pd.read_csv(f'{performance_results_path}/test_MSE.csv')
+        num_features_and_MSE_TEST = {df['Unnamed: 0'][i]: df.loc[i, 'fold0':'fold4'].tolist() for i in df.index}
+        df = pd.read_csv(f'{performance_results_path}/train_MAE.csv')
+        num_features_and_MAE_TRAIN = {df['Unnamed: 0'][i]: df.loc[i, 'fold0':'fold4'].tolist() for i in df.index}
+        df = pd.read_csv(f'{performance_results_path}/test_MAE.csv')
+        num_features_and_MAE_TEST = {df['Unnamed: 0'][i]: df.loc[i, 'fold0':'fold4'].tolist() for i in df.index}
+        
+        # print('make current_features_metrics, all_kept_features, and kept_features here with previous data.')
 
     '''keep taking features out until the proper number of features to keep is achieved.'''
     while(len(kept_features) > num_features_to_keep):  
@@ -232,6 +266,9 @@ def start_backward_feature_selection(folds_data_folder, full_dataset, label_to_p
                                     'train_MSE': [],
                                     'train_MAE': []}
         all_kept_features.append((len(kept_features), kept_features))
+            
+        
+        
         kfold_performances = {feature: [] for feature in kept_features}
         for kfold in range(1,6):
             print(f'Working on fold {kfold}')
@@ -274,39 +311,39 @@ def start_backward_feature_selection(folds_data_folder, full_dataset, label_to_p
         
         
         
-    '''save the performances for each number of features'''
-    train_R2_df = pd.DataFrame(num_features_and_performances_TRAIN).T
-    test_R2_df = pd.DataFrame(num_features_and_performances_TEST).T
-    train_MSE_df = pd.DataFrame(num_features_and_MSE_TRAIN).T
-    test_MSE_df = pd.DataFrame(num_features_and_MSE_TEST).T
-    train_MAE_df = pd.DataFrame(num_features_and_MAE_TRAIN).T
-    test_MAE_df = pd.DataFrame(num_features_and_MAE_TEST).T
+        '''save the performances for each number of features'''
+        train_R2_df = pd.DataFrame(num_features_and_performances_TRAIN).T
+        test_R2_df = pd.DataFrame(num_features_and_performances_TEST).T
+        train_MSE_df = pd.DataFrame(num_features_and_MSE_TRAIN).T
+        test_MSE_df = pd.DataFrame(num_features_and_MSE_TEST).T
+        train_MAE_df = pd.DataFrame(num_features_and_MAE_TRAIN).T
+        test_MAE_df = pd.DataFrame(num_features_and_MAE_TEST).T
 
-    # Rename columns
-    new_columns = ['fold' + str(i) for i in range(train_R2_df.shape[1])]
-    train_R2_df.columns = new_columns
-    test_R2_df.columns = new_columns
-    train_MSE_df.columns = new_columns
-    test_MSE_df.columns = new_columns
-    train_MAE_df.columns = new_columns
-    test_MAE_df.columns = new_columns
-    
-    performance_results_path = f'{results_folder}/{label_to_predict}/{model_type}/performances'
-    features_results_path = f'{results_folder}/{label_to_predict}/{model_type}'
-    if(not os.path.exists(performance_results_path)): os.makedirs(performance_results_path)
-    
-    feature_df = pd.DataFrame(all_kept_features, columns=['Num features remaining', 'features remaining'])
+        # Rename columns
+        new_columns = ['fold' + str(i) for i in range(train_R2_df.shape[1])]
+        train_R2_df.columns = new_columns
+        test_R2_df.columns = new_columns
+        train_MSE_df.columns = new_columns
+        test_MSE_df.columns = new_columns
+        train_MAE_df.columns = new_columns
+        test_MAE_df.columns = new_columns
+        
+        
+        features_results_path = f'{results_folder}/{label_to_predict}/{model_type}'
+        if(not os.path.exists(performance_results_path)): os.makedirs(performance_results_path)
+        
+        feature_df = pd.DataFrame(all_kept_features, columns=['Num features remaining', 'features remaining'])
 
-    feature_df.to_csv(f'{performance_results_path}/features_kept.csv')
-    train_R2_df.to_csv(f'{performance_results_path}/train_performances.csv')
-    test_R2_df.to_csv(f'{performance_results_path}/test_performances.csv' )
-    train_MSE_df.to_csv(f'{performance_results_path}/train_MSE.csv')
-    test_MSE_df.to_csv(f'{performance_results_path}/test_MSE.csv' )
-    train_MAE_df.to_csv(f'{performance_results_path}/train_MAE.csv')
-    test_MAE_df.to_csv(f'{performance_results_path}/test_MAE.csv' )
-    
-    kept_features_df = pd.DataFrame(kept_features, columns=['features'])
-    kept_features_df.to_csv(features_results_path + f'/top_{num_features_to_keep}_features.csv')
+        feature_df.to_csv(f'{performance_results_path}/features_kept.csv')
+        train_R2_df.to_csv(f'{performance_results_path}/train_performances.csv')
+        test_R2_df.to_csv(f'{performance_results_path}/test_performances.csv' )
+        train_MSE_df.to_csv(f'{performance_results_path}/train_MSE.csv')
+        test_MSE_df.to_csv(f'{performance_results_path}/test_MSE.csv' )
+        train_MAE_df.to_csv(f'{performance_results_path}/train_MAE.csv')
+        test_MAE_df.to_csv(f'{performance_results_path}/test_MAE.csv' )
+        
+        kept_features_df = pd.DataFrame(kept_features, columns=['features'])
+        kept_features_df.to_csv(features_results_path + f'/top_{num_features_to_keep}_features.csv')
 
     plot_performances_vs_number_of_features(label_to_predict, model_type, results_folder, 'train')
     plot_performances_vs_number_of_features(label_to_predict, model_type, results_folder, 'test')
