@@ -65,16 +65,7 @@ def make_linear_regression_models_for_ensemble(training_features, training_label
         if(model_type == None):
             print("need to choose a model type")
         elif(model_type == "RF"):
-            '''
-            impact site x - 0.62 Test and 0.94 train R2 with great UQ
-            impact site y - 0.51 Test and 0.83 train R2 with great UQ
-            # model =  RandomForestRegressor(n_estimators=100, random_state=42)
-            '''
-            '''
-            impact site x - 0.71 Test and 0.92 train R2 with okay UQ
-            impact site y -  ___ Test and ___ train R2 with great UQ
-            # model =  RandomForestRegressor(max_depth=10, n_estimators=100, random_state=42)
-            '''
+
             model =  RandomForestRegressor(max_depth=20, n_estimators=100, random_state=42)
 
         elif(model_type == 'linear'):

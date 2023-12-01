@@ -318,134 +318,95 @@ def Kfold_Gaussian_Process_Regression(full_dataset, full_dataset_labels, importa
 
 
 
+def plot_hyperparameter_performance(opt, hyperparameter_name, saving_folder):
+    '''
+    Plots the mean TEST performance of a model for each value of a specified hyperparameter.
 
-def do_bayesian_optimization(feature_df, label_df, num_tries=100, features_to_keep='ALL'):
-    if features_to_keep != 'ALL':
-        feature_df = feature_df[features_to_keep]
+    Parameters:
+    opt (BayesSearchCV): The fitted BayesSearchCV object after running the optimization.
+    hyperparameter_name (str): The name of the hyperparameter to plot.
+    '''
+    
+    # Extract the scores from the optimization results
+    results = opt.cv_results_
+    scores = results['mean_test_score']
+    
+    # Extract the hyperparameter values tried during optimization
+    hyperparameter_values = [
+        params[hyperparameter_name] for params in results['params']
+    ]
+    
+    # Create the plot
+    plt.figure(figsize=(10, 5))
+    plt.scatter(hyperparameter_values, scores, color='red', alpha=0.4)
+    # plt.plot(hyperparameter_values, scores, color='lightblue', linestyle='--', marker='o')
 
-    # Zero centering and normalizing features
+    # Label the plot
+    plt.title(f'Performance for different values of hyperparameter: {hyperparameter_name}')
+    plt.xlabel(hyperparameter_name)
+    plt.ylabel('Validation R^2')
+    
+    # Show the plot
+    plt.grid(True)
+    # plt.show()
+    plt.savefig(f'{saving_folder}/{hyperparameter_name}.png')
+    plt.close()
+
+
+
+
+
+def do_bayesian_optimization_GPR(feature_df, label_df, num_tries=100, saving_folder='/Users/jakehirst/Desktop'):
+    # Preprocessing as before
     df_centered = feature_df - feature_df.mean()
     df_normalized = df_centered / df_centered.std()
     feature_df = df_normalized
-
+    
     X = feature_df.to_numpy()
     y = label_df.to_numpy()
 
     X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-    '''parameter space... we are optimizing the length scale and the noise level'''
-    param_space = [
-        Real(1e-9, 1e5, name='length_scale'), 
-        # Real(1e-9, 1e2, name='alpha'), #Scale Mixture Parameter
-        Real(1e-10, 1e2, name='noise_level')
-    ]
+    # Define the parameter space for the Gaussian Process Regression
+    param_space = {
+        'kernel__k1__k2__length_scale': Real(1e-9, 1e5),  # Length scale of the RBF kernel
+        # 'kernel__k1__k1__constant_value': Real(0.1, 10.0),  # Scale of the Constant kernel
+        'kernel__k2__noise_level': Real(1e-10, 1e2, 'log-uniform')  # Noise level for WhiteKernel
+    }
 
-    # Initial kernel
-    kernel = 1.0 * RBF(length_scale=1.0) + WhiteKernel(noise_level=1e-1)
+    # Create a GaussianProcessRegressor with an RBF kernel plus a WhiteKernel for noise
+    kernel = ConstantKernel(constant_value=1.0) * RBF(length_scale=1.0) + WhiteKernel(noise_level=1e-5)
+    gpr = GaussianProcessRegressor(kernel=kernel, random_state=0)
 
-    @use_named_args(param_space)
-    def objective(**params):
-        gp = GaussianProcessRegressor(
-            kernel=ConstantKernel(1.0) * RBF(length_scale=params['length_scale']) + 
-                  WhiteKernel(noise_level=params['noise_level']),
-            # kernel=ConstantKernel(1.0) * RationalQuadratic(length_scale=params['length_scale'], alpha=params['alpha']) + 
-            #       WhiteKernel(noise_level=params['noise_level']),
-            
-            alpha=0.0,
-            normalize_y=True,
-            random_state=0
-        )
-        gp.fit(X_train, y_train)
-        return -gp.score(X_test, y_test)  # Negative because gp_minimize seeks to minimize the objective
+    # Wrap the model with BayesSearchCV
+    opt = BayesSearchCV(gpr, 
+                        param_space, 
+                        n_iter=num_tries, 
+                        random_state=0, 
+                        cv=5,
+                        verbose=3)
 
-    # Perform Bayesian optimization
-    results = gp_minimize(objective, param_space, n_calls=num_tries, random_state=0)
+    # Run the Bayesian optimization
+    opt.fit(X_train, y_train)
 
-    # Best parameters found
-    print("\nBest parameters found: ", results.x)
+    # Best parameter set found
+    print("\nBest parameters found: ", opt.best_params_)
 
-    # Train the model with the best parameters found
-    gp = GaussianProcessRegressor(
-        kernel=ConstantKernel(1.0) * RBF(length_scale=results.x[0]) + 
-              WhiteKernel(noise_level=results.x[1]),
-        alpha=0.0,
-        normalize_y=True,
-        random_state=0
-    )
-    gp.fit(X_train, y_train)
+    # Predict and compute metrics
+    print('Train R^2 score:', r2_score(y_train, opt.predict(X_train)))
+    print('Test R^2 score:', r2_score(y_test, opt.predict(X_test)))
+    
+    hyperparameter_names = ['kernel__k1__k2__length_scale', 'kernel__k2__noise_level']
+    for name in hyperparameter_names:
+        plot_hyperparameter_performance(opt, name, saving_folder)
+    
+    # Save the best parameters
+    with open(f'{saving_folder}/best_hyperparams.txt', 'w') as file:
+        file.write(str(opt.best_params_))
 
-    # Predict using the best model
-    y_pred = gp.predict(X_test)
-
-    # Compute the performance metric, e.g., R^2 score
-    print('Train R^2 score:', gp.score(X_train, y_train))
-    print('Test R^2 score:', gp.score(X_test, y_test))
-
-    return gp
+    # Note: The function 'plot_hyperparameter_performance' would need to be adapted 
+    # to handle the Gaussian Process Regressor hyperparameters.
+    
+    return opt
 
 
-
-
-
-''' when predicting impact site x'''
-# top_10_features = ['sqrt(mean thickness)',
-#                    'init x * init z',
-#                     'init z * max thickness',
-#                     'init z * thickness_at_init',
-#                     'linearity * mean thickness',
-#                     'angle_btw ^ avg_ori',
-#                     'avg_ori + init x',
-#                     'init x + init y',
-#                     'init x + max_prop_speed',
-#                     'linearity + max thickness']
-
-''' when predicting impact site y '''
-# top_10_features =['sqrt(avg_prop_speed)',
-#                 'init y * init z',
-#                 'init y * mean thickness',
-#                 'max_kink / abs_val_sum_kink',
-#                 'avg_ori ^ crack len',
-#                 'thickness_at_init ^ avg_ori',
-#                 'abs_val_mean_kink ^ init z',
-#                 'avg_prop_speed + init y',
-#                 'init y + mean_kink',
-#                 'init y + thickness_at_init']
-
-''' when predicting height'''
-# top_10_features = ['sqrt(angle_btw)',
-#                     'sqrt(crack len)',
-#                     'sqrt(dist btw frts)',
-#                     'log(crack len)',
-#                     'abs_val_mean_kink ^ abs_val_sum_kink',
-#                     'avg_ori ^ crack len',
-#                     'avg_ori ^ dist btw frts',
-#                     'abs_val_sum_kink ^ angle_btw',
-#                     'angle_btw ^ abs_val_sum_kink',
-#                     'abs_val_mean_kink ^ angle_btw']
-
-'''when predicting height''' #use this with the RBF kernel... best params so far: RBF_lengthscale = 158, Whitekernel_noiselevel = 44.6
-top_10_features = ['abs_val_sum_kink * mean thickness',
-                    'abs_val_sum_kink / avg_prop_speed',
-                    'abs_val_sum_kink / thickness_at_init',
-                    'abs_val_sum_kink + init y',
-                    'crack len + init y',
-                    'dist btw frts + init y',
-                    'abs_val_sum_kink - avg_prop_speed',
-                    'avg_prop_speed - abs_val_sum_kink',
-                    'abs_val_sum_kink - init z',
-                    'init z - abs_val_sum_kink']
-
-
-labels_to_predict = ['height', 'impact site x', 'impact site y']
-
-# Generate some synthetic data for demonstration purposes
-# df = pd.read_csv("/Volumes/Jake_ssd/OCTOBER_DATASET/feature_transformations_2023-10-28/height/HEIGHTALL_TRANSFORMED_FEATURES.csv")
-# df = pd.read_csv("/Volumes/Jake_ssd/feature_datasets/feature_transformations_2023-11-05/height/HEIGHTALL_TRANSFORMED_FEATURES.csv")
-# label_df = df.copy()[labels_to_predict]
-# df = df.drop(labels_to_predict, axis=1)
-# if(df.columns.__contains__('timestep_init')):
-#     df = df.drop('timestep_init', axis=1)
-
-
-# label = 'height'
-# optimal_stuff = do_bayesian_optimization(df, label_df[label], 100, features_to_keep=top_10_features)
