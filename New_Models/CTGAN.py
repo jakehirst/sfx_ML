@@ -9,6 +9,8 @@ from sdv.evaluation.single_table import evaluate_quality
 from Backward_feature_selection import *
 from sklearn.metrics import r2_score
 import plotly.graph_objs as go
+from plotly.subplots import make_subplots
+
 
 
 '''trains a CTGAN based on the train_df provided. the batch sizer and num_epochs are customizable.'''
@@ -82,7 +84,6 @@ def analyze_R2_performance(synthesizer, train_df, test_df, path,
         features = ['init z',
             'init y',
             'init x',
-            'timestep_init',
             'max_prop_speed',
             'avg_prop_speed',
             'dist btw frts',
@@ -194,3 +195,49 @@ def get_quality_metric(metric, path):
 
 
 
+def make_performance_figures(label, epochs_batchsizes_scores, model_symbols):
+    # Create subplots: one for real scores and one for abs(difference)
+    fig = make_subplots(
+        rows=1, cols=2,
+        subplot_titles=('Synthetic Data Test R2', 'Synthetic - Real) Test R2\n(literature says this should always be negative)'),
+        specs=[[{'type': 'scatter3d'}, {'type': 'scatter3d'}]]  # Specify 3D subplots
+    )
+    # Create subplots
+    # fig = make_subplots(rows=1, cols=2, subplot_titles=("d values", "abs(c-d) values"))
+
+    # Loop through each model type and add a scatter plot to the subplots
+    for model_type, tuples in epochs_batchsizes_scores.items():
+        x, y, c, d = zip(*tuples)
+        d_minus_c = [di - ci for ci, di in zip(c, d)]
+        
+        symbol, color = model_symbols[model_type]
+        
+        # Left subplot for d values
+        fig.add_trace(
+            go.Scatter3d(x=x, y=y, z=d, mode='markers', name=model_type,
+                       marker=dict(symbol=symbol, color=color, size=10)),
+                    # marker=dict(symbol=symbol, color=color, size=10, line=dict(width=2, color='DarkSlateGrey'))),
+            row=1, col=1
+        )
+        
+        # Right subplot for abs(c-d) values
+        fig.add_trace(
+            go.Scatter3d(x=x, y=y, z=d_minus_c, mode='markers', name=model_type,
+                       marker=dict(symbol=symbol, color=color, size=10),
+                       showlegend=False),
+                    # marker=dict(symbol=symbol, color=color, size=10, line=dict(width=2, color='DarkSlateGrey'))),
+            row=1, col=2
+        )
+            
+    fig.update_layout(height=600, width=1200, title_text=f"Comparison of Model Performance predicting {label}",
+                      scene1=dict(zaxis=dict(title='Test R2', range=[-1, 1]),
+                                  xaxis=dict(title='epoch'),
+                                  yaxis=dict(title='batch size')),
+                      scene2=dict(zaxis=dict(title='Difference in test R2'),
+                                  xaxis=dict(title='epoch'),
+                                  yaxis=dict(title='batch size')))
+    
+    save_path = f'/Volumes/Jake_ssd/GANS/hyperparameter_tuning/R2_performances'
+    if(not os.path.exists(save_path)): os.makedirs(save_path)
+    fig.write_html(save_path + f'/{label}.html')
+    return

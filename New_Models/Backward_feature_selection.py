@@ -3,7 +3,8 @@ from linear_regression import *
 from polynomial_regression import *
 from lasso_regression import *
 from ridge_regression import *
-from CNN import *
+# from CNN import *
+from Pytorch_ANN import *
 from random_forest import *
 from itertools import combinations
 import seaborn as sns
@@ -103,9 +104,15 @@ def make_5_fold_datasets(saving_folder, full_dataset_pathname, normalize=True, r
 
 
 def append_metrics(current_features_metrics, model, test_features, test_labels, train_features, train_labels):
-    test_preds = model.predict(test_features)
-    train_preds = model.predict(train_features)
-    
+    if(type(model) == ANNModel): 
+        with torch.no_grad():
+            model.eval()
+            test_preds = model(torch.FloatTensor(test_features.values).to(device)).numpy()
+            train_preds = model(torch.FloatTensor(train_features.values).to(device)).numpy()
+    else:
+        test_preds = model.predict(test_features)
+        train_preds = model.predict(train_features)
+        
     current_features_metrics['test_R2'].append(r2_score(test_labels.to_numpy(), test_preds))
     current_features_metrics['test_MSE'].append(mean_squared_error(test_labels.to_numpy(), test_preds))
     current_features_metrics['test_MAE'].append(mean_absolute_error(test_labels.to_numpy(), test_preds))
@@ -117,25 +124,21 @@ def append_metrics(current_features_metrics, model, test_features, test_labels, 
 
 def train_model(model_type, train_features, train_labels):
     if(model_type == 'ANN'):
-        train_features, val_features, train_labels, val_labels = train_test_split(
-            train_features, train_labels, test_size=0.2, random_state=42)
-        model, history = make_1D_CNN_for_ensemble(train_features, 
-                                     val_features, 
-                                    #  train_labels[label_predicted], 
-                                    #  val_labels[label_predicted], 
-                                     train_labels,
-                                     val_labels,
-                                     patience=50, 
-                                     max_epochs=400, 
-                                     num_outputs=1, 
-                                     lossfunc='mean_absolute_error',#mean_absolute_error for height
-                                     verbose=True,
-                                     L1=0.01, #0.01 for height
-                                     L2=0.01, #0.01 for height
-                                     dropout=0.2) #0.2 for height
+        dropout, l1_lambda, l2_lambda, learning_rate = get_best_hyperparameters_ANN(label_to_predict=train_labels.columns[0], hyperparameter_folder='/Volumes/Jake_ssd/bayesian_optimization')
+        l1_lambda = 0.001 #TODO: delete these after optimizing once
+        learning_rate = 0.0001
+        dropout = 0
+        l2_lambda = 0
+        model = ANNModel(input_size=train_features.shape[1], output_size=1, dropout_rate=dropout).to(device)
+        X_train_tensor = torch.FloatTensor(train_features.values).to(device)
+        y_train_tensor = torch.FloatTensor(train_labels.values).to(device)
+        model = train_ANN(model, X_train_tensor, y_train_tensor, loss_func='MAE', learning_rate=learning_rate, epochs=1000, l1_lambda=l1_lambda, l2_lambda=l2_lambda, patience=200, plot_losses=False) 
+
     elif(model_type == 'RF'):
+        depth, features, samples_leaf, samples_split, estimators = get_best_hyperparameters_RF(label_to_predict=train_labels.columns[0], hyperparameter_folder='/Volumes/Jake_ssd/bayesian_optimization')
         #  OrderedDict([('max_depth', 2), ('max_features', 1), ('min_samples_leaf', 20), ('min_samples_split', 2), ('n_estimators', 2334)])
-        model =  RandomForestRegressor(max_depth=2, max_features=1, min_samples_leaf = 20, min_samples_split = 2, n_estimators=2334, random_state=42)
+        model =  RandomForestRegressor(max_depth=depth, max_features=features, 
+                                       min_samples_leaf = samples_leaf, min_samples_split = samples_split, n_estimators=estimators, random_state=42)
     elif(model_type == 'linear'):
         model = LinearRegression() 
     elif(model_type == 'lasso'):
@@ -145,8 +148,8 @@ def train_model(model_type, train_features, train_labels):
         a = 0.1
         model = Ridge(alpha=a)
     elif(model_type == 'poly2'):
-        degree = 2
-        model = make_pipeline(PolynomialFeatures(degree=2), ElasticNet(alpha = 0.06805476162251822, l1_ratio = 0.9087272306229307, random_state=0))
+        alpha, l1_ratio = get_best_hyperparameters_poly2(label_to_predict=train_labels.columns[0], hyperparameter_folder='/Volumes/Jake_ssd/bayesian_optimization')
+        model = make_pipeline(PolynomialFeatures(degree=2), ElasticNet(alpha = alpha, l1_ratio = l1_ratio, random_state=0))
     elif(model_type == 'poly3'):
         degree = 3
         model = make_pipeline(PolynomialFeatures(degree),LinearRegression())
@@ -154,10 +157,12 @@ def train_model(model_type, train_features, train_labels):
         degree = 4
         model = make_pipeline(PolynomialFeatures(degree),LinearRegression())  
     elif(model_type == 'GPR'):
-        kernel = ConstantKernel(1.0) + ConstantKernel(1.0) * RBF() + WhiteKernel(noise_level=1) # this one works well
-        model = GaussianProcessRegressor(kernel=kernel, random_state=0, alpha=50, n_restarts_optimizer=25) 
+        c, length_scale, noise_level = get_best_hyperparameters_GPR(label_to_predict=train_labels.columns[0], hyperparameter_folder='/Volumes/Jake_ssd/bayesian_optimization')
+        kernel = ConstantKernel(constant_value=c) * RBF(length_scale=length_scale) + WhiteKernel(noise_level=noise_level)
+        # model = GaussianProcessRegressor(kernel=kernel, random_state=0, alpha=50, n_restarts_optimizer=25) 
+        model = GaussianProcessRegressor(kernel=kernel, random_state=0, n_restarts_optimizer=25)
 
-    if(model != 'ANN'):
+    if(model_type != 'ANN'):
         model.fit(train_features, train_labels)
     return model
 
@@ -165,7 +170,13 @@ def train_model(model_type, train_features, train_labels):
 '''get the performance of the model when randomizing one feature at a time.
 returns a dictionary with the keys being the features that it randomized, and the values beign the performances of the model when that feature was randomized.'''
 def get_performances_randomizing_features(model, train_features, train_labels, percentage_to_remove=50):
-    OG_train_preds = model.predict(train_features)
+    if(type(model) == ANNModel): 
+        with torch.no_grad():
+            model.eval()
+            OG_train_preds = model(torch.FloatTensor(train_features.values).to(device)).numpy()
+            # train_preds = model(torch.FloatTensor(train_features.values).to(device)).numpy()
+    else:
+        OG_train_preds = model.predict(train_features)
     og_train_r2 = r2_score(OG_train_preds,train_labels)
     
     all_features = train_features.columns.tolist()
@@ -173,7 +184,12 @@ def get_performances_randomizing_features(model, train_features, train_labels, p
     for feature in all_features:
         randomized_train_features = train_features.copy()
         randomized_train_features[feature] = train_features[feature].sample(frac=1).reset_index(drop=True)
-        train_preds = model.predict(randomized_train_features)
+        if(type(model) == ANNModel):
+            with torch.no_grad():
+                model.eval()
+                train_preds = model(torch.FloatTensor(randomized_train_features.values).to(device)).numpy()
+        else:
+            train_preds = model.predict(randomized_train_features)
         new_train_r2 = r2_score(train_preds,train_labels)
         
         r2_diff = new_train_r2 - og_train_r2
