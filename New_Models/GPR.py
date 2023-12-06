@@ -365,12 +365,13 @@ def do_bayesian_optimization_GPR(feature_df, label_df, num_tries=100, saving_fol
     X = feature_df.to_numpy()
     y = label_df.to_numpy()
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    '''not needed since the BayesSearchCV already splits it into training and validation sets.'''
+    # X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
     # Define the parameter space for the Gaussian Process Regression
     param_space = {
         'kernel__k1__k2__length_scale': Real(1e-9, 1e5),  # Length scale of the RBF kernel
-        # 'kernel__k1__k1__constant_value': Real(0.1, 10.0),  # Scale of the Constant kernel
+        'kernel__k1__k1__constant_value': Real(0.1, 10.0),  # Scale of the Constant kernel
         'kernel__k2__noise_level': Real(1e-10, 1e2, 'log-uniform')  # Noise level for WhiteKernel
     }
 
@@ -384,19 +385,21 @@ def do_bayesian_optimization_GPR(feature_df, label_df, num_tries=100, saving_fol
                         n_iter=num_tries, 
                         random_state=0, 
                         cv=5,
-                        verbose=3)
+                        verbose=0)
 
     # Run the Bayesian optimization
-    opt.fit(X_train, y_train)
+    opt.fit(X, y)
 
+    best_index = opt.best_index_
+    # Retrieve the mean test score for the best parameters
+    best_average_score = opt.cv_results_['mean_test_score'][best_index]
     # Best parameter set found
-    print("\nBest parameters found: ", opt.best_params_)
-
-    # Predict and compute metrics
-    print('Train R^2 score:', r2_score(y_train, opt.predict(X_train)))
-    print('Test R^2 score:', r2_score(y_test, opt.predict(X_test)))
+    print(f"\n$$$$$$$$$$$$ Results for GPR predicting {label_df.name} $$$$$$$$$$$$")
+    print(f"$$$$$$$$$$$$ Best parameters found: {opt.best_params_} $$$$$$$$$$$$")
+    print(f"$$$$$$$$$$$$ Best average test score across 5-fold cv: {best_average_score} $$$$$$$$$$$$\n")
     
-    hyperparameter_names = ['kernel__k1__k2__length_scale', 'kernel__k2__noise_level']
+    
+    hyperparameter_names = ['kernel__k1__k2__length_scale', 'kernel__k1__k1__constant_value', 'kernel__k2__noise_level']
     for name in hyperparameter_names:
         plot_hyperparameter_performance(opt, name, saving_folder)
     
@@ -409,4 +412,22 @@ def do_bayesian_optimization_GPR(feature_df, label_df, num_tries=100, saving_fol
     
     return opt
 
+
+'''gets the best hyperparameters to use for GPR when predicting label_to_predict'''
+def get_best_hyperparameters_GPR(label_to_predict, hyperparameter_folder):
+    import ast
+    best_hp_path = f'{hyperparameter_folder}/{label_to_predict}/GPR/best_hyperparams.txt'
+    try:
+        with open(best_hp_path, 'r') as file:
+            content = file.read()
+    except FileNotFoundError:
+        print("File not found best_hyperparams.txt.")
+    except Exception as e:
+        print(f"An error occurred opening best_hyperparams.txt: {e}")
+    converted_dict = dict(ast.literal_eval(content.removeprefix('OrderedDict')))
+    c = converted_dict['kernel__k1__k1__constant_value']
+    length_scale = converted_dict['kernel__k1__k2__length_scale']
+    noise_level = converted_dict['kernel__k2__noise_level']
+    
+    return c, length_scale, noise_level
 

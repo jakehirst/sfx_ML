@@ -129,14 +129,15 @@ def do_bayesian_optimization_RF(feature_df, label_df, num_tries=100, saving_fold
     X = feature_df.to_numpy()
     y = label_df.to_numpy()
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    '''not needed since the BayesSearchCV already splits it into training and validation sets.'''
+    # X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
     # Define the parameter space for the Random Forest
     param_space = {
         'n_estimators': (5000, 10000),  #Higher for generalization, lower for overfitting
-        'max_depth': (2,3),  #Higher for overfitting, lower for generaliztion
+        'max_depth': (2,5),  #Higher for overfitting, lower for generaliztion
         'min_samples_split': (25, 50),  #Higher for generalization, lower for overfitting
-        'min_samples_leaf': (20, 25), #Higher for generalization, lower for overfitting
+        'min_samples_leaf': (10, 25), #Higher for generalization, lower for overfitting
         # 'max_features': (1, X_train.shape[1]), #Higher for overfitting, lower for generalization
         'max_features': (2,3), #Higher for overfitting, lower for generalization
 
@@ -151,20 +152,18 @@ def do_bayesian_optimization_RF(feature_df, label_df, num_tries=100, saving_fold
                         n_iter=num_tries, 
                         random_state=0, 
                         cv=5,
-                        verbose=3) #COMMENT cv=5 indicates a 5 fold cross validation
+                        verbose=0) #COMMENT cv=5 indicates a 5 fold cross validation
 
     # Run the Bayesian optimization
-    opt.fit(X_train, y_train)
+    opt.fit(X, y)
 
+    best_index = opt.best_index_
+    # Retrieve the mean test score for the best parameters
+    best_average_score = opt.cv_results_['mean_test_score'][best_index]
     # Best parameter set found
-    print("\nBest parameters found: ", opt.best_params_)
-
-    # Predict using the best model
-    y_pred = opt.predict(X_test)
-
-    # Compute the performance metric, e.g., R^2 score
-    print('Train R^2 score:', r2_score(y_train, opt.predict(X_train)))
-    print('Test R^2 score:', r2_score(y_test, opt.predict(X_test)))
+    print(f"\n$$$$$$$$$$$$ Results for RF predicting {label_df.name} $$$$$$$$$$$$")
+    print(f"$$$$$$$$$$$$ Best parameters found: {opt.best_params_} $$$$$$$$$$$$")
+    print(f"$$$$$$$$$$$$ Best average test score across 5-fold cv: {best_average_score} $$$$$$$$$$$$\n")
     
     hyperparameter_names = ['n_estimators', 'max_depth', 'min_samples_split', 'min_samples_leaf', 'max_features']
     for name in hyperparameter_names:
@@ -174,6 +173,27 @@ def do_bayesian_optimization_RF(feature_df, label_df, num_tries=100, saving_fold
     with open(f'{saving_folder}/best_hyperparams.txt', 'w') as file:
         file.write(str(opt.best_params_))
     return opt
+
+
+'''gets the best hyperparameters to use for GPR when predicting label_to_predict'''
+def get_best_hyperparameters_RF(label_to_predict, hyperparameter_folder):
+    import ast
+    best_hp_path = f'{hyperparameter_folder}/{label_to_predict}/RF/best_hyperparams.txt'
+    try:
+        with open(best_hp_path, 'r') as file:
+            content = file.read()
+    except FileNotFoundError:
+        print("File not found best_hyperparams.txt.")
+    except Exception as e:
+        print(f"An error occurred opening best_hyperparams.txt: {e}")
+    converted_dict = dict(ast.literal_eval(content.removeprefix('OrderedDict')))
+    depth = converted_dict['max_depth']
+    features = converted_dict['max_features']
+    samples_leaf = converted_dict['min_samples_leaf']
+    samples_split = converted_dict['min_samples_split']
+    estimators = converted_dict['n_estimators']
+    
+    return depth, features, samples_leaf, samples_split, estimators
     
     
     

@@ -101,13 +101,15 @@ def do_bayesian_optimization_poly_reg(feature_df, label_df, num_tries=100, savin
     X = feature_df.to_numpy()
     y = label_df.to_numpy()
 
-    X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
+    '''not needed since the BayesSearchCV already splits it into training and validation sets.'''
+    # X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
     # Define the parameter space for the ElasticNet within a polynomial regression
     param_space = {
         # 'polynomialfeatures__degree': Integer(2,2),  # Degree of the polynomial
         'elasticnet__alpha': Real(0.0001, 1.0, 'log-uniform'),  # Regularization strength
-        'elasticnet__l1_ratio': Real(0.0, 1.0)  # Balance between L1 and L2 regularization
+        # 'elasticnet__l1_ratio': Real(0.0, 1.0)  # Balance between L1 and L2 regularization
+        'elasticnet__l1_ratio': Real(0.0, 0.95)  # Balance between L1 and L2 regularization
     }
 
     # Create a pipeline with PolynomialFeatures and ElasticNet
@@ -119,18 +121,18 @@ def do_bayesian_optimization_poly_reg(feature_df, label_df, num_tries=100, savin
                         n_iter=num_tries, 
                         random_state=0, 
                         cv=5,
-                        verbose=3)
+                        verbose=0)
 
     # Run the Bayesian optimization
-    opt.fit(X_train, y_train)
+    opt.fit(X, y)
 
+    best_index = opt.best_index_
+    # Retrieve the mean test score for the best parameters
+    best_average_score = opt.cv_results_['mean_test_score'][best_index]
     # Best parameter set found
-    print("\nBest parameters found: ", opt.best_params_)
-
-    # Predict and compute metrics
-    print('Train R^2 score:', r2_score(y_train, opt.predict(X_train)))
-    print('Test R^2 score:', r2_score(y_test, opt.predict(X_test)))
-
+    print(f"\n$$$$$$$$$$$$ Results for Poly2 predicting {label_df.name} $$$$$$$$$$$$")
+    print(f"$$$$$$$$$$$$ Best parameters found: {opt.best_params_} $$$$$$$$$$$$")
+    print(f"$$$$$$$$$$$$ Best average test score across 5-fold cv: {best_average_score} $$$$$$$$$$$$\n")
 
     hyperparameter_names = ['elasticnet__alpha', 'elasticnet__l1_ratio']
     for name in hyperparameter_names:
@@ -142,3 +144,20 @@ def do_bayesian_optimization_poly_reg(feature_df, label_df, num_tries=100, savin
     
     return opt
 
+
+'''gets the best hyperparameters to use for poly2 when predicting label_to_predict'''
+def get_best_hyperparameters_poly2(label_to_predict, hyperparameter_folder):
+    import ast
+    best_hp_path = f'{hyperparameter_folder}/{label_to_predict}/poly2/best_hyperparams.txt'
+    try:
+        with open(best_hp_path, 'r') as file:
+            content = file.read()
+    except FileNotFoundError:
+        print("File not found best_hyperparams.txt.")
+    except Exception as e:
+        print(f"An error occurred opening best_hyperparams.txt: {e}")
+    converted_dict = dict(ast.literal_eval(content.removeprefix('OrderedDict')))
+    alpha = converted_dict['elasticnet__alpha']
+    l1_ratio = converted_dict['elasticnet__l1_ratio']
+    
+    return alpha, l1_ratio
