@@ -97,6 +97,9 @@ def train_ANN(model, X_train_tensor, y_train_tensor, loss_func='MAE', learning_r
     x_val = X_train_tensor[val_indexes]
     y_val = y_train_tensor[val_indexes]
     
+    y_train = y_train.reshape(y_train.shape[0])
+    y_val = y_val.reshape(y_val.shape[0])
+    
     '''putting training dataset into loader (preps the batches)'''
     dataset_train = TensorDataset(x_train, y_train)
     loader_train = DataLoader(dataset_train, batch_size=batch_size, shuffle=True)
@@ -194,22 +197,10 @@ def test_model(model, X_test):
 
 '''pytorch only works with tensors, so this is needed to preprocess the data for pytorch.'''
 def prepare_data_for_pytorch(train_feats, test_feats, train_labels, test_labels):
-    # X_train, X_val, y_train, y_val = train_test_split(train_feats, train_labels, test_size=0.20, random_state=42,shuffle=True )
-
-    # Convert data to PyTorch tensors
-    # X_train_tensor = torch.FloatTensor(torch.tensor(train_feats.values, dtype=torch.float32), torch.tensor(train_labels.values, dtype=torch.float32))
     X_train_tensor = torch.FloatTensor(train_feats.values).to(device)
     y_train_tensor = torch.FloatTensor(train_labels.values).to(device)
-    # val_tensor = torch.FloatTensor(torch.tensor(X_val.values, dtype=torch.float32), torch.tensor(y_val.values, dtype=torch.float32))
-    # test_dataset = TensorDataset(torch.tensor(test_feats.to_numpy(), dtype=torch.float32), torch.tensor(test_labels.values, dtype=torch.float32))
-    # X_test_tensor = torch.FloatTensor(torch.tensor(test_feats.values, dtype=torch.float32), torch.tensor(test_labels.values, dtype=torch.float32))
     X_test_tensor = torch.FloatTensor(test_feats.values).to(device)
     y_test_tensor = torch.FloatTensor(test_labels.values).to(device)
-    # DataLoader
-    # train_loader = DataLoader(train_tensor, batch_size=batch_size, shuffle=False)
-    # val_loader = DataLoader(val_tensor, batch_size=batch_size, shuffle=False)
-    # test_loader = DataLoader(test_tensor, batch_size=batch_size, shuffle=False)
-
     return X_train_tensor, y_train_tensor, X_test_tensor, y_test_tensor
 
 
@@ -368,10 +359,10 @@ def do_bayesian_optimization(x_tensor, y_tensor, num_iter=200):
 
     '''Bounded region of parameter space'''
     pbounds = {
-            'learning_rate': (0.0001, 0.01),
+            'learning_rate': (0.0001, 0.1),
             'dropout': (0.0, 0.6), 
-            'l1_lambda': (0.0, 1.0),
-            'l2_lambda': (0.0, 1.0)
+            'l1_lambda': (0.0, 0.1),
+            'l2_lambda': (0.0, 0.1)
             }
 
     '''define optimizer'''
@@ -392,6 +383,13 @@ def do_bayesian_optimization(x_tensor, y_tensor, num_iter=200):
     print(f"Total runtime: {time_took}")
     print(optimizer.max)
     return optimizer
+
+'''can take in a dataframe and a trained ANN model and convert the data to a pytorch tensor so that predictions can be made.'''
+def pytorch_ANN_predict(model, feature_df):
+    with torch.no_grad():
+        model.eval()
+        predictions = model(torch.FloatTensor(feature_df.values).to(device)).numpy()
+    return predictions.flatten()
 
 '''plots all parameters and their target function value after optimization.'''
 def plot_parameter_trials(optimizer, saving_folder):

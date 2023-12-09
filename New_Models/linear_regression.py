@@ -19,8 +19,8 @@ def parody_plot(y_test, y_pred_test, fold_no, saving_folder, label_to_predict, m
     plt.title('Fold ' + str(fold_no) + f' {model_type}' + ', R2=%.2f' % r2_score(y_test, y_pred_test))
     plt.xlabel('Actual')
     plt.ylabel('Predicted')
-    plt.savefig(saving_folder +  f'/{label_to_predict}_fold_{fold_no}_parody_plot.png')
-    # plt.show()
+    # plt.savefig(saving_folder +  f'/{label_to_predict}_fold_{fold_no}_parody_plot.png')
+    plt.show()
     plt.close()
 
 '''
