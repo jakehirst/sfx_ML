@@ -125,13 +125,13 @@ def append_metrics(current_features_metrics, model, test_features, test_labels, 
 def train_model(model_type, train_features, train_labels):
     if(model_type == 'ANN'):
         dropout, l1_lambda, l2_lambda, learning_rate = get_best_hyperparameters_ANN(label_to_predict=train_labels.columns[0], hyperparameter_folder='/Volumes/Jake_ssd/bayesian_optimization')
-        l1_lambda = 0.001 #TODO: delete these after optimizing once
-        learning_rate = 0.0001
-        dropout = 0
-        l2_lambda = 0
         model = ANNModel(input_size=train_features.shape[1], output_size=1, dropout_rate=dropout).to(device)
         X_train_tensor = torch.FloatTensor(train_features.values).to(device)
         y_train_tensor = torch.FloatTensor(train_labels.values).to(device)
+        # dropout = 0.01 #TODO seeing if using optimal hyperparams works...
+        # l1_lambda = 0.0
+        # l2_lambda = 0.0
+        # learning_rate = 0.01
         model = train_ANN(model, X_train_tensor, y_train_tensor, loss_func='MAE', learning_rate=learning_rate, epochs=1000, l1_lambda=l1_lambda, l2_lambda=l2_lambda, patience=200, plot_losses=False) 
 
     elif(model_type == 'RF'):
@@ -316,10 +316,13 @@ def start_backward_feature_selection(folds_data_folder, full_dataset, label_to_p
 
         '''remove 20% of the features that have the least effect on the predictions until theres only a little left.'''
         average_kfold_performances = dict(sorted(average_kfold_performances.items(), key=lambda item: item[1], reverse=True))
-        if(len(average_kfold_performances) > num_features_to_keep*1.5):
-            how_many_to_remove = int(np.ceil(len(average_kfold_performances) * 0.20))
+        if(len(average_kfold_performances) > 20):#COMMENT THIS IS WHERE THE NUMBER OF FEATURES REMOVED IS DEFINED
+            how_many_to_remove = int(np.ceil(len(average_kfold_performances) * 0.10))
+            how_many_to_remove = 1
         else: 
-            how_many_to_remove = len(average_kfold_performances) - num_features_to_keep
+            # how_many_to_remove = len(average_kfold_performances) - num_features_to_keep
+            how_many_to_remove = 1
+
             
         keys_to_remove = list(average_kfold_performances.keys())[:how_many_to_remove]
         print(f'\nremoving these features: \n{keys_to_remove}')
@@ -366,8 +369,28 @@ def start_backward_feature_selection(folds_data_folder, full_dataset, label_to_p
     
     return kept_features, num_features_and_performances_TRAIN, num_features_and_performances_TEST
 
+'''
+gets the best combination of features when predicting the label for this type of model
 
-            
+folder = folder path where all backward feature selection results are stored (example = "/Volumes/Jake_ssd/Paper_1_results_WITH_feature_engineering/results")
+label = label you are predicting (example = 'height')
+model_type = model you are using (example = 'ANN')
+min_features = 
+max_features = 
+'''
+def get_best_features(folder, label, model_type, min_features, max_features):
+    performances = pd.read_csv(folder + f'/{label}/{model_type}/performances/test_performances.csv')
+    #only include rows that have less than 100 features and more than 10 features
+    performances = performances.drop(performances[(performances['Unnamed: 0'] < min_features) | (performances['Unnamed: 0'] > max_features)].index)
+
+    #calculate an average performance across all folds for each feature combination
+    performances['average'] = performances[['fold0', 'fold1', 'fold2', 'fold3', 'fold4']].mean(axis=1)
+    row_with_largest_average = performances['average'].idxmax() #get the row index that has the best performance across all folds
+
+    #now get the features that were used for the best performing set of features
+    features_kept = pd.read_csv(folder + f'/{label}/{model_type}/performances/features_kept.csv')
+    best_feature_combination = features_kept.iloc[row_with_largest_average]['features remaining']    
+    return best_feature_combination
             
             
 
