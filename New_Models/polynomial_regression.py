@@ -8,6 +8,8 @@ from skopt.space import Real
 from sklearn.metrics import r2_score
 import pandas as pd
 
+
+
 '''
 splits the data into 5 different k-folds of test and training sets
 then runs GPR on each of the training sets
@@ -121,7 +123,9 @@ def do_bayesian_optimization_poly_reg(feature_df, label_df, num_tries=100, savin
                         n_iter=num_tries, 
                         random_state=0, 
                         cv=5,
-                        verbose=0)
+                        verbose=3,
+                        # scoring= 'r2')
+                        scoring= 'neg_mean_absolute_error')
 
     # Run the Bayesian optimization
     opt.fit(X, y)

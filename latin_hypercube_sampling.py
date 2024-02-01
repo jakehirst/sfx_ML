@@ -1,7 +1,7 @@
 import numpy as np
+import pandas as pd
 
-
-height_bounds = (4.0, 5.0)
+height_bounds = (1.0, 5.0)
 phi_bounds = (0.0, 50.0)
 theta_bounds = (0.0, 360.0)
 
@@ -19,7 +19,7 @@ def latin_hypercube_samples(n, ranges):
     return samples
 
 # Define the number of samples and variable ranges
-num_samples = 70
+num_samples = 1000
 variable_ranges = [(height_bounds[0], height_bounds[1]), (phi_bounds[0], phi_bounds[1]), (theta_bounds[0], theta_bounds[1])]  # (min, max) for each variable
 
 # Generate Latin Hypercube Samples
@@ -32,4 +32,6 @@ height, phi, theta = samples[:, 0], samples[:, 1], samples[:, 2]
 print(f'Generated Height values: {height}')
 print(f'Generated Phi values: {phi}')
 print(f'Generated Theta values: {theta}')
+
+dataframe = pd.DataFrame(data=samples, columns = ['height', 'phi', 'theta'])
 print('here')

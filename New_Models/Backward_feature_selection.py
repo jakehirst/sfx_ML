@@ -16,6 +16,8 @@ from scipy.stats import pearsonr
 import concurrent.futures
 from scipy import stats
 import ast
+from sklearn.preprocessing import StandardScaler
+
 
 '''gets all of the poorly correlated features. they have a pearson correlation that is less than the threshold'''
 def get_low_correlation_features(dataset, label_to_predict, all_labels, threshold):
@@ -122,9 +124,9 @@ def append_metrics(current_features_metrics, model, test_features, test_labels, 
     
     return current_features_metrics
 
-def train_model(model_type, train_features, train_labels):
+def train_model(model_type, train_features, train_labels, hyperparameter_folder):
     if(model_type == 'ANN'):
-        dropout, l1_lambda, l2_lambda, learning_rate = get_best_hyperparameters_ANN(label_to_predict=train_labels.columns[0], hyperparameter_folder='/Volumes/Jake_ssd/bayesian_optimization')
+        dropout, l1_lambda, l2_lambda, learning_rate = get_best_hyperparameters_ANN(label_to_predict=train_labels.columns[0], hyperparameter_folder=hyperparameter_folder)
         model = ANNModel(input_size=train_features.shape[1], output_size=1, dropout_rate=dropout).to(device)
         X_train_tensor = torch.FloatTensor(train_features.values).to(device)
         y_train_tensor = torch.FloatTensor(train_labels.values).to(device)
@@ -135,10 +137,11 @@ def train_model(model_type, train_features, train_labels):
         model = train_ANN(model, X_train_tensor, y_train_tensor, loss_func='MAE', learning_rate=learning_rate, epochs=1000, l1_lambda=l1_lambda, l2_lambda=l2_lambda, patience=200, plot_losses=False) 
 
     elif(model_type == 'RF'):
-        depth, features, samples_leaf, samples_split, estimators = get_best_hyperparameters_RF(label_to_predict=train_labels.columns[0], hyperparameter_folder='/Volumes/Jake_ssd/bayesian_optimization')
+        depth, features, samples_leaf, samples_split, estimators = get_best_hyperparameters_RF(label_to_predict=train_labels.columns[0], hyperparameter_folder=hyperparameter_folder)
         #  OrderedDict([('max_depth', 2), ('max_features', 1), ('min_samples_leaf', 20), ('min_samples_split', 2), ('n_estimators', 2334)])
         model =  RandomForestRegressor(max_depth=depth, max_features=features, 
                                        min_samples_leaf = samples_leaf, min_samples_split = samples_split, n_estimators=estimators, random_state=42)
+        # model = RandomForestRegressor()
     elif(model_type == 'linear'):
         model = LinearRegression() 
     elif(model_type == 'lasso'):
@@ -148,7 +151,7 @@ def train_model(model_type, train_features, train_labels):
         a = 0.1
         model = Ridge(alpha=a)
     elif(model_type == 'poly2'):
-        alpha, l1_ratio = get_best_hyperparameters_poly2(label_to_predict=train_labels.columns[0], hyperparameter_folder='/Volumes/Jake_ssd/bayesian_optimization')
+        alpha, l1_ratio = get_best_hyperparameters_poly2(label_to_predict=train_labels.columns[0], hyperparameter_folder=hyperparameter_folder)
         model = make_pipeline(PolynomialFeatures(degree=2), ElasticNet(alpha = alpha, l1_ratio = l1_ratio, random_state=0))
     elif(model_type == 'poly3'):
         degree = 3
@@ -157,10 +160,18 @@ def train_model(model_type, train_features, train_labels):
         degree = 4
         model = make_pipeline(PolynomialFeatures(degree),LinearRegression())  
     elif(model_type == 'GPR'):
-        c, length_scale, noise_level = get_best_hyperparameters_GPR(label_to_predict=train_labels.columns[0], hyperparameter_folder='/Volumes/Jake_ssd/bayesian_optimization')
+        c, length_scale, noise_level = get_best_hyperparameters_GPR(label_to_predict=train_labels.columns[0], hyperparameter_folder=hyperparameter_folder)
         kernel = ConstantKernel(constant_value=c) * RBF(length_scale=length_scale) + WhiteKernel(noise_level=noise_level)
+        # kernel = ConstantKernel(1.0) + ConstantKernel(1.0) * RBF() + WhiteKernel(noise_level=1) #TODO trying this one out... using best hyperparams underfits when bagging
+        # kernel = ConstantKernel(1.0) * RBF() + WhiteKernel(noise_level=1) #TODO trying this one out... using best hyperparams underfits when bagging
+        # kernel = ConstantKernel() + Matern() + WhiteKernel(noise_level=1) #TODO trying kernel from paper
         # model = GaussianProcessRegressor(kernel=kernel, random_state=0, alpha=50, n_restarts_optimizer=25) 
         model = GaussianProcessRegressor(kernel=kernel, random_state=0, n_restarts_optimizer=25)
+    
+    # '''doing Z-score normalization on features (mean of 0, std of 1)'''
+    # # Initialize the StandardScaler
+    # scaler = StandardScaler()
+    # train_features = pd.DataFrame(scaler.fit_transform(train_features), columns=train_features.columns)
 
     if(model_type != 'ANN'):
         model.fit(train_features, train_labels)
@@ -232,7 +243,7 @@ def plot_performances_vs_number_of_features(label_to_predict, model_type, result
 
 '''uses the dataset to train the model_type model, then removes the bottom 10% important features. Then trains the model again, and repeats the process until 
     there are only num_features_to_keep features left. returns those features and the performances (R^2) on the test and training sets.'''
-def start_backward_feature_selection(folds_data_folder, full_dataset, label_to_predict, model_type, all_labels, all_features, results_folder, num_features_to_keep):
+def start_backward_feature_selection(folds_data_folder, full_dataset, label_to_predict, model_type, all_labels, all_features, results_folder, num_features_to_keep, hyperparameter_folder):
     '''remove all of the features that do not have a p-value of less than 0.05 with the label. this is the first filter... '''
     non_significant_features = get_non_significant_features(full_dataset, label_to_predict, all_labels)
     kept_features = [item for item in all_features if item not in non_significant_features]
@@ -295,7 +306,7 @@ def start_backward_feature_selection(folds_data_folder, full_dataset, label_to_p
             train_features = train_features[kept_features]
             test_features = test_features[kept_features]
             
-            model = train_model(model_type, train_features, train_labels)
+            model = train_model(model_type, train_features, train_labels, hyperparameter_folder)
             current_features_metrics = append_metrics(current_features_metrics, model, test_features, test_labels, train_features, train_labels)
             randomizing_performances = get_performances_randomizing_features(model, train_features, train_labels, percentage_to_remove=50)
             for key, value in randomizing_performances.items():
@@ -318,7 +329,7 @@ def start_backward_feature_selection(folds_data_folder, full_dataset, label_to_p
         average_kfold_performances = dict(sorted(average_kfold_performances.items(), key=lambda item: item[1], reverse=True))
         if(len(average_kfold_performances) > 20):#COMMENT THIS IS WHERE THE NUMBER OF FEATURES REMOVED IS DEFINED
             how_many_to_remove = int(np.ceil(len(average_kfold_performances) * 0.10))
-            how_many_to_remove = 1
+            # how_many_to_remove = 1
         else: 
             # how_many_to_remove = len(average_kfold_performances) - num_features_to_keep
             how_many_to_remove = 1
