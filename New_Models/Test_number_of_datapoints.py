@@ -154,6 +154,7 @@ def plot_varying_number_of_datapoints(performances_dictionary, label, model_type
     if(metric == 'R2'):
         plt.ylim((0, 1))
     plt.title(f"Scatter Plot of {metric} for varying number of datapoints\n Predicting {label}")
-    plt.show()
+    plt.savefig(f"/Users/jakehirst/Desktop/writing class/paper_1_figures" + f'/Convergence_study_{label}_{model_type}_{metric}.png')
+    # plt.show()
     
     return

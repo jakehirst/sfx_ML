@@ -119,12 +119,12 @@ def do_bayesian_optimization_RF(feature_df, label_df, num_tries=100, saving_fold
     do_bayesian_optimization(df, label_df[label], 100)
     '''
     
-    '''zero centering and normalizing features'''
+    # '''zero centering and normalizing features'''
     # To zero-center, subtract the mean of each column from the column
-    df_centered = feature_df - feature_df.mean()
-    # To normalize, divide each column by its standard deviation
-    df_normalized = df_centered / df_centered.std()
-    feature_df = df_normalized
+    # df_centered = feature_df - feature_df.mean()
+    # # To normalize, divide each column by its standard deviation
+    # df_normalized = df_centered / df_centered.std()
+    # feature_df = df_normalized
     
     X = feature_df.to_numpy()
     y = label_df.to_numpy()
@@ -134,25 +134,27 @@ def do_bayesian_optimization_RF(feature_df, label_df, num_tries=100, saving_fold
 
     # Define the parameter space for the Random Forest
     param_space = {
-        'n_estimators': (5000, 10000),  #Higher for generalization, lower for overfitting
-        'max_depth': (2,5),  #Higher for overfitting, lower for generaliztion
-        'min_samples_split': (25, 50),  #Higher for generalization, lower for overfitting
-        'min_samples_leaf': (10, 25), #Higher for generalization, lower for overfitting
+        'n_estimators': (9999, 10000),  #Higher for generalization, lower for overfitting
+        'max_depth': (4,25),  #Higher for overfitting, lower for generaliztion
+        'min_samples_split': (5, 30),  #Higher for generalization, lower for overfitting
+        'min_samples_leaf': (1, 25), #Higher for generalization, lower for overfitting
         # 'max_features': (1, X_train.shape[1]), #Higher for overfitting, lower for generalization
-        'max_features': (2,3), #Higher for overfitting, lower for generalization
+        'max_features': (3,25), #Higher for overfitting, lower for generalization
 
     }
 
     # Create a RandomForestRegressor instance
-    rf = RandomForestRegressor(random_state=0)
+    # rf = RandomForestRegressor(random_state=0)
+    rf = RandomForestRegressor()
 
     # Wrap the model with BayesSearchCV
     opt = BayesSearchCV(rf, 
                         param_space, 
                         n_iter=num_tries, 
-                        random_state=0, 
+                        # random_state=0, 
                         cv=5,
-                        verbose=0) #COMMENT cv=5 indicates a 5 fold cross validation
+                        verbose=3,
+                        scoring='r2') #COMMENT cv=5 indicates a 5 fold cross validation
 
     # Run the Bayesian optimization
     opt.fit(X, y)

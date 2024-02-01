@@ -16,16 +16,19 @@ from CNN import *
 from mastml.plots import *
 from mastml.models import *
 from mastml.error_analysis import *
+from Backward_feature_selection import *
 
-full_dataset_pathname = "/Users/jakehirst/Desktop/sfx/sfx_ML_data/New_Crack_Len_FULL_OG_dataframe_2023_10_14.csv"
-image_folder = '/Users/jakehirst/Desktop/sfx/sfx_ML_data/images_sfx/new_dataset/Visible_cracks'
+# full_dataset_pathname = "/Users/jakehirst/Desktop/sfx/sfx_ML_data/New_Crack_Len_FULL_OG_dataframe_2023_10_14.csv"
+# image_folder = '/Users/jakehirst/Desktop/sfx/sfx_ML_data/images_sfx/new_dataset/Visible_cracks'
 # full_dataset_pathname = "/Users/jakehirst/Desktop/sfx/sfx_ML_data/New_Crack_Len_FULL_OG_dataframe_2023_10_04.csv"
 
 '''
 makes a parody plot of the predictions from uncertainty model including the standard deviations
 '''
 def parody_plot_with_std(y_test, y_pred_test, y_pred_test_std, saving_folder, label_to_predict, model_type, testtrain='unknown_test_train'):
-    plt.figure()
+    # y_pred_std_test_times_2 = list(np.array(y_pred_test_std)*2)
+    plt.figure(figsize=(12, 6))
+    # plt.errorbar(y_test, y_pred_test, yerr=y_pred_std_test_times_2, fmt='o')
     plt.errorbar(y_test, y_pred_test, yerr=y_pred_test_std, fmt='o')
     plt.plot(y_test, y_test, c='r')
     plt.title(f'{testtrain} set {model_type} regression ensemble predicting '+f'{label_to_predict}' + ', R2=%.2f' % r2_score(y_test, y_pred_test))
@@ -41,12 +44,17 @@ def save_ensemble_model(model, fold_no, saving_folder):
     # Save the model to a file
     filename = saving_folder + f'/model_no{fold_no}.sav'
     pickle.dump(model, open(filename, 'wb'))
+
+'''loads a single model from an ensemble to be used.'''
+def load_ensemble_model(model_path):
+    model = pickle.load(open(model_path, 'rb'))
+    return model
     
 ''' 
 makes num_models number of regression models and saves them into the saving_folder for later bagging ensembling. 
 The training sets for each of these models are taken from the training_features and training_labels with replacement. They are the same len as the training_features
 '''  
-def make_linear_regression_models_for_ensemble(training_features, training_labels, model_saving_folder, label_to_predict, num_models, features_to_keep, num_training_points=False, model_type=None): 
+def make_linear_regression_models_for_ensemble(training_features, training_labels, model_saving_folder, label_to_predict, num_models, features_to_keep, hyperparam_folder, num_training_points=False, model_type=None): 
     models = []
     training_features = training_features[features_to_keep]
     if(not os.path.exists(model_saving_folder)): os.mkdir(model_saving_folder)
@@ -57,90 +65,16 @@ def make_linear_regression_models_for_ensemble(training_features, training_label
     
     #now to train all the models and save them
     for model_num in range(num_models):
+        print(f'working on model {model_num}')
         # getting a subset of the training dataset with replacement to train this model on
         sampled_index = training_labels.sample(n=num_samples, replace=True).index
         new_train_features = training_features.loc[sampled_index]
         new_train_labels = training_labels.loc[sampled_index]
         
-        if(model_type == None):
-            print("need to choose a model type")
-        elif(model_type == "RF"):
-
-            model =  RandomForestRegressor(max_depth=20, n_estimators=100, random_state=42)
-
-        elif(model_type == 'linear'):
-            model = LinearRegression() 
-        elif(model_type == 'lasso'):
-            a = 0.1
-            model = Lasso(alpha=a)
-        elif(model_type == 'ridge'):
-            a = 0.1
-            model = Ridge(alpha=a)
-        elif(model_type == 'poly2'):
-            degree = 2
-            model = make_pipeline(PolynomialFeatures(degree),LinearRegression())
-        elif(model_type == 'poly3'):
-            degree = 3
-            model = make_pipeline(PolynomialFeatures(degree),LinearRegression())
-        elif(model_type == 'poly4'):
-            degree = 4
-            model = make_pipeline(PolynomialFeatures(degree),LinearRegression())  
-        elif(model_type == 'GPR'):
-            # kernel = ConstantKernel(1.0) + ConstantKernel(1.0) * RBF()
-            # kernel = ConstantKernel(1.0) + ConstantKernel(1.0) * RBF(length_scale=1e1, length_scale_bounds=(1e-6, 1e3))  + WhiteKernel(noise_level=2, noise_level_bounds=(1e-2, 1e2))
-            kernel = ConstantKernel(1.0) + ConstantKernel(1.0) * RBF() + WhiteKernel(noise_level=1) # this one works well
-            # kernel = Matern(length_scale=length_scale_param, length_scale_bounds=length_scale_bounds_param,nu=nu_param) + WhiteKernel(noise_level=1)
-            # kernel = Matern() + WhiteKernel(noise_level=1)
-
-            model = GaussianProcessRegressor(kernel=kernel, random_state=0, alpha=50, n_restarts_optimizer=25)
-        elif(model_type == 'ANN'):
-            n = int(0.2 * len(new_train_features))  # 20% of the length of the list
-            val_indexes = random.sample(range(len(new_train_features)), n)
-            train_indexes = [i for i in range(len(new_train_features)) if i not in val_indexes]
-
-            train_set = new_train_features.iloc[train_indexes]
-            train_labels = new_train_labels.iloc[train_indexes]
-            val_set = new_train_features.iloc[val_indexes]
-            val_labels = new_train_labels.iloc[val_indexes]
-            # raw_images = []
-            
-            #COMMENT clears the memory from tensorflow session so that memory doesnt get full when training multiple models in a loop.
-            tf.keras.backend.clear_session()
-            
-            model = make_1D_CNN_for_ensemble(train_set, val_set, train_labels, val_labels, patience=100, max_epochs=1000, lossfunc='mse')
-            
-            
-            #plot training predictions
-            print('here')
-            preds = model.predict(training_features)
-            
-            # plt.figure()
-            # plt.scatter(training_labels.to_numpy(), preds)
-            # plt.plot(training_labels.to_numpy(), training_labels.to_numpy(), c='r')
-            # plt.show()
-            
-
-
-            
-        if(model_type == 'ANN'):
-            file_names = os.listdir(model_saving_folder)
-            numbers = [int(re.search(r'_no(\d+)', file_name).group(1)) for file_name in file_names if re.search(r'_no(\d+)', file_name)]
-            if(len(numbers)==0):
-                largest_number = -1
-            else:            
-                largest_number = max(numbers, default=None)
-            save_ensemble_model(model, largest_number+1, model_saving_folder)
-            # model.save(model_saving_folder + f"/trained_model_fold_{model_num}.h5")
-            # print('do something now')
-        else:
-            model.fit(new_train_features.to_numpy(), new_train_labels)
-            y_pred_train  = model.predict(new_train_features.to_numpy())
-            save_ensemble_model(model, model_num, model_saving_folder) 
-        # collect_and_save_metrics(y_test, y_pred_test, train_df.__len__(), len(train_df.columns), full_dataset.columns.to_list(), fold_no, saving_folder)
-        # collect_and_save_metrics(y_train, y_pred_train, y_test, y_pred_test, list(train_df.columns), fold_no, saving_folder)
-        # plot_test_predictions_heatmap(y_test, y_pred_test, y_pred_test_std, fold_no, saving_folder)
-        # parody_plot(y_test, y_pred_test, fold_no, saving_folder, label_to_predict, model_type='Linear Regression')
-
+        model = train_model(model_type, new_train_features, new_train_labels, hyperparam_folder)
+        
+        save_ensemble_model(model, model_num, model_saving_folder) 
+  
     return
 
 ''' 
@@ -172,9 +106,9 @@ uncertainty is based on the variance of the predictions from the ensemble.
 Also compares this to the true labels of the dataset.
 '''
 def Get_predictions_and_uncertainty_with_bagging(test_features_path, test_labels_path, model_folder, saving_folder, features_to_keep, label_to_predict, model_type):
-    if(not os.path.exists(saving_folder)): os.mkdir(saving_folder)
-    test_features = pd.read_csv(test_features_path, index_col=0)[features_to_keep]
-    test_labels = pd.read_csv(test_labels_path, index_col=0) 
+    if(not os.path.exists(saving_folder)): os.makedirs(saving_folder)
+    test_features = pd.read_csv(test_features_path)[features_to_keep]
+    test_labels = pd.read_csv(test_labels_path) 
     
     # Initialize an empty list to store the loaded models
     models = []
@@ -189,7 +123,14 @@ def Get_predictions_and_uncertainty_with_bagging(test_features_path, test_labels
     
     all_model_predictions = []
     for model in models:
-        current_predictions = model.predict(test_features.to_numpy())
+        if(type(model) == ANNModel): 
+            with torch.no_grad():
+                model.eval()
+                current_predictions = model(torch.FloatTensor(test_features.values).to(device)).numpy()
+        else:
+            current_predictions = model.predict(test_features.to_numpy())
+            
+        # current_predictions = model.predict(test_features.to_numpy())
         current_predictions = current_predictions.reshape(current_predictions.shape[0])
         all_model_predictions.append(current_predictions)
 
@@ -201,9 +142,9 @@ def Get_predictions_and_uncertainty_with_bagging(test_features_path, test_labels
         true_label = test_labels.iloc[label_no][0]
         mean_prediction, std_prediction = np.mean(all_model_predictions[:, label_no]), np.std(all_model_predictions[:, label_no])
         ensemble_predictions.append(mean_prediction)
-        ensemble_uncertanties.append(std_prediction)
-    ensemble_uncertanties = np.sqrt(ensemble_uncertanties)
-    r2 = parody_plot_with_std(test_labels.to_numpy(), ensemble_predictions, ensemble_uncertanties, saving_folder, label_to_predict, model_type, testtrain='Test')
+        ensemble_uncertanties.append(std_prediction*2) #uncertainty will be 2 * the std of the predictions
+    test_or_train = test_features_path.split('_')[-2].split('/')[-1]
+    r2 = parody_plot_with_std(test_labels.to_numpy(), ensemble_predictions, ensemble_uncertanties, saving_folder, label_to_predict, model_type, testtrain=test_or_train)
     
     return r2, ensemble_predictions, ensemble_uncertanties, test_labels
 
@@ -251,7 +192,7 @@ https://www.nature.com/articles/s41524-022-00794-8
 3.) plot each bin's normalized uncertainty vs the normalized RMS 
 
 '''
-def make_RVE_plots(model_type, test_predictions, test_uncertanties, test_true_labels, train_predictions, train_uncertanties, train_true_labels, saving_folder, num_bins=10):
+def make_RVE_plots(label_to_predict, model_type, test_predictions, test_uncertanties, test_true_labels, train_predictions, train_uncertanties, train_true_labels, saving_folder, num_bins=10):
     def normalize_array(arr, min_value, max_value):
         # Initialize an empty list to store normalized values
         normalized_arr = []
@@ -300,9 +241,9 @@ def make_RVE_plots(model_type, test_predictions, test_uncertanties, test_true_la
 
 
         # hist contains the count of uncertainties in each bin
-        print("Histogram:", hist)
-        print("Average bin Uncertainties:", average_uncertainties)
-        print("average bin residuals: ", RMS_residuals)
+        # print("Histogram:", hist)
+        # print("Average bin Uncertainties:", average_uncertainties)
+        # print("average bin residuals: ", RMS_residuals)
     
         return average_uncertainties, RMS_residuals, slope, intercept, average_uncertainties, y_pred
     
@@ -427,142 +368,123 @@ def make_dirs(directory_path):
     return
 
 
+
+'''
+Helper function for make_calibration_plots(). This code was taken directly from 
+https://github.com/ulissigroup/uncertainty_benchmarking/blob/master/NN_ensemble/assess_ensemble.ipynb
+which is from the paper Methods for comparing uncertainty quantifications for material property predictions by Tran et al.
+'''
+def calculate_density(percentile, predictions, true_values, uncertainties):
+    # Define a normalized bell curve we'll be using to calculate calibration
+    norm = stats.norm(loc=0, scale=1)
+    residuals = predictions - true_values.reshape(-1)
+    stdevs = np.array(uncertainties) / 2 #COMMENT need to fix this because the uncertainties that I plot are 2 std's
+    
+    '''
+    Calculate the fraction of the residuals that fall within the lower
+    `percentile` of their respective Gaussian distributions, which are
+    defined by their respective uncertainty estimates.
+    '''
+    # Find the normalized bounds of this percentile
+    upper_bound = norm.ppf(percentile)
+
+    # Normalize the residuals so they all should fall on the normal bell curve
+    normalized_residuals = residuals.reshape(-1) / stdevs.reshape(-1)
+
+    # Count how many residuals fall inside here
+    num_within_quantile = 0
+    for resid in normalized_residuals:
+        if resid <= upper_bound:
+            num_within_quantile += 1
+
+    # Return the fraction of residuals that fall within the bounds
+    density = num_within_quantile / len(residuals)
+    return density
+
+
+
+''' making calibration plots. This code was taken directly from 
+    https://github.com/ulissigroup/uncertainty_benchmarking/blob/master/NN_ensemble/assess_ensemble.ipynb
+    which is from the paper Methods for comparing uncertainty quantifications for material property predictions by Tran et al.
+    
+    It makes the calibration plots, but also calculates and returns the miscalibration area.
+'''
+def make_calibration_plots(model_name, predictions, true_values, uncertainties, saving_folder):
+    # %matplotlib inline
+    import numpy as np
+    from matplotlib import pyplot as plt
+    import seaborn as sns
+    from shapely.geometry import Polygon, LineString
+    from shapely.ops import polygonize, unary_union
+    from tqdm import tqdm_notebook
+    import tqdm
+    from tqdm import notebook
+    
+    predicted_pi = np.linspace(0, 1, 100)
+    # observed_pi = [calculate_density(quantile, predictions, true_values, uncertainties)
+    #             for quantile in tqdm_notebook(predicted_pi, desc='Calibration')]
+    # observed_pi = [calculate_density(quantile, predictions, true_values, uncertainties)
+    #             for quantile in notebook(predicted_pi, desc='Calibration')]
+    observed_pi = [calculate_density(quantile, predictions, true_values, uncertainties)
+                for quantile in predicted_pi]
+
+    calibration_error = ((predicted_pi - observed_pi)**2).sum()
+    print('Calibration error = %.2f' % calibration_error)
+    
+    # Set figure defaults
+    width = 4  # Because it looks good
+    fontsize = 12
+    rc = {'figure.figsize': (width, width),
+        'font.size': fontsize,
+        'axes.labelsize': fontsize,
+        'axes.titlesize': fontsize,
+        'xtick.labelsize': fontsize,
+        'ytick.labelsize': fontsize,
+        'legend.fontsize': fontsize}
+    sns.set(rc=rc)
+    sns.set_style('ticks')
+    
+    # Plot settings
+    figsize = (width, width)
+
+    # Plot the calibration curve
+    fig_cal = plt.figure(figsize=figsize)
+    ax_ideal = sns.lineplot(x=[0, 1], y=[0, 1], label='ideal')
+    _ = ax_ideal.lines[0].set_linestyle('--')
+    ax_gp = sns.lineplot(x=predicted_pi, y=observed_pi, label=model_name)
+    ax_fill = plt.fill_between(predicted_pi, predicted_pi, observed_pi,
+                            alpha=0.2, label='miscalibration area')
+    _ = ax_ideal.set_xlabel('Expected cumulative distribution')
+    _ = ax_ideal.set_ylabel('Observed cumulative distribution')
+    _ = ax_ideal.set_xlim([0, 1])
+    _ = ax_ideal.set_ylim([0, 1])
+
+    # Calculate the miscalibration area.
+    polygon_points = []
+    for point in zip(predicted_pi, observed_pi):
+        polygon_points.append(point)
+    for point in zip(reversed(predicted_pi), reversed(predicted_pi)):
+        polygon_points.append(point)
+    polygon_points.append((predicted_pi[0], observed_pi[0]))
+    polygon = Polygon(polygon_points)
+    x, y = polygon.exterior.xy # original data
+    ls = LineString(np.c_[x, y]) # closed, non-simple
+    lr = LineString(ls.coords[:] + ls.coords[0:1])
+    mls = unary_union(lr)
+    polygon_area_list =[poly.area for poly in polygonize(mls)]
+    miscalibration_area = np.asarray(polygon_area_list).sum()
+
+    # Annotate the plot with the miscalibration area
+    plt.text(x=0.95, y=0.05,
+            s='Miscalibration area = %.2f' % miscalibration_area,
+            verticalalignment='bottom',
+            horizontalalignment='right',
+            fontsize=fontsize)
+    plt.savefig(saving_folder +  f'/calibration_plot.png')
+    # plt.show()
+    plt.close()
+    return miscalibration_area, calibration_error
     
     
-    
-    
-# model_types = ['linear', 'ridge', 'lasso', 'poly2', 'poly3', 'RF', 'GPR', 'ANN']
-# model_types = ['linear', 'ridge', 'lasso', 'poly2', 'poly3', 'RF', 'GPR']
-# # model_types = ['RF']
-
-# # for model_type in model_types:
-# num_models_list = [10, 50, 100]
-# labels_to_predict = ['impact site x', 'impact site y']
-# # labels_to_predict = [ 'impact site y']
-
-# model_folder = '/Volumes/Jake_ssd/NONLINEAR_Compare_Code_5fold_ensemble_models'
-# data_folder = '/Volumes/Jake_ssd/OCTOBER_DATASET/5fold_datasets'
-# results_folder = '/Volumes/Jake_ssd/OCTOBER_DATASET/NONLINEAR_Compare_Code_5_fold_ensemble_results'
-
-# make_5_fold_datasets(data_folder, full_dataset_pathname, image_folder)
-
-# for fold_no in range(1,6):
-#     for model_type in model_types:
-#         for label_to_predict in labels_to_predict:
-#             for num_models in num_models_list:
-                
-#                 all_labels = ['height', 'phi', 'theta', 
-#                             'impact site x', 'impact site y', 'impact site z', 
-#                             'impact site r', 'impact site phi', 'impact site theta']
-
-#                 training_features = pd.read_csv(f'{data_folder}/{label_to_predict}/fold{fold_no}/train_features.csv', index_col=0).reset_index(drop=True)
-#                 training_labels = pd.read_csv(f'{data_folder}/{label_to_predict}/fold{fold_no}/train_labels.csv', index_col=0).reset_index(drop=True)
-
-#                 model_saving_folder = f'{model_folder}/{label_to_predict}/{model_type}/{num_models}_models/fold_{fold_no}'
-#                 make_dirs(model_saving_folder)
-#                 results_saving_folder = f'{results_folder}/{label_to_predict}/{model_type}/{num_models}_models/fold_{fold_no}'
-#                 make_dirs(results_saving_folder)
-
-#                 '''TODO gotta find out what features to use for each label before testing on new dataset'''
-
-#                 if(label_to_predict == 'impact site x'):
-#                     '''for impact site x'''
-#                     features_to_keep = ['crack len', 'init phi', 'init x'] 
-#                 elif(label_to_predict == 'impact site y'):
-#                     '''for impact site y'''
-#                     features_to_keep = ['max_kink', 'init y', 'angle_btw']
-#                     # features_to_keep = ['angle_btw','init y'] 
-#                 elif(label_to_predict == 'height'):
-#                     '''for height'''
-#                     features_to_keep = ['abs_val_sum_kink']
-
-
-#                 make_linear_regression_models_for_ensemble(training_features, training_labels, model_saving_folder, label_to_predict, num_models, features_to_keep, model_type=model_type)
-
-#                 test_features_path = f'{data_folder}/{label_to_predict}/fold{fold_no}/test_features.csv'
-#                 test_labels_path = f'{data_folder}/{label_to_predict}/fold{fold_no}/test_labels.csv'
-#                 train_features_path = f'{data_folder}/{label_to_predict}/fold{fold_no}/train_features.csv'
-#                 train_labels_path = f'{data_folder}/{label_to_predict}/fold{fold_no}/train_labels.csv'
-#                 # model_folder = f'/Volumes/Jake_ssd/ensembling_models/{label_to_predict}/{model_type}'
-#                 # results_folder = f'/Volumes/Jake_ssd/model_results/{label_to_predict}/{model_type}'
-                
-#                 # test_features_path = f'/Volumes/Jake_ssd/how_many_models_should_i_do/ensembling_models/{label_to_predict}/data/test_features.csv'
-#                 # test_labels_path = f'/Volumes/Jake_ssd/how_many_models_should_i_do/ensembling_models/{label_to_predict}/data/test_labels.csv'
-#                 # train_features_path = f'/Volumes/Jake_ssd/how_many_models_should_i_do/ensembling_models/{label_to_predict}/data/train_features.csv'
-#                 # train_labels_path = f'/Volumes/Jake_ssd/how_many_models_should_i_do/ensembling_models/{label_to_predict}/data/train_labels.csv'
-#                 # model_folder = f'/Volumes/Jake_ssd/how_many_models_should_i_do/ensembling_models/{label_to_predict}/{model_type}/{num_models}_models'
-#                 # saving_folder = f'/Volumes/Jake_ssd/how_many_models_should_i_do/model_results/{label_to_predict}/{model_type}/{num_models}_models'
-                
-#                 train_r2, train_ensemble_predictions, train_ensemble_uncertanties, train_labels = Get_predictions_and_uncertainty_with_bagging(train_features_path, train_labels_path, model_saving_folder, results_saving_folder, features_to_keep, label_to_predict, model_type)
-#                 test_r2, test_ensemble_predictions, test_ensemble_uncertanties, test_labels = Get_predictions_and_uncertainty_with_bagging(test_features_path, test_labels_path, model_saving_folder, results_saving_folder, features_to_keep, label_to_predict, model_type)
-
-#                 data = []
-#                 # for i in range(10,25,5):
-#                 #     print(i)
-#                 #     # make_RVE_plots(model_type, test_ensemble_predictions, clipped_test_ensemble_uncertanties, test_labels, train_ensemble_predictions, clipped_train_ensemble_uncertanties, train_labels, saving_folder, num_bins=i)
-#                 #     train_intercept, train_slope, CAL_train_intercept, CAL_train_slope, train_intercept, test_slope, CAL_test_intercept, CAL_test_slope = make_RVE_plots(model_type, test_ensemble_predictions, test_ensemble_uncertanties, test_labels, train_ensemble_predictions, train_ensemble_uncertanties, train_labels, results_saving_folder, num_bins=i)
-#                 #     data.append([i, train_r2, test_r2, train_intercept, train_slope, CAL_train_intercept, CAL_train_slope, train_intercept, test_slope, CAL_test_intercept, CAL_test_slope])
-                
-#                 '''using their library to make an rve plot'''
-#                 #TODO figure out datset_stdev and residuals
-                
-#                 train_labels_arr = train_labels.to_numpy().T[0]
-#                 train_predictions_arr = np.array(train_ensemble_predictions)
-#                 test_labels_arr = test_labels.to_numpy().T[0]
-#                 test_predictions_arr = np.array(test_ensemble_predictions)
-#                 train_residuals = pd.Series(np.abs(train_labels_arr - train_predictions_arr))
-#                 test_residuals = pd.Series(np.abs(test_labels_arr - test_predictions_arr))
-
-#                 ''' getting calibration factors'''
-#                 # cf = CorrectionFactors(train_residuals, pd.Series(train_ensemble_uncertanties))
-#                 # a, b = cf.nll()
-#                 # print(f'a = {a} b = {b}')
-#                 # calibrated_train_uncertainties = pd.Series(a * train_ensemble_uncertanties + b, name='train_model_errors')
-#                 # calibrated_test_uncertainties = pd.Series(a * test_ensemble_uncertanties + b, name='test_model_errors')
-                
-#                 a, b = get_calibration_factors(train_residuals, train_ensemble_uncertanties)
-#                 print(f'a = {a} b = {b}')
-#                 calibrated_train_uncertainties = pd.Series(a * (train_ensemble_uncertanties**((b/2) + 1)), name='train_model_errors')
-#                 calibrated_test_uncertainties = pd.Series(a * (test_ensemble_uncertanties**((b/2) + 1)), name='test_model_errors')
-
-                
-#                 ''' inside of error_analysis.py, can use this to get rid of the outliers in the ensemble. need to implement this earlier though. (Get_predictions_and_uncertainty_with_bagging)'''
-#                 # _remove_outlier_preds(preds)
-                
-#                 blank_model_for_plot = SklearnModel('RandomForestRegressor')
-#                 mastml_RVE = Error()
-
-#                 mastml_RVE.plot_real_vs_predicted_error_uncal_cal_overlay(savepath=results_saving_folder, 
-#                                                                         model=blank_model_for_plot, 
-#                                                                         data_type='train', 
-#                                                                         model_errors=pd.Series(train_ensemble_uncertanties) ,
-#                                                                         model_errors_cal= calibrated_train_uncertainties,
-#                                                                         residuals= train_residuals, 
-#                                                                         dataset_stdev=np.std(train_labels.to_numpy()), 
-#                                                                         show_figure=False,
-#                                                                         well_sampled_number=0.025)
-                
-#                 print('here')
-#                 mastml_RVE.plot_real_vs_predicted_error_uncal_cal_overlay(savepath=results_saving_folder, 
-#                                                                         model=blank_model_for_plot, 
-#                                                                         data_type='test', 
-#                                                                         model_errors=pd.Series(test_ensemble_uncertanties) ,
-#                                                                         model_errors_cal= calibrated_test_uncertainties,
-#                                                                         residuals= test_residuals, 
-#                                                                         dataset_stdev=np.std(train_labels.to_numpy()), 
-#                                                                         show_figure=False,
-#                                                                         well_sampled_number=0.025)
-#                 '''using their library to make an rve plot'''
-
-#                 train_intercept, train_slope, CAL_train_intercept, CAL_train_slope, train_intercept, test_slope, CAL_test_intercept, CAL_test_slope = make_RVE_plots(model_type, test_ensemble_predictions, test_ensemble_uncertanties, test_labels, train_ensemble_predictions, train_ensemble_uncertanties, train_labels, results_saving_folder, num_bins=15)
-#                 data.append([15, train_r2, test_r2, train_intercept, train_slope, CAL_train_intercept, CAL_train_slope, train_intercept, test_slope, CAL_test_intercept, CAL_test_slope])
-                
-#                 columns = ['num bins', 'train R2', 'test R2', 'train_intercept', 'train_slope', 'CAL_train_intercept', 'CAL_train_slope', 'train_intercept', 'test_slope', 'CAL_test_intercept', 'CAL_test_slope']
-#                 df = pd.DataFrame(columns=columns)
-#                 for row in data:
-#                     df.loc[len(df)] = row
-#                 df.to_csv(results_saving_folder + f'/{label_to_predict}_{model_type}_{num_models}results.csv', index=False)
-
-            
-
+ 
 

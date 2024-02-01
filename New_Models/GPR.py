@@ -38,16 +38,16 @@ def split_test_and_training_datasets(full_dataset, raw_images, full_dataset_labe
 '''
 makes a parody plot of the predictions from GPR including the standard deviations
 '''
-def parody_plot_with_std(y_test, y_pred_test, y_pred_test_std, fold_no, saving_folder, label_to_predict):
-    plt.figure()
-    plt.errorbar(y_test, y_pred_test, yerr=y_pred_test_std, fmt='o')
-    plt.plot(y_test, y_test, c='r')
-    plt.title('Fold ' + str(fold_no) + ' Gaussian Process Regression, R2=%.2f' % r2_score(y_test, y_pred_test))
-    plt.xlabel('Actual')
-    plt.ylabel('Predicted')
-    plt.savefig(saving_folder +  f'/{label_to_predict}_fold_{fold_no}_parody_plot.png')
-    # plt.show()
-    plt.close()
+# def parody_plot_with_std(y_test, y_pred_test, y_pred_test_std, fold_no, saving_folder, label_to_predict):
+#     plt.figure()
+#     plt.errorbar(y_test, y_pred_test, yerr=y_pred_test_std, fmt='o')
+#     plt.plot(y_test, y_test, c='r')
+#     plt.title('Fold ' + str(fold_no) + ' Gaussian Process Regression, R2=%.2f' % r2_score(y_test, y_pred_test))
+#     plt.xlabel('Actual')
+#     plt.ylabel('Predicted')
+#     plt.savefig(saving_folder +  f'/{label_to_predict}_fold_{fold_no}_parody_plot.png')
+#     # plt.show()
+#     plt.close()
 
 
 ''' 
@@ -358,9 +358,9 @@ def plot_hyperparameter_performance(opt, hyperparameter_name, saving_folder):
 
 def do_bayesian_optimization_GPR(feature_df, label_df, num_tries=100, saving_folder='/Users/jakehirst/Desktop'):
     # Preprocessing as before
-    df_centered = feature_df - feature_df.mean()
-    df_normalized = df_centered / df_centered.std()
-    feature_df = df_normalized
+    # df_centered = feature_df - feature_df.mean()
+    # df_normalized = df_centered / df_centered.std()
+    # feature_df = df_normalized
     
     X = feature_df.to_numpy()
     y = label_df.to_numpy()
@@ -377,7 +377,7 @@ def do_bayesian_optimization_GPR(feature_df, label_df, num_tries=100, saving_fol
 
     # Create a GaussianProcessRegressor with an RBF kernel plus a WhiteKernel for noise
     kernel = ConstantKernel(constant_value=1.0) * RBF(length_scale=1.0) + WhiteKernel(noise_level=1e-5)
-    gpr = GaussianProcessRegressor(kernel=kernel, random_state=0)
+    gpr = GaussianProcessRegressor(kernel=kernel, random_state=0, n_restarts_optimizer=20)
 
     # Wrap the model with BayesSearchCV
     opt = BayesSearchCV(gpr, 
@@ -385,7 +385,9 @@ def do_bayesian_optimization_GPR(feature_df, label_df, num_tries=100, saving_fol
                         n_iter=num_tries, 
                         random_state=0, 
                         cv=5,
-                        verbose=0)
+                        verbose=3,
+                        scoring= 'neg_mean_absolute_error')
+                        # scoring='r2')
 
     # Run the Bayesian optimization
     opt.fit(X, y)
