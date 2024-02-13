@@ -1,7 +1,7 @@
 import sys
 sys.path.append('/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/New_Models')
 
-from Bagging_models import *
+from New_Models.Paper2.Bagging_models import *
 from Backward_feature_selection import *
 
 """
