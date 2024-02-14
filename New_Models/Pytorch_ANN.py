@@ -34,10 +34,36 @@ device = "cpu"
 
 # Define the ANN Model
 class ANNModel(nn.Module):
+    # def __init__(self, input_size, output_size, dropout_rate):
+    #     num_nodes = 64
+    #     super(ANNModel, self).__init__()
+    #     self.layers = nn.Sequential(
+    #         nn.Linear(input_size, num_nodes),
+    #         nn.BatchNorm1d(num_nodes),
+    #         nn.ReLU(),
+    #         nn.Dropout(dropout_rate),
+            
+    #         nn.Linear(num_nodes, num_nodes),
+    #         nn.BatchNorm1d(num_nodes),
+    #         nn.ReLU(),
+    #         nn.Dropout(dropout_rate),
+            
+    #         nn.Linear(num_nodes, num_nodes),
+    #         nn.BatchNorm1d(num_nodes),
+    #         nn.ReLU(),
+    #         nn.Dropout(dropout_rate),
+            
+            
+    #         nn.Linear(num_nodes, output_size)
+    #     )
+
+    # def forward(self, x):
+    #     return self.layers(x)
     def __init__(self, input_size, output_size, dropout_rate):
         num_nodes = 64
         super(ANNModel, self).__init__()
-        self.layers = nn.Sequential(
+        # Define the main sequence of layers up to the second to last layer
+        self.feature_layers = nn.Sequential(
             nn.Linear(input_size, num_nodes),
             nn.BatchNorm1d(num_nodes),
             nn.ReLU(),
@@ -51,15 +77,26 @@ class ANNModel(nn.Module):
             nn.Linear(num_nodes, num_nodes),
             nn.BatchNorm1d(num_nodes),
             nn.ReLU(),
-            nn.Dropout(dropout_rate),
-            
-            
-            nn.Linear(num_nodes, output_size)
+            nn.Dropout(dropout_rate)
         )
+        
+        # Define the final layer separately
+        self.output_layer = nn.Linear(num_nodes, output_size)
 
     def forward(self, x):
-        return self.layers(x)
+        # Pass through the main feature layers
+        features = self.feature_layers(x)
+        # Pass through the output layer
+        output = self.output_layer(features)
+        return output
 
+    def extract_features(self, x):
+        """
+        Extract features from the second to last layer.
+        """
+        # Just return the output of the feature_layers, which is equivalent
+        # to the output of the second to last layer before the final output layer.
+        return self.feature_layers(x)
 
 ''' 
     Randomly splits the training tensors into train and validation tensors.

@@ -370,7 +370,7 @@ def make_dirs(directory_path):
 
 
 '''
-Helper function for make_calibration_plots(). This code was taken directly from 
+Helper function for make_calibration_plots(). This code was taken directly (and then slighly edited) from 
 https://github.com/ulissigroup/uncertainty_benchmarking/blob/master/NN_ensemble/assess_ensemble.ipynb
 which is from the paper Methods for comparing uncertainty quantifications for material property predictions by Tran et al.
 '''
@@ -403,7 +403,7 @@ def calculate_density(percentile, predictions, true_values, uncertainties):
 
 
 
-''' making calibration plots. This code was taken directly from 
+''' making calibration plots. This code was taken directly (and then slighly edited) from 
     https://github.com/ulissigroup/uncertainty_benchmarking/blob/master/NN_ensemble/assess_ensemble.ipynb
     which is from the paper Methods for comparing uncertainty quantifications for material property predictions by Tran et al.
     
@@ -486,5 +486,46 @@ def make_calibration_plots(model_name, predictions, true_values, uncertainties, 
     return miscalibration_area, calibration_error
     
     
- 
+
+''' making sharpness plots. This code was taken directly (and then slighly edited) from 
+    https://github.com/ulissigroup/uncertainty_benchmarking/blob/master/NN_ensemble/assess_ensemble.ipynb
+    which is from the paper Methods for comparing uncertainty quantifications for material property predictions by Tran et al.
+    
+    It makes the sharpness plots, but also calculates and returns the sharpness and dispersion values.
+'''
+def plot_sharpness_curve(stdevs, saving_folder):
+    width = 4
+    figsize = (width, width)
+    fontsize = 12
+     # Plot sharpness curve
+    xlim = [0, max(stdevs)]
+    fig_sharp = plt.figure(figsize=figsize)
+    # ax_sharp = sns.histplot(stdevs, kde=False, norm_hist=True)
+    ax_sharp = sns.histplot(stdevs, kde=False, stat="density", binwidth=0.4, )
+    ax_sharp.set_xlim(xlim)
+    ax_sharp.set_xlabel('Predicted standard deviation')
+    ax_sharp.set_ylabel('Normalized frequency')
+    ax_sharp.set_yticklabels([])
+    ax_sharp.set_yticks([])
+
+    # Calculate and report sharpness/dispersion
+    sharpness = np.sqrt(np.mean(stdevs**2))
+    _ = ax_sharp.axvline(x=sharpness, label='sharpness', c='r')
+    dispersion = np.sqrt(((stdevs - stdevs.mean())**2).sum() / (len(stdevs)-1)) / stdevs.mean()
+    if sharpness < (xlim[0] + xlim[1]) / 2:
+        text = '\n  Sharpness = %.2f \n  C$_v$ = %.2f' % (sharpness, dispersion)
+        h_align = 'left'
+    else:
+        text = '\nSharpness = %.2f  \nC$_v$ = %.2f  ' % (sharpness, dispersion)
+        h_align = 'right'
+    _ = ax_sharp.text(x=sharpness, y=ax_sharp.get_ylim()[1],
+                    s=text,
+                    verticalalignment='top',
+                    horizontalalignment=h_align,
+                    fontsize=fontsize)
+    
+    plt.savefig(saving_folder + f'/sharpness_plot.png')
+    # plt.show()
+    plt.close()
+    return sharpness, dispersion
 
