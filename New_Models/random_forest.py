@@ -134,7 +134,7 @@ def do_bayesian_optimization_RF(feature_df, label_df, num_tries=100, saving_fold
 
     # Define the parameter space for the Random Forest
     param_space = {
-        'n_estimators': (9999, 10000),  #Higher for generalization, lower for overfitting
+        'n_estimators': (1000, 5000),  #Higher for generalization, lower for overfitting
         'max_depth': (4,25),  #Higher for overfitting, lower for generaliztion
         'min_samples_split': (5, 30),  #Higher for generalization, lower for overfitting
         'min_samples_leaf': (1, 25), #Higher for generalization, lower for overfitting
@@ -163,10 +163,11 @@ def do_bayesian_optimization_RF(feature_df, label_df, num_tries=100, saving_fold
     # Retrieve the mean test score for the best parameters
     best_average_score = opt.cv_results_['mean_test_score'][best_index]
     # Best parameter set found
-    print(f"\n$$$$$$$$$$$$ Results for RF predicting {label_df.name} $$$$$$$$$$$$")
+    # print(f"\n$$$$$$$$$$$$ Results for RF predicting {label_df.name} $$$$$$$$$$$$")
     print(f"$$$$$$$$$$$$ Best parameters found: {opt.best_params_} $$$$$$$$$$$$")
     print(f"$$$$$$$$$$$$ Best average test score across 5-fold cv: {best_average_score} $$$$$$$$$$$$\n")
     
+    if(not os.path.exists(saving_folder)): os.makedirs(saving_folder)
     hyperparameter_names = ['n_estimators', 'max_depth', 'min_samples_split', 'min_samples_leaf', 'max_features']
     for name in hyperparameter_names:
         plot_hyperparameter_performance(opt, name, saving_folder)
