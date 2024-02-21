@@ -1,49 +1,69 @@
 import joblib  # For saving and loading model
 from Pytorch_ANN import *
-from GPR import *
+from random_forest import *
 import matplotlib.pyplot as plt
 
-class NN_fed_GPR:
+class NN_fed_RF:
     def __init__(self):
         """
         Initialize the GenericMLModel with a specific ML model.
         :param model: An instance of a machine learning model.
         """
         self.ann = None
-        self.gpr = None
+        self.rf = None
         self.is_trained = False
 
-    def fit(self, train_features, train_labels, ann_hyperparam_folder):
+    def fit(self, train_features, train_labels, ann_hyperparam_folder, num_optimization_tries=10, hyperparam_folder='/Users/jakehirst/Desktop'):
         """
         Train the model on the provided training data.
         :param train_features: Training data features.
         :param train_labels: Training data labels.
         :param train_params: Additional parameters for the training process.
         """
-        #train an ANN regularly...
+        '''gets the best hyperparameters to use for GPR when predicting label_to_predict'''
+        def get_best_hyperparameters_NN_fed_RF(label_to_predict, hyperparameter_folder):
+            import ast
+            best_hp_path = f'{hyperparameter_folder}/best_hyperparams.txt'
+            try:
+                with open(best_hp_path, 'r') as file:
+                    content = file.read()
+            except FileNotFoundError:
+                print("File not found best_hyperparams.txt.")
+            except Exception as e:
+                print(f"An error occurred opening best_hyperparams.txt: {e}")
+            converted_dict = dict(ast.literal_eval(content.removeprefix('OrderedDict')))
+            depth = converted_dict['max_depth']
+            features = converted_dict['max_features']
+            samples_leaf = converted_dict['min_samples_leaf']
+            samples_split = converted_dict['min_samples_split']
+            estimators = converted_dict['n_estimators']
+            
+            return depth, features, samples_leaf, samples_split, estimators
+        #COMMENT first, train an ANN regularly...
         dropout, l1_lambda, l2_lambda, learning_rate = get_best_hyperparameters_ANN(label_to_predict=train_labels.columns[0], hyperparameter_folder=ann_hyperparam_folder)
         self.ann = ANNModel(input_size=train_features.shape[1], output_size=1, dropout_rate=dropout).to(device)
         X_train_tensor = torch.FloatTensor(train_features.values).to(device)
         y_train_tensor = torch.FloatTensor(train_labels.values).to(device)
         self.ann = train_ANN(self.ann, X_train_tensor, y_train_tensor, loss_func='MAE', learning_rate=learning_rate, epochs=1000, l1_lambda=l1_lambda, l2_lambda=l2_lambda, patience=200, plot_losses=False) 
 
-        #TODO: now train the GPR on the second to last layer of the ANN
+        #COMMENT: now train the RF on the second to last layer of the ANN
         #now train GPR using the 2nd to last layer of ANN as inputs        
         #first, get the train features by doing a forward pass of the ANN and extracting the second to last layer outputs.
         features_from_NN = self.ann.extract_features(X_train_tensor).detach().numpy()
         
-        #define and then train GPR
-        #c, length_scale, noise_level = get_best_hyperparameters_GPR(label_to_predict=train_labels.columns[0], hyperparameter_folder=hyperparameter_folder)
-        #kernel = ConstantKernel(constant_value=c) * RBF(length_scale=length_scale) + WhiteKernel(noise_level=noise_level)
-        # kernel = ConstantKernel(constant_value=1.0) * RBF() + WhiteKernel(noise_level=1) #TODO try just not defining noise_level or constant_value
-        # kernel = ConstantKernel() * RBF() + WhiteKernel()
-        # kernel = ConstantKernel(1.0, (1e-3, 1e3)) * RBF(10, (1e-2, 1e2)) + WhiteKernel(noise_level=1, noise_level_bounds=(1e-10, 1e+1))
-        kernel = ConstantKernel(1.0, (1e-3, 1e3)) * Matern(length_scale=10, length_scale_bounds=(1e-2, 1e2)) + WhiteKernel(noise_level=1, noise_level_bounds=(1e-10, 1e+1))
-        self.gpr = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=100)
-        self.gpr.fit(features_from_NN, train_labels)
-        print(f'OPTIMIZED GPR PARAMETERS FOR NN-->GPR = {self.gpr.kernel_}')
+        '''optimizes the rf with the NN features using bayesian optimization '''
+        feat_df = pd.DataFrame(features_from_NN)
+        opt = do_bayesian_optimization_RF(feat_df, train_labels, num_tries=num_optimization_tries, saving_folder=hyperparam_folder)
+        depth, features, samples_leaf, samples_split, estimators = get_best_hyperparameters_NN_fed_RF(label_to_predict=train_labels.columns[0], hyperparameter_folder=hyperparam_folder)
+
+        #define and then train RF
+        self.rf =  RandomForestRegressor(max_depth=depth, max_features=features, 
+                                       min_samples_leaf =samples_leaf, min_samples_split = samples_split, n_estimators=estimators, random_state=42)
+        self.rf.fit(features_from_NN, train_labels)
         
         self.is_trained = True
+        
+
 
     def predict(self, X):
         """
@@ -58,7 +78,22 @@ class NN_fed_GPR:
         # y_train_tensor = torch.FloatTensor(train_labels.values).to(device)
         #do a forward pass of the NN, but only extract the outputs from the second to last layer
         features_from_NN = self.ann.extract_features(X_tensor).detach().numpy()
-        preds, stds = self.gpr.predict(features_from_NN, return_std=True)
+        
+        tree_predictions = []
+        # Iterate over all trees in the random forest
+        for tree in self.rf.estimators_:
+            # Predict using the current tree
+            tree_pred = tree.predict(features_from_NN)
+            # Append the predictions to the list
+            tree_predictions.append(tree_pred)
+
+        # Convert the list to a NumPy array for easier manipulation if needed
+        tree_predictions = np.array(tree_predictions)
+        
+        # current_predictions = model.predict(test_features.to_numpy()) #COMMENT this is the same as the average of all the individual trees
+        preds = np.mean(tree_predictions, axis=0)
+        stds = np.std(tree_predictions, axis=0)
+        
         return preds, stds
 
     # def save_model(self, file_path):
