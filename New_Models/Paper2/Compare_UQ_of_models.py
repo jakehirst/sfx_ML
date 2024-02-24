@@ -11,6 +11,7 @@ def make_seaborn_plots(df, overall_title, saving_folder):
     # Set the aesthetic style of the plots
     sns.set_style("whitegrid")
 
+    df['Model_type'] = df['Model_type'].str.replace(' ', '\n').str.replace('_', '\n')
     # Create a figure with subplots
     fig, axs = plt.subplots(2, 2, figsize=(15, 10))  # Adjust the size as needed
 
@@ -66,7 +67,7 @@ def main():
     else:
         base_folder = '/Volumes/Jake_ssd/Paper 2/without_transformations/Compare_Code_5_fold_ensemble_results/'
 
-    model_types = ['ANN', 'RF', 'GPR','ridge', 'Single GPR', 'Single RF', 'NN_fed_GPR']
+    model_types = ['ANN', 'RF', 'GPR','ridge', 'Single GPR', 'Single RF', 'NN_fed_GPR','NN_fed_RF', 'RF_fed_GPR']
     labels_to_predict = ['impact site x', 'impact site y', 'height']
 
     num_models_for_ensemble = 20
