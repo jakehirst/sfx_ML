@@ -5,8 +5,9 @@ import seaborn as sns
 
 
 case_study_df = pd.read_excel('/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Coats_case_study_code/Coats_case_studies.xlsx')
-kdiff_df = pd.read_csv('/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Coats_case_study_code/Coats_kdiff_dataframe.csv')
-kdiff_df = pd.read_csv('/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Feature_gathering/New_Crack_Len_FULL_OG_dataframe.csv') #new crack lengths
+# kdiff_df = pd.read_csv('/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Coats_case_study_code/Coats_kdiff_dataframe.csv')
+# kdiff_df = pd.read_csv('/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Feature_gathering/New_Crack_Len_FULL_OG_dataframe.csv') #new crack lengths
+kdiff_df = pd.read_csv('C:\\Users\\u1056\\sfx\\sfx_ML_data\\feature_data\\New_Crack_Len_FULL_OG_dataframe_2023_09_27.csv')
 # kdiff_df = kdiff_df.drop('impact_sites', axis=1)
 
 

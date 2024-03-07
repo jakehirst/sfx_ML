@@ -117,8 +117,22 @@ def get_max_thickness(opposite_nodes_and_distances):
     distances = np.fromiter(opposite_nodes_and_distances.values(), dtype=float)
     max = np.max(distances)
     max_nodes = list(opposite_nodes_and_distances.keys())[list(opposite_nodes_and_distances.values()).index(max)]
-
     return max, max_nodes
+
+""" gets the max of all the thicknesses. also returns the two nodes that correspond to the max thickness"""
+def get_median_thickness(opposite_nodes_and_distances):
+    distances = np.fromiter(opposite_nodes_and_distances.values(), dtype=float)
+    return np.median(distances)
+
+""" gets the max of all the thicknesses. also returns the two nodes that correspond to the max thickness"""
+def get_var_thickness(opposite_nodes_and_distances):
+    distances = np.fromiter(opposite_nodes_and_distances.values(), dtype=float)
+    return np.var(distances)
+
+""" gets the max of all the thicknesses. also returns the two nodes that correspond to the max thickness"""
+def get_std_thickness(opposite_nodes_and_distances):
+    distances = np.fromiter(opposite_nodes_and_distances.values(), dtype=float)
+    return np.std(distances)
 
 """ gets the max and mean thickness along the crack """
 def get_max_and_mean_thickness(folder_path, simulation):
@@ -127,4 +141,32 @@ def get_max_and_mean_thickness(folder_path, simulation):
     opposite_nodes_and_distances = get_thickness_along_crack(inner_surface_nodes, outer_surface_nodes, main_side_nodes, node_locations)
     mean = get_mean_thickness(opposite_nodes_and_distances)
     max, max_nodes = get_max_thickness(opposite_nodes_and_distances)
-    return max, mean
+    median = get_median_thickness(opposite_nodes_and_distances)
+    var = get_var_thickness(opposite_nodes_and_distances)
+    std = get_std_thickness(opposite_nodes_and_distances)
+
+    return max, mean, median, var, std
+
+'''gets the average thickness of the skull at the 10 closest nodes at a location'''
+def get_thickness_at_location(location, outer_surface_nodes_df, inner_surface_nodes_df):
+    '''efficiently gets the euclidean distance'''
+    def euclidean_dist(row, point):
+        return np.linalg.norm(np.array(row) - point)
+    '''add the distances between the location and the nodes as a column'''
+    new_outer_surface_nodes_df = outer_surface_nodes_df.copy()
+    new_outer_surface_nodes_df['Distance_from_location'] = outer_surface_nodes_df['Coordinates'].apply(euclidean_dist, point=location)
+    new_outer_surface_nodes_df_sorted = new_outer_surface_nodes_df.sort_values(by='Distance_from_location')
+    '''Get top 10 closest nodes on the outer surface to the location'''
+    top_10_min_distance_rows = new_outer_surface_nodes_df_sorted.head(10)
+    '''gets the thicknesses of the skull at those nodes'''
+    closest_inner_nodes = []
+    closest_distances = []
+    for index, row in top_10_min_distance_rows.iterrows():
+        outer_coord = np.array(row['Coordinates'])
+        inner_surface_nodes_df['Distance_to_outer_node'] = inner_surface_nodes_df['Coordinates'].apply(euclidean_dist, point=outer_coord)
+        closest_inner_node = inner_surface_nodes_df.loc[inner_surface_nodes_df['Distance_to_outer_node'].idxmin()]
+        closest_inner_nodes.append(int(closest_inner_node['Node']))
+        closest_distances.append(closest_inner_node['Distance_to_outer_node'])
+    '''get the average thickness of those nodes'''
+    return np.average(closest_distances)
+
