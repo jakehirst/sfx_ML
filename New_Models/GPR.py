@@ -74,6 +74,7 @@ def convert_coordinates_to_new_basis(Material_X, Material_Y, Material_Z, CM, xs,
         
     return np.array(x2), np.array(y2), np.array(z2)
 
+'''3d plot of RPA nodes and the predicted impact site in x and y direction. '''
 def plot_test_predictions_heatmap(full_dataset, labels_to_predict, all_labels, all_important_features, models_fold_to_pull, saving_folder):
     
     #material basis vectors for RPA bone
