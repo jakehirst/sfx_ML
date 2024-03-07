@@ -104,6 +104,71 @@ def make_5_fold_datasets(saving_folder, full_dataset_pathname, normalize=True, r
 
             fold_no += 1
 
+def make_5_fold_datasets_with_calibration_set(saving_folder, full_dataset_pathname, normalize=True, remove_small_cracks=False, label_chunks=None):
+    all_labels = ['height', 'phi', 'theta', 
+        'impact site x', 'impact site y', 'impact site z', 
+        'impact site r', 'impact site phi', 'impact site theta']
+
+    labels_to_predict = ['impact site x', 'impact site y', 'height']
+
+    for label_to_predict in labels_to_predict:
+        if(not os.path.exists(f'{saving_folder}/{label_to_predict}')): os.makedirs(f'{saving_folder}/{label_to_predict}')
+        
+        # if(not os.path.exists(f'{saving_folder}/{label_to_predict}')): os.mkdir(f'{saving_folder}/{label_to_predict}')
+        # full_dataset_features, full_dataset_labels, important_features = prepare_dataset_Single_Output_Regression(full_dataset_pathname, image_folder, label_to_predict, all_labels, saving_folder=None, maximum_p_value=1)
+        data = pd.read_csv(full_dataset_pathname, index_col=0)
+        
+        if(remove_small_cracks):
+            '''removing all of the examples whose crack length does not exceed max_len'''
+            print(f'original number of examples = {len(data)}')
+            min_len = 10.0
+            data = data[data['crack len (unchanged)'] >= min_len]
+            print(f'examples left = {len(data)}')
+        
+        
+        
+        full_dataset_features = data.drop(all_labels, axis=1)
+        if(normalize == True):
+            # Zero-center the data
+            data_centered = full_dataset_features - data.mean()
+            # Normalize to the range [-1, 1]
+            full_dataset_features = data_centered / data_centered.abs().max()
+                        
+        
+        full_dataset_labels = data[label_to_predict]
+        
+        rnge = range(1, len(full_dataset_features)+1)
+        kf5 = KFold(n_splits=5, shuffle=True)
+        fold_no = 1
+        for train_index, test_index in kf5.split(rnge):
+            if(not os.path.exists(f'{saving_folder}/{label_to_predict}/fold{fold_no}')): os.mkdir(f'{saving_folder}/{label_to_predict}/fold{fold_no}')
+            
+            train_df = full_dataset_features.iloc[train_index].reset_index(drop=True)
+            y_train = full_dataset_labels.iloc[train_index].reset_index(drop=True)
+            test_df = full_dataset_features.iloc[test_index].reset_index(drop=True)
+            y_test = full_dataset_labels.iloc[test_index].reset_index(drop=True)
+            
+            #make calibration dataset
+            cal_index = np.random.randint(0, len(train_df), size=int(len(train_df) * .2))
+            calibration_df = train_df.iloc[cal_index].reset_index(drop=True)
+            y_calibration = y_train.iloc[cal_index].reset_index(drop=True)
+            
+            #delete calibration data from training data
+            train_df = train_df.drop(cal_index).reset_index(drop=True)
+            y_train = y_train.drop(cal_index).reset_index(drop=True)
+            
+            # y_train = pd.DataFrame(y_train, columns=[label_to_predict])
+            # y_test = pd.DataFrame(y_test, columns=[label_to_predict])
+
+            train_df.to_csv(f'{saving_folder}/{label_to_predict}/fold{fold_no}/train_features.csv', index=False)
+            y_train.to_csv(f'{saving_folder}/{label_to_predict}/fold{fold_no}/train_labels.csv', index=False)
+            test_df.to_csv(f'{saving_folder}/{label_to_predict}/fold{fold_no}/test_features.csv', index=False)
+            y_test.to_csv(f'{saving_folder}/{label_to_predict}/fold{fold_no}/test_labels.csv', index=False)
+            calibration_df.to_csv(f'{saving_folder}/{label_to_predict}/fold{fold_no}/calibration_features.csv', index=False)
+            y_calibration.to_csv(f'{saving_folder}/{label_to_predict}/fold{fold_no}/calibration_labels.csv', index=False)
+            
+            fold_no += 1
+    return
 
 def append_metrics(current_features_metrics, model, test_features, test_labels, train_features, train_labels):
     if(type(model) == ANNModel): 

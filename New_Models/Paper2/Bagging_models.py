@@ -13,9 +13,9 @@ from ridge_regression import *
 from polynomial_regression import *
 from GPR import *
 from CNN import *
-from mastml.plots import *
-from mastml.models import *
-from mastml.error_analysis import *
+# from mastml.plots import *
+# from mastml.models import *
+# from mastml.error_analysis import *
 from Backward_feature_selection import *
 
 # full_dataset_pathname = "/Users/jakehirst/Desktop/sfx/sfx_ML_data/New_Crack_Len_FULL_OG_dataframe_2023_10_14.csv"
@@ -25,7 +25,7 @@ from Backward_feature_selection import *
 '''
 makes a parody plot of the predictions from uncertainty model including the standard deviations
 '''
-def parody_plot_with_std(y_test, y_pred_test, y_pred_test_std, saving_folder, label_to_predict, model_type, testtrain='unknown_test_train'):
+def parody_plot_with_std(y_test, y_pred_test, y_pred_test_std, saving_folder, label_to_predict, model_type, testtrain='unknown_test_train', show=False):
     # y_pred_std_test_times_2 = list(np.array(y_pred_test_std)*2)
     plt.figure(figsize=(12, 6))
     # plt.errorbar(y_test, y_pred_test, yerr=y_pred_std_test_times_2, fmt='o')
@@ -34,8 +34,10 @@ def parody_plot_with_std(y_test, y_pred_test, y_pred_test_std, saving_folder, la
     plt.title(f'{testtrain} set {model_type} regression ensemble predicting '+f'{label_to_predict}' + ', R2=%.2f' % r2_score(y_test, y_pred_test))
     plt.xlabel('Actual')
     plt.ylabel('Predicted')
-    plt.savefig(saving_folder +  f'/ensemble_UQ_parody_plot_{testtrain}_set.png')
-    # plt.show()
+    if(show):
+        plt.show()
+    else:
+        plt.savefig(saving_folder +  f'/ensemble_UQ_parody_plot_{testtrain}_set.png')
     plt.close()
     return r2_score(y_test, y_pred_test)
 
@@ -409,7 +411,7 @@ def calculate_density(percentile, predictions, true_values, uncertainties):
     
     It makes the calibration plots, but also calculates and returns the miscalibration area.
 '''
-def make_calibration_plots(model_name, predictions, true_values, uncertainties, saving_folder):
+def make_calibration_plots(model_name, predictions, true_values, uncertainties, saving_folder, show=0):
     # %matplotlib inline
     import numpy as np
     from matplotlib import pyplot as plt
@@ -420,15 +422,12 @@ def make_calibration_plots(model_name, predictions, true_values, uncertainties, 
     import tqdm
     from tqdm import notebook
     
-    predicted_pi = np.linspace(0, 1, 100)
-    # observed_pi = [calculate_density(quantile, predictions, true_values, uncertainties)
-    #             for quantile in tqdm_notebook(predicted_pi, desc='Calibration')]
-    # observed_pi = [calculate_density(quantile, predictions, true_values, uncertainties)
-    #             for quantile in notebook(predicted_pi, desc='Calibration')]
-    observed_pi = [calculate_density(quantile, predictions, true_values, uncertainties)
-                for quantile in predicted_pi]
+    target_percentage = np.linspace(0, 1, 100) #the target confidence interval
 
-    calibration_error = ((predicted_pi - observed_pi)**2).sum()
+    observed_percentage = [calculate_density(quantile, predictions, true_values, uncertainties)
+                for quantile in target_percentage] #the observed percentage is the percentage of true values that actually lie in a certain target confidence interval (target percentage)
+
+    calibration_error = ((target_percentage - observed_percentage)**2).sum()
     print('Calibration error = %.2f' % calibration_error)
     
     # Set figure defaults
@@ -451,8 +450,8 @@ def make_calibration_plots(model_name, predictions, true_values, uncertainties, 
     fig_cal = plt.figure(figsize=figsize)
     ax_ideal = sns.lineplot(x=[0, 1], y=[0, 1], label='ideal')
     _ = ax_ideal.lines[0].set_linestyle('--')
-    ax_gp = sns.lineplot(x=predicted_pi, y=observed_pi, label=model_name)
-    ax_fill = plt.fill_between(predicted_pi, predicted_pi, observed_pi,
+    ax_gp = sns.lineplot(x=target_percentage, y=observed_percentage, label=model_name)
+    ax_fill = plt.fill_between(target_percentage, target_percentage, observed_percentage,
                             alpha=0.2, label='miscalibration area')
     _ = ax_ideal.set_xlabel('Expected cumulative distribution')
     _ = ax_ideal.set_ylabel('Observed cumulative distribution')
@@ -461,11 +460,11 @@ def make_calibration_plots(model_name, predictions, true_values, uncertainties, 
 
     # Calculate the miscalibration area.
     polygon_points = []
-    for point in zip(predicted_pi, observed_pi):
+    for point in zip(target_percentage, observed_percentage):
         polygon_points.append(point)
-    for point in zip(reversed(predicted_pi), reversed(predicted_pi)):
+    for point in zip(reversed(target_percentage), reversed(target_percentage)):
         polygon_points.append(point)
-    polygon_points.append((predicted_pi[0], observed_pi[0]))
+    polygon_points.append((target_percentage[0], observed_percentage[0]))
     polygon = Polygon(polygon_points)
     x, y = polygon.exterior.xy # original data
     ls = LineString(np.c_[x, y]) # closed, non-simple
@@ -480,7 +479,14 @@ def make_calibration_plots(model_name, predictions, true_values, uncertainties, 
             verticalalignment='bottom',
             horizontalalignment='right',
             fontsize=fontsize)
-    plt.savefig(saving_folder +  f'/calibration_plot.png')
+    if(show == 1):
+        plt.show()
+    elif(show == 0):
+        plt.savefig(saving_folder +  f'/calibration_plot.png')
+    elif(show == 2):
+        plt.close()
+        return miscalibration_area, calibration_error
+    
     # plt.show()
     plt.close()
     return miscalibration_area, calibration_error
@@ -493,7 +499,7 @@ def make_calibration_plots(model_name, predictions, true_values, uncertainties, 
     
     It makes the sharpness plots, but also calculates and returns the sharpness and dispersion values.
 '''
-def plot_sharpness_curve(stdevs, saving_folder):
+def plot_sharpness_curve(stdevs, saving_folder, show=0):
     width = 4
     figsize = (width, width)
     fontsize = 12
@@ -524,7 +530,19 @@ def plot_sharpness_curve(stdevs, saving_folder):
                     horizontalalignment=h_align,
                     fontsize=fontsize)
     
-    plt.savefig(saving_folder + f'/sharpness_plot.png')
+    
+    if(show == 1):
+        plt.show()
+    elif(show == 0):
+        plt.savefig(saving_folder + f'/sharpness_plot.png')
+    elif(show == 2):
+        plt.close()
+        return sharpness, dispersion
+
+    # if(show):
+    #     plt.show()
+    # else:
+    #     plt.savefig(saving_folder + f'/sharpness_plot.png')
     # plt.show()
     plt.close()
     return sharpness, dispersion

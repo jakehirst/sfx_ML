@@ -21,6 +21,8 @@ def make_seaborn_plots(df, overall_title, saving_folder):
     bplot1 = sns.barplot(x='Model_type', y='test R2', data=sorted_df_test_R2, ax=axs[0, 0], palette='Blues_d')
     axs[0, 0].set_title('Test R2 Comparison')
     bplot1.set_xticklabels(bplot1.get_xticklabels(), fontweight='bold')
+    axs[0, 0].set_ylim(0, 1) #changes the y axis to range from 0 to 1
+
 
     # Sort the DataFrame based on 'miscal_area' (lower is better)
     sorted_df_miscal_area = df.sort_values('miscal_area', ascending=True)
