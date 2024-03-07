@@ -39,7 +39,7 @@ from Metric_collection import *
 ''' 
 CNN architecture before output layer for 1D features
 '''
-def CNN_1D(train_features_1D):
+def CNN_1D_L1_reg(train_features_1D):
     #quote from tensorflow:
     """One reason this is important is because the features are multiplied by the model weights. So, the scale of the outputs and the scale of the gradients are affected by the scale of the inputs.
     Although a model might converge without feature normalization, normalization makes training much more stable"""
@@ -54,25 +54,64 @@ def CNN_1D(train_features_1D):
     csv_data_shape = train_features_1D.shape[1]
     csv_input = tf.keras.layers.Input(shape=csv_data_shape, name="csv")
     csv_model = normalizer(csv_input)
+    # csv_model = tf.keras.layers.Dense(256, activation='relu', name="csv_dense1")(csv_model)
+    # # csv_model = tf.keras.layers.BatchNormalization()(csv_model)
     # csv_model = tf.keras.layers.Dense(128, activation='relu', name="csv_dense2")(csv_model)
     # csv_model = tf.keras.layers.BatchNormalization()(csv_model)
-    csv_model = tf.keras.layers.Dense(64, activation='relu', name="csv_dense3")(csv_model)
+    csv_model = tf.keras.layers.Dense(128, activation='relu', name="csv_dense3",kernel_regularizer=tf.keras.regularizers.L1(0.5))(csv_model)
     csv_model = tf.keras.layers.BatchNormalization()(csv_model)
-    csv_model = tf.keras.layers.Dense(32, activation='relu', name="csv_dense4")(csv_model)
+    csv_model = tf.keras.layers.Dense(128, activation='relu', name="csv_dense4", kernel_regularizer=tf.keras.regularizers.L1(0.5))(csv_model)
     csv_model = tf.keras.layers.BatchNormalization()(csv_model)
-    csv_model = tf.keras.layers.Dense(16, activation='relu', name="csv_dense5")(csv_model)
+    csv_model = tf.keras.layers.Dense(128, activation='relu', name="csv_dense5", kernel_regularizer=tf.keras.regularizers.L1(0.5))(csv_model)
+    # csv_model = tf.keras.layers.BatchNormalization()(csv_model)
+    # csv_model = tf.keras.layers.Dense(8, activation='relu', name="csv_dense6")(csv_model)
+    csv_output = tf.keras.layers.Dropout(0.05, name="csv_output")(csv_model)
+    """############## 1D model ##############"""
+
+    return csv_output, csv_input
+
+''' 
+CNN architecture before output layer for 1D features
+'''
+def CNN_1D(train_features_1D, L2_reg=0, L1_reg=0, dropout=0.05):
+    #quote from tensorflow:
+    """One reason this is important is because the features are multiplied by the model weights. So, the scale of the outputs and the scale of the gradients are affected by the scale of the inputs.
+    Although a model might converge without feature normalization, normalization makes training much more stable"""
+    """ normalizing features and labels """
+
+    normalizer = tf.keras.layers.Normalization(axis=-1) #creating normalization layer
+    normalizer.adapt(np.array(train_features_1D)) #fitting the state of the preprocessing layer
+        
+    numfeatures = len(train_features_1D.columns)
+
+    """############## 1D model ##############"""
+    csv_data_shape = train_features_1D.shape[1]
+    csv_input = tf.keras.layers.Input(shape=csv_data_shape, name="csv")
+    csv_model = normalizer(csv_input)
+    # csv_model = tf.keras.layers.Dense(256, activation='relu', name="csv_dense1")(csv_model)
+    # # csv_model = tf.keras.layers.BatchNormalization()(csv_model)
+    # csv_model = tf.keras.layers.Dense(128, activation='relu', name="csv_dense2")(csv_model)
+    # csv_model = tf.keras.layers.BatchNormalization()(csv_model)
+    '''kernel_regularizer=tf.keras.regularizers.L1(0.01), activity_regularizer=tf.keras.regularizers.L2(0.05)'''
+    
+    csv_model = tf.keras.layers.Dense(64, activation='relu', name="csv_dense3", kernel_regularizer=tf.keras.regularizers.L1L2(l1=L1_reg, l2=L2_reg))(csv_model)
     csv_model = tf.keras.layers.BatchNormalization()(csv_model)
-    csv_model = tf.keras.layers.Dense(8, activation='relu', name="csv_dense6")(csv_model)
-    csv_output = tf.keras.layers.Dropout(0.5, name="csv_output")(csv_model)
+    csv_model = tf.keras.layers.Dropout(dropout, name="dropout1")(csv_model)
+    csv_model = tf.keras.layers.Dense(64, activation='relu', name="csv_dense4", kernel_regularizer=tf.keras.regularizers.L1L2(l1=L1_reg, l2=L2_reg))(csv_model)
+    csv_model = tf.keras.layers.BatchNormalization()(csv_model)
+    csv_model = tf.keras.layers.Dropout(dropout, name="dropout2")(csv_model)
+    csv_model = tf.keras.layers.Dense(64, activation='relu', name="csv_dense5", kernel_regularizer=tf.keras.regularizers.L1L2(l1=L1_reg, l2=L2_reg))(csv_model)
+    csv_model = tf.keras.layers.BatchNormalization()(csv_model)
+    csv_output = tf.keras.layers.Dropout(dropout, name="csv_output")(csv_model)
+
+    # csv_model = tf.keras.layers.Dense(8, activation='relu', name="csv_dense6")(csv_model)
     """############## 1D model ##############"""
 
     return csv_output, csv_input
 
 
-# def googlenet_CNN_images(image_shape):
-    
-#     img_output = tf.keras.layers.Dense(8, activation='relu')(dense1)
-#     return input, img_output
+
+
 
 
 """ 
@@ -218,12 +257,78 @@ def run_kfold_Categorical_CNN(full_dataset, raw_images, full_dataset_labels, pat
     return models
 
 
+'''
+makes ANN for regression and returns the model. This will be used for ensembling ANN's in order to provide UQ for parametric models.
+'''
+def make_1D_CNN_for_ensemble(train_df, val_df, train_labels, val_labels, patience=200, 
+                             max_epochs=1000, num_outputs=1, lossfunc='mean_squared_error', verbose=True,
+                             L1=0, L2=0, dropout=0.05):
+    
+    csv_output, csv_input = CNN_1D(train_df, L2_reg=0, L1_reg=L1, dropout=dropout)
+    x = csv_output
+    predictions = tf.keras.layers.Dense(units=num_outputs)(x) 
+    model = tf.keras.Model(inputs = [csv_input], outputs = [predictions])
+    model.compile(
+        optimizer=tf.keras.optimizers.Adam(),#can define learning rate here
+        loss = lossfunc,
+    )
+
+    history = model.fit((train_df), 
+                    train_labels, 
+                    epochs=max_epochs, 
+                    callbacks=[
+                        tf.keras.callbacks.EarlyStopping(
+                            # monitor='loss',
+                            monitor='val_loss',
+                            patience=patience,
+                            restore_best_weights=True#COMMENT trying to not restore the best weights so there is a bit of overfitting
+                        )
+                    ],
+                    validation_data=((val_df), val_labels),
+                    verbose=verbose,
+                    )
+
+    return model, history
+
+
+
+'''
+makes ANN for regression and returns the model. This will be used for ensembling ANN's in order to provide UQ for parametric models.
+'''
+def make_1D_CNN_for_feature_selection(train_df, val_df, train_labels, val_labels, patience=200, max_epochs=1000, num_outputs=1, lossfunc='mean_squared_error'):
+    csv_output, csv_input = CNN_1D_L1_reg(train_df)
+    x = csv_output
+    predictions = tf.keras.layers.Dense(units=num_outputs)(x) 
+    model = tf.keras.Model(inputs = [csv_input], outputs = [predictions])
+    model.compile(
+        optimizer=tf.keras.optimizers.Adam(),#can define learning rate here
+        loss = lossfunc,
+    )
+
+    history = model.fit((train_df), 
+                    train_labels, 
+                    epochs=max_epochs, 
+                    callbacks=[
+                        tf.keras.callbacks.EarlyStopping(
+                            # monitor='loss',
+                            monitor='val_loss',
+                            patience=patience,
+                            restore_best_weights=True#COMMENT trying to not restore the best weights so there is a bit of overfitting
+                        )
+                    ],
+                    validation_data=((val_df), val_labels),
+                    verbose=1,
+                    )
+
+    return model
+
+    
 
 '''
 runs a dual input (image and 1D features) Regression CNN on the given dataset, doing a 5 fold cross validation and testing it 
 on a test dataset pulled from the full_dataset
 '''
-def run_kfold_Regression_CNN(full_dataset, raw_images, full_dataset_labels, patience, max_epochs, num_outputs=1, lossfunc='mae', saving_folder='/Users/jakehirst/Desktop/model_results', use_images=True, num_training_points=False):
+def run_kfold_Regression_CNN(full_dataset, raw_images, full_dataset_labels, patience, max_epochs, num_outputs=1, lossfunc='mae', saving_folder='/Users/jakehirst/Desktop/model_results', use_images=True, num_training_points=False, plot=True):
 
     #setting aside a test dataset
     np.random.seed(6) #this should reset the randomness to the same randomness so that the test_indicies are the same throughout the tests
@@ -339,16 +444,30 @@ def run_kfold_Regression_CNN(full_dataset, raw_images, full_dataset_labels, pati
         # test_mae = mean_absolute_error(y_test, test_pred)
         # test_mse = mean_squared_error(y_test, test_pred)
         # test_rmse = np.sqrt(test_mse)
-        
+        def plot_loss(history, file_to_save=None):
+            plt.figure(figsize=(10, 6))
+            plt.plot(history.history['loss'], label='Training Loss')
+            plt.plot(history.history['val_loss'], label='Validation Loss')
+            plt.xlabel('Epochs')
+            plt.ylabel('Loss')
+            plt.title('Loss Over Epochs')
+            plt.legend()
+            if(file_to_save==None):
+                plt.show()
+            else:
+                plt.savefig(file_to_save)
+                plt.close()
+                
         def parody_plot(true_values, predictions, file_to_save=None):
             true_values = true_values.reshape(predictions.shape)
+            r2 = r2_score(true_values, predictions)
             # Plot the parody plot
             plt.scatter(true_values, predictions, color='blue', label='True vs. Predicted')
             plt.plot(true_values, true_values, color='red', linestyle='--', label='Parity Line')
             # Add labels and title
             plt.ylabel('Predictions')
             plt.xlabel('True Values')
-            plt.title('Parody Plot')
+            plt.title(f'Parody Plot, R2 = {r2}')
 
             # Add legend
             plt.legend()
@@ -357,19 +476,20 @@ def run_kfold_Regression_CNN(full_dataset, raw_images, full_dataset_labels, pati
             else:
                 plt.savefig(file_to_save)
             plt.close()
-            
-        parody_plot(y_test, test_pred, saving_folder + f'/parody_plot_test_fold{fold_no}.png')
-        parody_plot(y_val, val_pred, saving_folder + f'/parody_plot_val_fold{fold_no}.png')
         
-        # # open the file for writing
-        # with open(saving_folder + f"/model_metrics_fold_{fold_no}.csv", 'w', newline='') as file:
-        #     writer = csv.writer(file)
+        if(plot):
+            parody_plot(y_test, test_pred, saving_folder + f'/parody_plot_test_fold{fold_no}.png')
+            parody_plot(y_val, val_pred, saving_folder + f'/parody_plot_val_fold{fold_no}.png')
+            plot_loss(history, file_to_save=saving_folder + f'/loss_history_fold{fold_no}.png')
+            # # open the file for writing
+            # with open(saving_folder + f"/model_metrics_fold_{fold_no}.csv", 'w', newline='') as file:
+            #     writer = csv.writer(file)
 
-        #     #write the header row
-        #     writer.writerow(['dataset', 'r^2', 'adj_r^2', 'MAE', 'MSE', 'RMSE'])
-        #     writer.writerow(['test', test_r2, test_adj_r2, test_mae, test_mse, test_rmse])
-        #     writer.writerow(['validation', val_r2, val_adj_r2, val_mae, val_mse, val_rmse])
-            
+            #     #write the header row
+            #     writer.writerow(['dataset', 'r^2', 'adj_r^2', 'MAE', 'MSE', 'RMSE'])
+            #     writer.writerow(['test', test_r2, test_adj_r2, test_mae, test_mse, test_rmse])
+            #     writer.writerow(['validation', val_r2, val_adj_r2, val_mae, val_mse, val_rmse])
+                
         collect_and_save_metrics(y_train, train_pred, y_test, test_pred, list(train_df.columns), fold_no, saving_folder)
 
             
@@ -377,3 +497,53 @@ def run_kfold_Regression_CNN(full_dataset, raw_images, full_dataset_labels, pati
     
     return models
 
+
+
+
+''' trying to train height CNN with the 10 features RF selected'''
+# folds_data_folder = '/Volumes/Jake_ssd/Backward_feature_selection/5fold_datasets'
+# full_dataset_pathname = "/Volumes/Jake_ssd/OCTOBER_DATASET/feature_transformations_2023-10-28/height/HEIGHTALL_TRANSFORMED_FEATURES.csv"
+# label_to_predict = 'height'
+# kept_features = ['abs_val_sum_kink * mean thickness',
+#                 'abs_val_sum_kink / avg_prop_speed',
+#                 'abs_val_sum_kink / thickness_at_init',
+#                 'abs_val_sum_kink + init y',
+#                 'crack len + init y',
+#                 'dist btw frts + init y',
+#                 'abs_val_sum_kink - avg_prop_speed',
+#                 'avg_prop_speed - abs_val_sum_kink',
+#                 'abs_val_sum_kink - init z',
+#                 'init z - abs_val_sum_kink']
+
+# for kfold in range(1,6):
+#     train_features = pd.read_csv(folds_data_folder + f'/{label_to_predict}/fold{kfold}/train_features.csv')
+#     test_features = pd.read_csv(folds_data_folder + f'/{label_to_predict}/fold{kfold}/test_features.csv')
+#     train_labels = pd.read_csv(folds_data_folder + f'/{label_to_predict}/fold{kfold}/train_labels.csv')
+#     test_labels = pd.read_csv(folds_data_folder + f'/{label_to_predict}/fold{kfold}/test_labels.csv')
+#     train_features = train_features[kept_features]
+#     test_features = test_features[kept_features]
+#     train_features_for_ANN, val_features_for_ANN, train_labels_for_ANN, val_labels_for_ANN = train_test_split(
+#         train_features, train_labels, test_size=0.2, random_state=42)
+#     model = make_1D_CNN_for_ensemble(train_features_for_ANN, 
+#                                     val_features_for_ANN, 
+#                                     train_labels_for_ANN.to_numpy(), 
+#                                     val_labels_for_ANN.to_numpy(), 
+#                                     patience=100, 
+#                                     max_epochs=1000, num_outputs=1, lossfunc='mean_squared_error')
+#     train_preds = model.predict(train_features)
+#     test_preds = model.predict(test_features)
+#     print(f'TRAIN FOLD {kfold} \nR^2 = {r2_score(train_labels, train_preds)}')
+#     print(f'TEST FOLD {kfold} \nR^2 = {r2_score(test_labels, test_preds)}')
+#     # plt.scatter(train_labels, train_preds)
+#     # plt.xlabel('train true heights')
+#     # plt.ylabel('train predictions')
+#     # plt.title(f'TRAIN FOLD {kfold} \nR^2 = {r2_score(train_labels, train_preds)}')
+#     # plt.show()
+#     # plt.close()
+#     # plt.scatter(test_labels, test_preds)
+#     # plt.xlabel('test true heights')
+#     # plt.ylabel('test predictions')
+#     # plt.title(f'TEST FOLD {kfold} \nR^2 = {r2_score(test_labels, test_preds)}')
+#     # plt.show()
+#     # plt.close()
+#     print('here')
