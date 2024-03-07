@@ -3,7 +3,7 @@ from prepare_data import *
 from CNN import *
 from sklearn.model_selection import KFold
 from sklearn.gaussian_process import GaussianProcessRegressor
-from sklearn.gaussian_process.kernels import RBF, ConstantKernel, WhiteKernel, ExpSineSquared, DotProduct
+from sklearn.gaussian_process.kernels import RBF, ConstantKernel, WhiteKernel, ExpSineSquared, DotProduct, Matern, RationalQuadratic
 import matplotlib.pyplot as plt
 from sklearn.metrics import r2_score, precision_score, confusion_matrix, recall_score, f1_score
 import os
@@ -12,6 +12,12 @@ import matplotlib.animation as animation
 from Metric_collection import *
 from sklearn import preprocessing
 
+import numpy as np
+from skopt import BayesSearchCV
+from skopt.space import Real, Categorical, Integer
+import pandas as pd
+from skopt import gp_minimize
+from skopt.utils import use_named_args
 
 
 '''
@@ -32,16 +38,16 @@ def split_test_and_training_datasets(full_dataset, raw_images, full_dataset_labe
 '''
 makes a parody plot of the predictions from GPR including the standard deviations
 '''
-def parody_plot_with_std(y_test, y_pred_test, y_pred_test_std, fold_no, saving_folder, label_to_predict):
-    plt.figure()
-    plt.errorbar(y_test, y_pred_test, yerr=y_pred_test_std, fmt='o')
-    plt.plot(y_test, y_test, c='r')
-    plt.title('Fold ' + str(fold_no) + ' Gaussian Process Regression, R2=%.2f' % r2_score(y_test, y_pred_test))
-    plt.xlabel('Actual')
-    plt.ylabel('Predicted')
-    plt.savefig(saving_folder +  f'/{label_to_predict}_fold_{fold_no}_parody_plot.png')
-    # plt.show()
-    plt.close()
+# def parody_plot_with_std(y_test, y_pred_test, y_pred_test_std, fold_no, saving_folder, label_to_predict):
+#     plt.figure()
+#     plt.errorbar(y_test, y_pred_test, yerr=y_pred_test_std, fmt='o')
+#     plt.plot(y_test, y_test, c='r')
+#     plt.title('Fold ' + str(fold_no) + ' Gaussian Process Regression, R2=%.2f' % r2_score(y_test, y_pred_test))
+#     plt.xlabel('Actual')
+#     plt.ylabel('Predicted')
+#     plt.savefig(saving_folder +  f'/{label_to_predict}_fold_{fold_no}_parody_plot.png')
+#     # plt.show()
+#     plt.close()
 
 
 ''' 
@@ -68,6 +74,7 @@ def convert_coordinates_to_new_basis(Material_X, Material_Y, Material_Z, CM, xs,
         
     return np.array(x2), np.array(y2), np.array(z2)
 
+'''3d plot of RPA nodes and the predicted impact site in x and y direction. '''
 def plot_test_predictions_heatmap(full_dataset, labels_to_predict, all_labels, all_important_features, models_fold_to_pull, saving_folder):
     
     #material basis vectors for RPA bone
@@ -225,11 +232,11 @@ def Kfold_Gaussian_Process_Regression(full_dataset, full_dataset_labels, importa
         """ defining the covariance (kernel) function """
         kernel = ConstantKernel(1.0) + ConstantKernel(1.0) * RBF(length_scale=1e1, length_scale_bounds=(1e-2, 1e3))  + WhiteKernel(noise_level=2, noise_level_bounds=(1e-2, 1e2)) #TODO experiment with the kernel... but this one seems to work.
         kernel = ConstantKernel(1.0) + ConstantKernel(1.0) * RBF() + WhiteKernel(noise_level=1)
-        kernel = ConstantKernel(1.0) + ConstantKernel(1.0) * RBF()
+        # kernel = ConstantKernel(1.0) + ConstantKernel(1.0) * RBF()
         # kernel = ConstantKernel(1.0) + ConstantKernel(1.0) * RBF() + ConstantKernel(1.0) * ExpSineSquared()+ WhiteKernel(noise_level=1)
         # kernel = ConstantKernel(1.0) + ConstantKernel(1.0) * ExpSineSquared()+ WhiteKernel(noise_level=1)
         
-        model = GaussianProcessRegressor(kernel=kernel, random_state=0, alpha=50, n_restarts_optimizer=25)
+        model = GaussianProcessRegressor(kernel=kernel, random_state=0, alpha=50, n_restarts_optimizer=2)
         # model = GaussianProcessRegressor(kernel=kernel, random_state=0, alpha=50)
         
         """ fitting and making predictions based on non-scaled data """
@@ -275,9 +282,9 @@ def Kfold_Gaussian_Process_Regression(full_dataset, full_dataset_labels, importa
         y_pred_test, y_pred_test_std = model.predict(X_scaled_test, return_std=True)
         
         train_uncertainty, train_uncertainty_values = evaluate_uncertainty(y_pred_train, y_pred_train_std, y_train, 'Train')
-        print(f'\ntrain uncertainty = \n {train_uncertainty}')
+        # print(f'\ntrain uncertainty = \n {train_uncertainty}')
         test_uncertainty, test_uncertainty_values = evaluate_uncertainty(y_pred_test, y_pred_test_std, y_test, 'Test')
-        print(f'\ntest uncertainty = \n {test_uncertainty}')
+        # print(f'\ntest uncertainty = \n {test_uncertainty}')
 
         
         if(save_data):
@@ -311,33 +318,119 @@ def Kfold_Gaussian_Process_Regression(full_dataset, full_dataset_labels, importa
     return models, performances, r2s, mse_s
 
 
-# full_dataset_pathname = "/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Feature_gathering/New_Crack_Len_FULL_OG_dataframe.csv"
-# # full_dataset_pathname = "/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/Feature_gathering/FULL_OG_dataframe_with_impact_sites_and_Jimmy_RF.csv"
-# image_folder = '/Users/jakehirst/Desktop/sfx/sfx_pics/jake/images_sfx/new_dataset/Visible_cracks'
-# all_labels = ['height', 'phi', 'theta', 
-#               'impact site x', 'impact site y', 'impact site z', 
-#               'impact site r', 'impact site phi', 'impact site theta']
+
+def plot_hyperparameter_performance(opt, hyperparameter_name, saving_folder):
+    '''
+    Plots the mean TEST performance of a model for each value of a specified hyperparameter.
+
+    Parameters:
+    opt (BayesSearchCV): The fitted BayesSearchCV object after running the optimization.
+    hyperparameter_name (str): The name of the hyperparameter to plot.
+    '''
+    
+    # Extract the scores from the optimization results
+    results = opt.cv_results_
+    scores = results['mean_test_score']
+    
+    # Extract the hyperparameter values tried during optimization
+    hyperparameter_values = [
+        params[hyperparameter_name] for params in results['params']
+    ]
+    
+    # Create the plot
+    plt.figure(figsize=(10, 5))
+    plt.scatter(hyperparameter_values, scores, color='red', alpha=0.4)
+    # plt.plot(hyperparameter_values, scores, color='lightblue', linestyle='--', marker='o')
+
+    # Label the plot
+    plt.title(f'Performance for different values of hyperparameter: {hyperparameter_name}')
+    plt.xlabel(hyperparameter_name)
+    plt.ylabel('Validation R^2')
+    
+    # Show the plot
+    plt.grid(True)
+    # plt.show()
+    plt.savefig(f'{saving_folder}/{hyperparameter_name}.png')
+    plt.close()
 
 
 
 
-# label_to_predict = 'impact site r'
-# saving_folder=f'/Users/jakehirst/Desktop/model_results/GPR_RBF_and_white_{label_to_predict}/'
-# if(not os.path.exists(saving_folder)): os.mkdir(saving_folder)
-# correlated_featureset, full_dataset_labels, important_features = prepare_dataset_Single_Output_Regression(full_dataset_pathname, image_folder, label_to_predict, [], saving_folder=None, maximum_p_value=0.5)
-# #correlated_featureset = remove_ABAQUS_features(correlated_featureset)
-# labels_to_predict = ['impact site x', 'impact site y']
-# # features_to_keep = ['crack len', 'init x']
-# # features_to_keep = ['max_kink', 'init y']
 
-# # correlated_featureset = correlated_featureset[features_to_keep]
-# all_important_features = {'impact site x': ['crack len', 'init x'],
-#                           'impact site y': ['max_kink', 'init y']}
+def do_bayesian_optimization_GPR(feature_df, label_df, num_tries=100, saving_folder='/Users/jakehirst/Desktop'):
+    # Preprocessing as before
+    # df_centered = feature_df - feature_df.mean()
+    # df_normalized = df_centered / df_centered.std()
+    # feature_df = df_normalized
+    
+    X = feature_df.to_numpy()
+    y = label_df.to_numpy()
 
-# models_fold_to_pull = {'impact site x': 2,
-#                        'impact site y': 4}
-# raw_images = []
+    '''not needed since the BayesSearchCV already splits it into training and validation sets.'''
+    # X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
 
-# plot_test_predictions_heatmap(correlated_featureset, labels_to_predict, all_labels, all_important_features, models_fold_to_pull, saving_folder)
+    # Define the parameter space for the Gaussian Process Regression
+    param_space = {
+        'kernel__k1__k2__length_scale': Real(1e-9, 1e5),  # Length scale of the RBF kernel
+        'kernel__k1__k1__constant_value': Real(0.1, 10.0),  # Scale of the Constant kernel
+        'kernel__k2__noise_level': Real(1e-10, 1e2, 'log-uniform')  # Noise level for WhiteKernel
+    }
 
+    # Create a GaussianProcessRegressor with an RBF kernel plus a WhiteKernel for noise
+    kernel = ConstantKernel(constant_value=1.0) * RBF(length_scale=1.0) + WhiteKernel(noise_level=1e-5)
+    gpr = GaussianProcessRegressor(kernel=kernel, random_state=0, n_restarts_optimizer=20)
+
+    # Wrap the model with BayesSearchCV
+    opt = BayesSearchCV(gpr, 
+                        param_space, 
+                        n_iter=num_tries, 
+                        random_state=0, 
+                        cv=5,
+                        verbose=3,
+                        scoring= 'neg_mean_absolute_error')
+                        # scoring='r2')
+
+    # Run the Bayesian optimization
+    opt.fit(X, y)
+
+    best_index = opt.best_index_
+    # Retrieve the mean test score for the best parameters
+    best_average_score = opt.cv_results_['mean_test_score'][best_index]
+    # Best parameter set found
+    print(f"\n$$$$$$$$$$$$ Results for GPR predicting {label_df.name} $$$$$$$$$$$$")
+    print(f"$$$$$$$$$$$$ Best parameters found: {opt.best_params_} $$$$$$$$$$$$")
+    print(f"$$$$$$$$$$$$ Best average test score across 5-fold cv: {best_average_score} $$$$$$$$$$$$\n")
+    
+    
+    hyperparameter_names = ['kernel__k1__k2__length_scale', 'kernel__k1__k1__constant_value', 'kernel__k2__noise_level']
+    for name in hyperparameter_names:
+        plot_hyperparameter_performance(opt, name, saving_folder)
+    
+    # Save the best parameters
+    with open(f'{saving_folder}/best_hyperparams.txt', 'w') as file:
+        file.write(str(opt.best_params_))
+
+    # Note: The function 'plot_hyperparameter_performance' would need to be adapted 
+    # to handle the Gaussian Process Regressor hyperparameters.
+    
+    return opt
+
+
+'''gets the best hyperparameters to use for GPR when predicting label_to_predict'''
+def get_best_hyperparameters_GPR(label_to_predict, hyperparameter_folder):
+    import ast
+    best_hp_path = f'{hyperparameter_folder}/{label_to_predict}/GPR/best_hyperparams.txt'
+    try:
+        with open(best_hp_path, 'r') as file:
+            content = file.read()
+    except FileNotFoundError:
+        print("File not found best_hyperparams.txt.")
+    except Exception as e:
+        print(f"An error occurred opening best_hyperparams.txt: {e}")
+    converted_dict = dict(ast.literal_eval(content.removeprefix('OrderedDict')))
+    c = converted_dict['kernel__k1__k1__constant_value']
+    length_scale = converted_dict['kernel__k1__k2__length_scale']
+    noise_level = converted_dict['kernel__k2__noise_level']
+    
+    return c, length_scale, noise_level
 
