@@ -221,13 +221,13 @@ def add_impact_sites_to_existing_df(df, impact_folder, impact_filename):
 # folder_name = "F:\\Jake\\good_simies_coats\\"
 # folder_name = "C:\\Users\\u1056\\OneDrive\\Desktop\\Loyd_42_0_case\\delta_k_code\\"
 # folder_name = "C:\\Users\\u1056\\sfx\\impact_node_check\\"
-folder_name = "F:\\Jake\\good_simies\\"
+# folder_name = "F:\\Jake\\good_simies\\"
 
-min_distance_locations, parietal_nodes, impact_bones = get_all_impact_node_sites(folder_name)
-parietal_nodes = np.asarray(parietal_nodes)
-parietal_node_locations = parietal_nodes[:,1:] #parietal_node_locations doesnt include the node number, parietal_nodes does include the node number
-impact_nodes = np.array(list(min_distance_locations.values()))
-plot_impact_sites(parietal_node_locations, impact_nodes)
+# min_distance_locations, parietal_nodes, impact_bones = get_all_impact_node_sites(folder_name)
+# parietal_nodes = np.asarray(parietal_nodes)
+# parietal_node_locations = parietal_nodes[:,1:] #parietal_node_locations doesnt include the node number, parietal_nodes does include the node number
+# impact_nodes = np.array(list(min_distance_locations.values()))
+# plot_impact_sites(parietal_node_locations, impact_nodes)
 
 # df = add_impact_sites_to_df('C:\\Users\\u1056\\sfx\\sfx_ML\\sfx_ML\\Feature_gathering\\', 'New_Crack_Len_FULL_OG_dataframe.csv','C:\\Users\\u1056\\sfx\\sfx_ML\\sfx_ML\\Feature_gathering\\','impact_sites.json')
 

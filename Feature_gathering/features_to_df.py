@@ -14,6 +14,10 @@ import random
 from FindImpactNode import *
 import ast
 from datetime import date
+import re
+import fnmatch
+import json
+
 
 current_date = date.today()
 current_date_string = current_date.strftime("%Y_%m_%d")
@@ -28,7 +32,11 @@ CM = np.array([106.55,72.79,56.64])
 #Ossification center of the RPA bone in abaqus basis
 OC = np.array([130.395996,46.6063,98.649696])
 
-FOLDER_PATH = "F:\\Jake\\good_simies\\"
+# FOLDER_PATH = "F:\\Jake\\good_simies\\"
+# FOLDER_PATH = "F:\\Jake\\good_simies_new_R_curve_j_3.5_q_2.5\\"
+# FOLDER_PATH = "F:\\Jake\\good_simies_old_R_curve\\" #making data from old simulations so that we can delete them
+# FOLDER_PATH = "F:\\Jake\\toy_dataset\\"
+
 # FOLDER_PATH = "Z:\\bjornssimies\\correcthistory\\"
 # FOLDER_PATH = "Z:\\Brian_simies\\k_diff_simmies\\"
 # FOLDER_PATH = "F:\\Jake\\new_good_simies\\"
@@ -172,29 +180,109 @@ def check_history_output(folder_path, key):
                 return
     return 
 
+''' converts all of the node locations and the node numbers into a single dataframe that only contains the nodes in the node_numbers and their locations. '''
+def convert_node_locations_to_df(node_locations, node_numbers):
+    df = {k: v for k, v in node_locations.items() if k in node_numbers}
+    df = pd.DataFrame(list(df.items()), columns=['Node', 'Coordinates'])
+    df[['X', 'Y', 'Z']] = pd.DataFrame(df['Coordinates'].to_list(), index=df.index)
+    return df
+
+''' This orders the file names that have a step and UCI first by the step, and then by the UCI. find_Simsetting_json_files below shows how it is used.'''
+def extract_numbers(filename):
+    # This regular expression looks for two groups of numbers in the filename
+    match = re.search(r'Stp(\d+).*_(\d+)\.json', filename)
+    if match:
+        return int(match.group(1)), int(match.group(2))
+    else:
+        return (float('inf'), float('inf'))  # Return a tuple of infinity if no match is found
+
+''' finds the Json files that look like this in a given simulation folder: SimSettings_Para_3-67ft_PHI_21_THETA_226_Stp4_UCI_1
+    it also orders them by the step, and then by the UCI. '''
+def find_Simsetting_json_files(directory, simulation):
+    pattern = f'SimSettings_{simulation}*.json'
+    matching_files = []
+    stp_numbers = set()
+    for root, dirs, files in os.walk(directory):
+        for filename in fnmatch.filter(files, pattern):
+            stp_num, _ = extract_numbers(filename)
+            stp_numbers.add(stp_num)
+            matching_files.append(os.path.join(root, filename))
+    # Sort the list based on the extracted numbers
+    matching_files.sort(key=lambda x: extract_numbers(os.path.basename(x)))
+    return matching_files, sorted(stp_numbers)
+
+def get_propagation_speed_features(path_to_simulations, simulation):
+    max_propagation_speed, avg_propagation_speed = 0,0
+    simulation_folder = path_to_simulations + simulation
+    simsettings_files, nothin = find_Simsetting_json_files(simulation_folder, simulation)
+
+    '''only include files up until the last timestep of crack growth. the files after that should not be considered in the time since the crack doesnt grow anymore.'''
+    index = next((i for i, filename in reversed(list(enumerate(simsettings_files))) if re.search(r'_UCI_([1-9]\d*)\.json$', os.path.basename(filename))), None)
+    if index is not None:
+        simsettings_files = simsettings_files[:index + 1]
+
+    '''getting all of the time step numbers'''
+    stp_numbers = set()
+    for filename in simsettings_files:
+        match = re.search(r'_Stp(\d+)_UCI_', os.path.basename(filename))
+        if match:
+            stp_numbers.add(int(match.group(1)))
+    '''sorting them and putting them in a list'''
+    sorted_timesteps = sorted(list(stp_numbers))
+
+    propagation_speeds = []
+    intitation_timestep = sorted_timesteps[0]
+    last_propagation_timestep = sorted_timesteps[-1]
+    '''go through each timestep and collect the total propagation at the timestep.'''
+    for timestep in sorted_timesteps:
+        ucis_in_this_timestep = [filename for filename in simsettings_files if f'Stp{timestep}_UCI' in os.path.basename(filename)]
+        if(timestep == intitation_timestep): #get the first crack length
+            file = open(ucis_in_this_timestep[0], 'r')
+            data = json.load(file)
+            initial_crack_len = data['crack_length'][0][0]
+            current_crack_len = initial_crack_len
+            file.close() 
+        
+        file = open(ucis_in_this_timestep[-1], 'r')
+        data = json.load(file)
+        last_crack_len_at_this_timestep = data['crack_length'][0][-1]
+        propagation_speed_in_this_timestep = last_crack_len_at_this_timestep - current_crack_len
+        propagation_speeds.append(propagation_speed_in_this_timestep)
+        current_crack_len = last_crack_len_at_this_timestep
+        file.close() 
+
+    max_propagation_speed = np.max(propagation_speeds)
+    avg_propagation_speed = np.average(propagation_speeds)
+    return max_propagation_speed, avg_propagation_speed, intitation_timestep
 
 def create_df():
     maxes = get_max_step_and_max_UCIs(FOLDER_PATH)
     #TODO: add columns to dataframe as necessary
-    columns = ["front 0 x", 
-            "front 0 y", 
-            "front 0 z", 
-            "front 1 x", 
-            "front 1 y", 
-            "front 1 z",
+    columns = [
+            #"thickness at impact",
             "init x", 
             "init y", 
             "init z",
+            "timestep_init",
+            "max_prop_speed",
+            "avg_prop_speed",
             "dist btw frts", 
             "crack len",
             "linearity",
             "max thickness",
             "mean thickness",
+            "median_thickness", 
+            "var_thickness", 
+            "std_thickness",
+            "thickness_at_init",
             "max_kink",
             "abs_val_mean_kink",
             "mean_kink",
             "sum_kink",
             "abs_val_sum_kink",
+            "median_kink",
+            "std_kink",
+            "var_kink",
             "avg_ori",
             "angle_btw",
             "height", 
@@ -203,15 +291,13 @@ def create_df():
     df = pd.DataFrame(columns=columns)
     folder_path = FOLDER_PATH
 
-    front_0_array_x = []
-    front_0_array_y = []
-    front_0_array_z = []
-    front_1_array_x = []
-    front_1_array_y = []
-    front_1_array_z = []
+    thickness_at_init = []
     initiation_cite_x = []
     initiation_cite_y = []
     initiation_cite_z = []
+    timestep_inits = []
+    max_prop_speeds = []
+    avg_prop_speeds = []
     distance_between_fronts = []
     crack_lengths = []
     linearity_arr = []
@@ -220,6 +306,9 @@ def create_df():
     theta_array = []
     max_thickness_arr = []
     mean_thickness_arr = []
+    median_thickness_arr = []
+    var_thickness_arr = []
+    std_thickness_arr = []
     max_kink_arr = []
     abs_val_mean_kink_arr = []
     mean_kink_arr = []
@@ -227,21 +316,17 @@ def create_df():
     abs_val_sum_kink_arr = []
     average_orientation_arr = []
     angle_between_cracks_arr = []
+    all_median_kinks = []
+    all_std_kinks = []
+    all_var_kinks = []
 
     i = 0
     #goes through each of the simulations and gathers features for the dataframe
+    ''' this for loop goes through and gets all of the features that we can get from the end of the simulation '''
     for key in maxes.keys():
         print(i)
-        # print(key)
-        #TODO: add feature gathering functions as necessary here
-
-        #TODO: delete this below
-        #max_crack_width(folder_path, key, maxes[key][0], maxes[key][1])
-        #mean_crack_width(folder_path, key)
-        #TODO: delete this above
-        # if(key != 'Para_1-2175ft_PHI_4_THETA_99'):
-        #     continue
-
+        print(key)
+        # if(key != 'Para_2-0275ft_PHI_24_THETA_222'): continue
 
         good_history = check_history_output(folder_path, key)
  
@@ -254,25 +339,33 @@ def create_df():
         
         d = get_euclidean_distance(final_front_locations[0], final_front_locations[1])
 
+        '''gets the node locations of the inner, outer, and main side nodes at the maximum dynamic step of the simulation'''
         inner_surface_nodes, outer_surface_nodes, main_side_nodes, node_locations = get_main_side_outer_and_inner_surface_nodes(folder_path, key, get_max_dynamic_step(folder_path, key))
+        ''' turning outer_surface, inner_surface, and main_side nodes into easy to work with pandas dataframes '''
+        inner_surface_nodes_df = convert_node_locations_to_df(node_locations, inner_surface_nodes)
+        outer_surface_nodes_df = convert_node_locations_to_df(node_locations, outer_surface_nodes)
+        main_side_nodes_df = convert_node_locations_to_df(node_locations, main_side_nodes)
+
         len = get_crack_len(outer_surface_nodes, main_side_nodes, node_locations, final_front_locations)
+        # thickness_at_init = get_thickness_at_init(initiation_cite, inner_surface_nodes, outer_surface_nodes)
+        # thickness_at_impact = get_thickness_at_impact(impa)
         linearity = get_linearity(folder_path, key)
-        max_kink, abs_val_mean_kink, mean_kink, sum_kink, abs_val_sum_kink = kink_angle_call(folder_path, key)
-        max_thickness, mean_thickness = get_max_and_mean_thickness(folder_path, key)
-        
+        max_kink, abs_val_mean_kink, mean_kink, sum_kink, abs_val_sum_kink, median_kink, std_kinks, var_kinks = kink_angle_call(folder_path, key)
+        max_thickness, mean_thickness, median_thickness, var_thickness, std_thickness = get_max_and_mean_thickness(folder_path, key)
+
+        current_thickness_at_init = get_thickness_at_location(initiation_cite, outer_surface_nodes_df, inner_surface_nodes_df)
+        max_propagation_speed, avg_propagation_speed, intitation_timestep = get_propagation_speed_features(folder_path, key)
 
         height_array.append(labels[0])
         phi_array.append(labels[1])
         theta_array.append(labels[2])
-        front_0_array_x.append(final_front_locations[0][0])
-        front_0_array_y.append(final_front_locations[0][1])
-        front_0_array_z.append(final_front_locations[0][2])
-        front_1_array_x.append(final_front_locations[1][0])
-        front_1_array_y.append(final_front_locations[1][1])
-        front_1_array_z.append(final_front_locations[1][2])
+        thickness_at_init.append(current_thickness_at_init)
         initiation_cite_x.append(initiation_cite[0])
         initiation_cite_y.append(initiation_cite[1])
         initiation_cite_z.append(initiation_cite[2])
+        timestep_inits.append(intitation_timestep)
+        max_prop_speeds.append(max_propagation_speed)
+        avg_prop_speeds.append(avg_propagation_speed)
         distance_between_fronts.append(d)
         crack_lengths.append(len)
         linearity_arr.append(linearity)
@@ -285,36 +378,47 @@ def create_df():
         abs_val_sum_kink_arr.append(abs_val_sum_kink)
         average_orientation_arr.append(average_orientation)
         angle_between_cracks_arr.append(angle_between_cracks)
+        all_median_kinks.append(median_kink)
+        all_std_kinks.append(std_kinks)
+        all_var_kinks.append(var_kinks)
+        median_thickness_arr.append(median_thickness)
+        var_thickness_arr.append(var_thickness)
+        std_thickness_arr.append(std_thickness)
 
         i += 1
                 
 
 
-    df = {"front 0 x": front_0_array_x ,
-            "front 0 y": front_0_array_y, 
-            "front 0 z": front_0_array_z, 
-            "front 1 x": front_1_array_x, 
-            "front 1 y": front_1_array_y, 
-            "front 1 z": front_1_array_z,
-            "init x": initiation_cite_x, 
-            "init y": initiation_cite_y, 
-            "init z": initiation_cite_z, 
-            "dist btw frts": distance_between_fronts, 
-            "crack len": crack_lengths,
-            "linearity": linearity_arr,
-            "max thickness": max_thickness_arr,
-            "mean thickness": mean_thickness_arr,
-            "max_kink": max_kink_arr,
-            "abs_val_mean_kink": abs_val_mean_kink_arr,
-            "mean_kink": mean_kink_arr,
-            "sum_kink": sum_kink_arr,
-            "abs_val_sum_kink": abs_val_sum_kink_arr,
-            "avg_ori": average_orientation_arr,
-            "angle_btw": angle_between_cracks_arr,
-            "height": height_array, 
-            "phi": phi_array, 
-            "theta": theta_array
-            }
+    df = {
+        "init x": initiation_cite_x, 
+        "init y": initiation_cite_y, 
+        "init z": initiation_cite_z, 
+        "timestep_init":timestep_inits,
+        "max_prop_speed":max_prop_speeds,
+        "avg_prop_speed":avg_prop_speeds,
+        "dist btw frts": distance_between_fronts, 
+        "crack len": crack_lengths,
+        "linearity": linearity_arr,
+        "max thickness": max_thickness_arr,
+        "mean thickness": mean_thickness_arr,
+        "median_thickness": median_thickness_arr, 
+        "var_thickness": var_thickness_arr, 
+        "std_thickness": std_thickness_arr,
+        "thickness_at_init":thickness_at_init,
+        "max_kink": max_kink_arr,
+        "abs_val_mean_kink": abs_val_mean_kink_arr,
+        "mean_kink": mean_kink_arr,
+        "sum_kink": sum_kink_arr,
+        "abs_val_sum_kink": abs_val_sum_kink_arr,
+        "median_kink": all_median_kinks,
+        "std_kink": all_std_kinks,
+        "var_kink": all_var_kinks,
+        "avg_ori": average_orientation_arr,
+        "angle_btw": angle_between_cracks_arr,
+        "height": height_array, 
+        "phi": phi_array, 
+        "theta": theta_array
+        }
     df = pd.DataFrame(df,columns=columns)
 
     ''' add impact sites to the df '''
@@ -335,25 +439,25 @@ def create_df():
 
     Jimmy_impact_sites_x, Jimmy_impact_sites_y, Jimmy_impact_sites_z = convert_coordinates_to_new_basis(Material_X, Material_Y, Material_Z, CM, impact_sites[:,0], impact_sites[:,1], impact_sites[:,2])
     Jimmy_init_x, Jimmy_init_y, Jimmy_init_z = convert_coordinates_to_new_basis(Material_X, Material_Y, Material_Z, CM, df['init x'].to_numpy(), df['init y'].to_numpy(), df['init z'].to_numpy())
-    Jimmy_front_0_x, Jimmy_front_0_y, Jimmy_front_0_z = convert_coordinates_to_new_basis(Material_X, Material_Y, Material_Z, CM, df['front 0 x'].to_numpy(), df['front 0 y'].to_numpy(), df['front 0 z'].to_numpy())
-    Jimmy_front_1_x, Jimmy_front_1_y, Jimmy_front_1_z = convert_coordinates_to_new_basis(Material_X, Material_Y, Material_Z, CM, df['front 1 x'].to_numpy(), df['front 1 y'].to_numpy(), df['front 1 z'].to_numpy())
+    # Jimmy_front_0_x, Jimmy_front_0_y, Jimmy_front_0_z = convert_coordinates_to_new_basis(Material_X, Material_Y, Material_Z, CM, df['front 0 x'].to_numpy(), df['front 0 y'].to_numpy(), df['front 0 z'].to_numpy())
+    # Jimmy_front_1_x, Jimmy_front_1_y, Jimmy_front_1_z = convert_coordinates_to_new_basis(Material_X, Material_Y, Material_Z, CM, df['front 1 x'].to_numpy(), df['front 1 y'].to_numpy(), df['front 1 z'].to_numpy())
 
     Jimmy_impact_sites_r, Jimmy_impact_sites_phi, Jimmy_impact_sites_theta = convert_cartesian_to_spherical(Jimmy_impact_sites_x, Jimmy_impact_sites_y, Jimmy_impact_sites_z)
     Jimmy_init_r, Jimmy_init_phi, Jimmy_init_theta = convert_cartesian_to_spherical(Jimmy_init_x, Jimmy_init_y, Jimmy_init_z)
-    Jimmy_front0_r, Jimmy_front0_phi, Jimmy_front0_theta = convert_cartesian_to_spherical(Jimmy_front_0_x, Jimmy_front_0_y, Jimmy_front_0_z)
-    Jimmy_front1_r, Jimmy_front1_phi, Jimmy_front1_theta = convert_cartesian_to_spherical(Jimmy_front_1_x, Jimmy_front_1_y, Jimmy_front_1_z)
+    # Jimmy_front0_r, Jimmy_front0_phi, Jimmy_front0_theta = convert_cartesian_to_spherical(Jimmy_front_0_x, Jimmy_front_0_y, Jimmy_front_0_z)
+    # Jimmy_front1_r, Jimmy_front1_phi, Jimmy_front1_theta = convert_cartesian_to_spherical(Jimmy_front_1_x, Jimmy_front_1_y, Jimmy_front_1_z)
 
-    df = insert_column_into_df(df, 'init z', 'Jimmy_init theta', Jimmy_init_theta)
-    df = insert_column_into_df(df, 'init z', 'Jimmy_init phi', Jimmy_init_phi)
-    df = insert_column_into_df(df, 'init z', 'Jimmy_init r', Jimmy_init_r)
+    # df = insert_column_into_df(df, 'init z', 'Jimmy_init theta', Jimmy_init_theta)
+    # df = insert_column_into_df(df, 'init z', 'Jimmy_init phi', Jimmy_init_phi)
+    # df = insert_column_into_df(df, 'init z', 'Jimmy_init r', Jimmy_init_r)
 
-    df = insert_column_into_df(df, 'front 0 z', 'Jimmy_front 0 theta', Jimmy_front0_theta)
-    df = insert_column_into_df(df, 'front 0 z', 'Jimmy_front 0 phi', Jimmy_front0_phi)
-    df = insert_column_into_df(df, 'front 0 z', 'Jimmy_front 0 r', Jimmy_front0_r)
+    # df = insert_column_into_df(df, 'front 0 z', 'Jimmy_front 0 theta', Jimmy_front0_theta)
+    # df = insert_column_into_df(df, 'front 0 z', 'Jimmy_front 0 phi', Jimmy_front0_phi)
+    # df = insert_column_into_df(df, 'front 0 z', 'Jimmy_front 0 r', Jimmy_front0_r)
 
-    df = insert_column_into_df(df, 'front 1 z', 'Jimmy_front 1 theta', Jimmy_front1_theta)
-    df = insert_column_into_df(df, 'front 1 z', 'Jimmy_front 1 phi', Jimmy_front1_phi)
-    df = insert_column_into_df(df, 'front 1 z', 'Jimmy_front 1 r', Jimmy_front1_r)
+    # df = insert_column_into_df(df, 'front 1 z', 'Jimmy_front 1 theta', Jimmy_front1_theta)
+    # df = insert_column_into_df(df, 'front 1 z', 'Jimmy_front 1 phi', Jimmy_front1_phi)
+    # df = insert_column_into_df(df, 'front 1 z', 'Jimmy_front 1 r', Jimmy_front1_r)
 
     df = insert_column_into_df(df, 'impact_sites', 'Jimmy_impact site theta', Jimmy_impact_sites_theta)
     df = insert_column_into_df(df, 'impact_sites', 'Jimmy_impact site phi', Jimmy_impact_sites_phi)
@@ -367,17 +471,15 @@ def create_df():
     df = insert_column_into_df(df, 'init z', 'Jimmy_init y', Jimmy_init_y)
     df = insert_column_into_df(df, 'init z', 'Jimmy_init x', Jimmy_init_x)
 
-    df = insert_column_into_df(df, 'front 0 z', 'Jimmy_front_0_z', Jimmy_front_0_z)
-    df = insert_column_into_df(df, 'front 0 z', 'Jimmy_front_0_y', Jimmy_front_0_y)
-    df = insert_column_into_df(df, 'front 0 z', 'Jimmy_front_0_x', Jimmy_front_0_x)
+    # df = insert_column_into_df(df, 'front 0 z', 'Jimmy_front_0_z', Jimmy_front_0_z)
+    # df = insert_column_into_df(df, 'front 0 z', 'Jimmy_front_0_y', Jimmy_front_0_y)
+    # df = insert_column_into_df(df, 'front 0 z', 'Jimmy_front_0_x', Jimmy_front_0_x)
 
-    df = insert_column_into_df(df, 'front 1 z', 'Jimmy_front_1_z', Jimmy_front_1_z)
-    df = insert_column_into_df(df, 'front 1 z', 'Jimmy_front_1_y', Jimmy_front_1_y)
-    df = insert_column_into_df(df, 'front 1 z', 'Jimmy_front_1_x', Jimmy_front_1_x)
+    # df = insert_column_into_df(df, 'front 1 z', 'Jimmy_front_1_z', Jimmy_front_1_z)
+    # df = insert_column_into_df(df, 'front 1 z', 'Jimmy_front_1_y', Jimmy_front_1_y)
+    # df = insert_column_into_df(df, 'front 1 z', 'Jimmy_front_1_x', Jimmy_front_1_x)
 
     df = df.drop(columns=['impact site x', 'impact site y', 'impact site z',
-                          'front 0 x', 'front 0 y', 'front 0 z',
-                          'front 1 x', 'front 1 y', 'front 1 z',
                           'init x', 'init y', 'init z',
                           'impact site x', 'impact site y', 'impact site z', 'impact_sites'])
     
@@ -416,8 +518,9 @@ def create_df():
 
 
 
-
-
+# FOLDER_PATH = "F:\\Jake\\good_simies\\"
+FOLDER_PATH = "F:\\Jake\\good_simies_new_R_curve_j_3.5_q_2.5\\"
+# FOLDER_PATH = "F:\\Jake\\good_simies_old_R_curve\\" #making data from old simulations so that we can delete them
 
 df = create_df()
 random_indicies = random.sample(range(1, len(df)), 30)
@@ -429,8 +532,10 @@ Pearson_Correlations_for_df(df, "phi")
 Pearson_Correlations_for_df(df, "theta")
 # save_df(test_df, "C:\\Users\\u1056\\sfx\\sfx_ML\\sfx_ML\\Feature_gathering\\New_Crack_Len_TEST_OG_dataframe.csv")
 # save_df(train_df, "C:\\Users\\u1056\\sfx\\sfx_ML\\sfx_ML\\Feature_gathering\\New_Crack_Len_TRAIN_OG_dataframe.csv")
+# save_df(df, "F:\\Jake\\good_simies_old_R_curve\\Old_R_curve_data_"+ current_date_string +".csv")
 save_df(df, "C:\\Users\\u1056\\sfx\\sfx_ML_data\\feature_data\\New_Crack_Len_FULL_OG_dataframe_" + current_date_string + ".csv")
 df = PhiTheta_to_cartesian(df)
+# save_df(df, "F:\\Jake\\good_simies_old_R_curve\\Old_R_curve_data_cartesian_"+ current_date_string +".csv")
 save_df(df, "C:\\Users\\u1056\\sfx\\sfx_ML_data\\feature_data\\OG_dataframe_cartesian_" + current_date_string + ".csv")
 Pearson_Correlations_for_df(df, "x")
 Pearson_Correlations_for_df(df, "y")
