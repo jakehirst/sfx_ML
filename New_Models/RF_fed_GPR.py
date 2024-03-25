@@ -1,8 +1,12 @@
 import joblib  # For saving and loading model
 # from Pytorch_ANN import *
+import sys
+sys.path.append('/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/New_Models')
+
 from random_forest import *
 from GPR import *
 import matplotlib.pyplot as plt
+from Bagging_models import *
 
 class RF_fed_GPR:
     def __init__(self):
@@ -55,11 +59,12 @@ class RF_fed_GPR:
         # kernel = ConstantKernel(constant_value=1.0) * RBF() + WhiteKernel(noise_level=1) #TODO try just not defining noise_level or constant_value
         # kernel = ConstantKernel() * RBF() + WhiteKernel()
         # kernel = ConstantKernel(1.0, (1e-3, 1e3)) * RBF(10, (1e-2, 1e2)) + WhiteKernel(noise_level=1, noise_level_bounds=(1e-10, 1e+1))
-        kernel = ConstantKernel(1.0, (1e-3, 1e3)) * Matern(length_scale=10, length_scale_bounds=(1e-2, 1e3)) + WhiteKernel(noise_level=1, noise_level_bounds=(1e-10, 1e+1))
+        kernel = ConstantKernel(1.0, (1e-3, 1e3)) * Matern(length_scale=10, length_scale_bounds=(1e-2, 1e3)) + WhiteKernel(noise_level=1, noise_level_bounds=(1e-10, 1e+3))#COMMENT this one works well
+        # kernel = ConstantKernel() * RBF() + WhiteKernel() 
         self.gpr = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=100)
         self.gpr.fit(features_from_RF, train_labels)
-        print(f'OPTIMIZED GPR PARAMETERS FOR NN-->GPR = {self.gpr.kernel_}')
-        
+        print(f'OPTIMIZED GPR PARAMETERS FOR RF-->GPR = {self.gpr.kernel_}')
+
         self.is_trained = True
 
     def predict(self, X):

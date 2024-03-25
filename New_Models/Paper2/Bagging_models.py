@@ -36,6 +36,8 @@ def parody_plot_with_std(y_test, y_pred_test, y_pred_test_std, saving_folder, la
     plt.ylabel('Predicted')
     if(show):
         plt.show()
+    elif(saving_folder == None):
+        return r2_score(y_test, y_pred_test)
     else:
         plt.savefig(saving_folder +  f'/ensemble_UQ_parody_plot_{testtrain}_set.png')
     plt.close()
@@ -108,7 +110,8 @@ uncertainty is based on the variance of the predictions from the ensemble.
 Also compares this to the true labels of the dataset.
 '''
 def Get_predictions_and_uncertainty_with_bagging(test_features_path, test_labels_path, model_folder, saving_folder, features_to_keep, label_to_predict, model_type):
-    if(not os.path.exists(saving_folder)): os.makedirs(saving_folder)
+    if(saving_folder == None): print('not saving parody plot')
+    elif(not os.path.exists(saving_folder)): os.makedirs(saving_folder)
     test_features = pd.read_csv(test_features_path)[features_to_keep]
     test_labels = pd.read_csv(test_labels_path) 
     
@@ -148,7 +151,7 @@ def Get_predictions_and_uncertainty_with_bagging(test_features_path, test_labels
     test_or_train = test_features_path.split('_')[-2].split('/')[-1]
     r2 = parody_plot_with_std(test_labels.to_numpy(), ensemble_predictions, ensemble_uncertanties, saving_folder, label_to_predict, model_type, testtrain=test_or_train)
     
-    return r2, ensemble_predictions, ensemble_uncertanties, test_labels
+    return r2, np.array(ensemble_predictions), np.array(ensemble_uncertanties), np.array(test_labels).flatten()
 
 
 ''' 
@@ -317,10 +320,10 @@ def plot_residuals_vs_uncertainties(predictions, uncertainites, true_labels, sav
     return
 
 ''' creates the 5-fold cross validation datasets for each label to predict in labels to predict in the path given. '''
-def make_5_fold_datasets(saving_folder, full_dataset_pathname, image_folder, normalize=True):
-    all_labels = ['height', 'phi', 'theta', 
-            'impact site x', 'impact site y', 'impact site z', 
-            'impact site r', 'impact site phi', 'impact site theta']
+def make_5_fold_datasets(saving_folder, full_dataset_pathname, all_labels, normalize=True):
+    # all_labels = ['height', 'phi', 'theta', 
+    #         'impact site x', 'impact site y', 'impact site z', 
+    #         'impact site r', 'impact site phi', 'impact site theta']
 
     labels_to_predict = ['impact site x', 'impact site y', 'height']
 
@@ -507,8 +510,14 @@ def plot_sharpness_curve(stdevs, saving_folder, show=0):
     xlim = [0, max(stdevs)]
     fig_sharp = plt.figure(figsize=figsize)
     # ax_sharp = sns.histplot(stdevs, kde=False, norm_hist=True)
-    ax_sharp = sns.histplot(stdevs, kde=False, stat="density", binwidth=0.4, )
-    ax_sharp.set_xlim(xlim)
+    try:
+        ax_sharp = sns.histplot(stdevs, kde=False, stat="density", binwidth=0.4)
+        ax_sharp.set_xlim(xlim)
+    except: #just in case there is no variance with stdevs or something else happens...
+        ax_sharp = sns.histplot(stdevs, kde=False, stat="density", binwidth=0.1)
+        ax_sharp.set_xlim(stdevs[0] - 1, stdevs[0] + 1)  # Adjust this based on your data range preference   
+        
+    
     ax_sharp.set_xlabel('Predicted standard deviation')
     ax_sharp.set_ylabel('Normalized frequency')
     ax_sharp.set_yticklabels([])

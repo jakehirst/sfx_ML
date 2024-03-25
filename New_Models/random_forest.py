@@ -202,7 +202,7 @@ def get_best_hyperparameters_RF(label_to_predict, hyperparameter_folder):
     
     
     
-    
+
     
 '''all of these top 10 features were collected by first doing feature transformations and interactions, then by doing the backward feature selection technique. '''
 '''when predicting height'''
@@ -268,7 +268,7 @@ top_10_features = ['abs_val_sum_kink^2',
 #                     'init y + thickness_at_init',
 #                     'init y - abs_val_mean_kink']
 
-labels_to_predict = ['height', 'impact site x', 'impact site y']
+# labels_to_predict = ['height', 'impact site x', 'impact site y']
 
 # Generate some synthetic data for demonstration purposes
 # df = pd.read_csv("/Volumes/Jake_ssd/OCTOBER_DATASET/feature_transformations_2023-10-28/height/HEIGHTALL_TRANSFORMED_FEATURES.csv")

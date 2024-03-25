@@ -63,10 +63,14 @@ def main():
     '''define the base folder where all the results are...'''
     with_or_without_transformations = 'with'
     with_or_without_transformations = 'without'
+    with_or_without_transformations = 'without_with_recalibration'
+
 
     if(with_or_without_transformations == 'with'):
         base_folder = '/Volumes/Jake_ssd/Paper 2/with_transformations/Compare_Code_5_fold_ensemble_results/'
-    else:
+    elif(with_or_without_transformations == 'without_with_recalibration'):
+        base_folder = '/Volumes/Jake_ssd/Paper 2/recalibrations/without_transformations/Compare_Code_5_fold_ensemble_results/'
+    else:     
         base_folder = '/Volumes/Jake_ssd/Paper 2/without_transformations/Compare_Code_5_fold_ensemble_results/'
 
     model_types = ['ANN', 'RF', 'GPR','ridge', 'Single GPR', 'Single RF', 'NN_fed_GPR','NN_fed_RF', 'RF_fed_GPR']
@@ -82,9 +86,15 @@ def main():
             print(f'MODEL TYPE = {model_type}')
             
             if(model_type in ['ANN', 'RF', 'GPR','ridge']):
-                result_df = pd.read_csv(f'{base_folder}{label_to_predict}/{model_type}/{num_models_for_ensemble}_models/{label_to_predict}_{model_type}_{num_models_for_ensemble}results.csv')     
+                if(with_or_without_transformations == 'without_with_recalibration'):
+                    result_df = pd.read_csv(f'{base_folder}{label_to_predict}/{model_type}/uncalibrated/{label_to_predict}_{model_type}_{num_models_for_ensemble}results.csv')     
+                else:
+                    result_df = pd.read_csv(f'{base_folder}{label_to_predict}/{model_type}/{num_models_for_ensemble}_models/{label_to_predict}_{model_type}_{num_models_for_ensemble}results.csv')     
             else:
-                result_df = pd.read_csv(f'{base_folder}{label_to_predict}/{model_type}/1_models/{label_to_predict}_{model_type}_1results.csv')     
+                if(with_or_without_transformations == 'without_with_recalibration'):
+                    result_df = pd.read_csv(f'{base_folder}{label_to_predict}/{model_type}/uncalibrated/{label_to_predict}_{model_type}_1results.csv')     
+                else:
+                    result_df = pd.read_csv(f'{base_folder}{label_to_predict}/{model_type}/1_models/{label_to_predict}_{model_type}_1results.csv')     
             
             averages = result_df.iloc[5]
             #replaceing the fold_no column with the model_type

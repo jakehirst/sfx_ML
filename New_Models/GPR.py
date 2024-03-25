@@ -68,6 +68,8 @@ def convert_coordinates_to_new_basis(Material_X, Material_Y, Material_Z, CM, xs,
         x2.append(new_point[0][0])
         y2.append(new_point[0][1])
         z2.append(new_point[0][2])
+        
+
 
     # print("Coordinates in the target basis:")
     # print(f"x2: {x2}, y2: {y2}, z2: {z2}")
@@ -230,13 +232,13 @@ def Kfold_Gaussian_Process_Regression(full_dataset, full_dataset_labels, importa
             y_train = y_train[train_indicies]
         
         """ defining the covariance (kernel) function """
-        kernel = ConstantKernel(1.0) + ConstantKernel(1.0) * RBF(length_scale=1e1, length_scale_bounds=(1e-2, 1e3))  + WhiteKernel(noise_level=2, noise_level_bounds=(1e-2, 1e2)) #TODO experiment with the kernel... but this one seems to work.
+        kernel = ConstantKernel(1.0) + ConstantKernel(1.0) * RBF(length_scale=1e1, length_scale_bounds=(1e-2, 1e3))  + WhiteKernel(noise_level=2, noise_level_bounds=(1e-2, 1e3)) #TODO experiment with the kernel... but this one seems to work.
         kernel = ConstantKernel(1.0) + ConstantKernel(1.0) * RBF() + WhiteKernel(noise_level=1)
         # kernel = ConstantKernel(1.0) + ConstantKernel(1.0) * RBF()
         # kernel = ConstantKernel(1.0) + ConstantKernel(1.0) * RBF() + ConstantKernel(1.0) * ExpSineSquared()+ WhiteKernel(noise_level=1)
         # kernel = ConstantKernel(1.0) + ConstantKernel(1.0) * ExpSineSquared()+ WhiteKernel(noise_level=1)
         
-        model = GaussianProcessRegressor(kernel=kernel, random_state=0, alpha=50, n_restarts_optimizer=2)
+        model = GaussianProcessRegressor(kernel=kernel, random_state=0, alpha=50, n_restarts_optimizer=50)
         # model = GaussianProcessRegressor(kernel=kernel, random_state=0, alpha=50)
         
         """ fitting and making predictions based on non-scaled data """
