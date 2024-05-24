@@ -149,7 +149,8 @@ def Get_predictions_and_uncertainty_with_bagging(test_features_path, test_labels
         ensemble_predictions.append(mean_prediction)
         ensemble_uncertanties.append(std_prediction*2) #uncertainty will be 2 * the std of the predictions
     test_or_train = test_features_path.split('_')[-2].split('/')[-1]
-    r2 = parody_plot_with_std(test_labels.to_numpy(), ensemble_predictions, ensemble_uncertanties, saving_folder, label_to_predict, model_type, testtrain=test_or_train)
+    
+    r2 = parody_plot_with_std(test_labels.to_numpy(), ensemble_predictions, ensemble_uncertanties, saving_folder, label_to_predict, model_type, testtrain=test_or_train, show=True)
     
     return r2, np.array(ensemble_predictions), np.array(ensemble_uncertanties), np.array(test_labels).flatten()
 
@@ -320,7 +321,8 @@ def plot_residuals_vs_uncertainties(predictions, uncertainites, true_labels, sav
     return
 
 ''' creates the 5-fold cross validation datasets for each label to predict in labels to predict in the path given. '''
-def make_5_fold_datasets(saving_folder, full_dataset_pathname, all_labels, normalize=True):
+def make_5_fold_datasets(saving_folder, data, all_labels, normalize=True):
+    import re
     # all_labels = ['height', 'phi', 'theta', 
     #         'impact site x', 'impact site y', 'impact site z', 
     #         'impact site r', 'impact site phi', 'impact site theta']
@@ -331,14 +333,25 @@ def make_5_fold_datasets(saving_folder, full_dataset_pathname, all_labels, norma
         make_dirs(f'{saving_folder}/{label_to_predict}')
         # if(not os.path.exists(f'{saving_folder}/{label_to_predict}')): os.mkdir(f'{saving_folder}/{label_to_predict}')
         # full_dataset_features, full_dataset_labels, important_features = prepare_dataset_Single_Output_Regression(full_dataset_pathname, image_folder, label_to_predict, all_labels, saving_folder=None, maximum_p_value=1)
-        data = pd.read_csv(full_dataset_pathname)
+        # data = pd.read_csv(full_dataset_pathname)
         
         full_dataset_features = data.drop(all_labels, axis=1)
+        '''ONLY NORMALIZING CONTINUOUS COLUMNS'''
         if(normalize == True):
-            # Zero-center the data
-            data_centered = full_dataset_features - data.mean()
+            # Identify continuous columns by filtering out those with numbers in their names
+            continuous_columns = [col for col in full_dataset_features.columns if not re.search(r'\d', col)]
+            # Select only the continuous data
+            continuous_data = full_dataset_features[continuous_columns]
+            # Zero-center the continuous data
+            data_centered = continuous_data - continuous_data.mean()
             # Normalize to the range [-1, 1]
-            full_dataset_features = data_centered / data_centered.abs().max()
+            normalized_data = data_centered / data_centered.abs().max()
+            # Update the continuous columns in the original dataset
+            full_dataset_features[continuous_columns] = normalized_data
+            # # Zero-center the data
+            # data_centered = full_dataset_features - data.mean()
+            # # Normalize to the range [-1, 1]
+            # full_dataset_features = data_centered / data_centered.abs().max()
         full_dataset_labels = data[label_to_predict]
         
         rnge = range(1, len(full_dataset_features)+1)

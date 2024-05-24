@@ -89,7 +89,7 @@ def Get_predictions_and_uncertainty_single_model(test_features_path, test_labels
     
     uncertainties = single_pred_stds * 2
     test_or_train = test_features_path.split('_')[-2].split('/')[-1]
-    r2 = parody_plot_with_std(test_labels.to_numpy(), current_predictions, uncertainties, saving_folder, label_to_predict, model_type, testtrain=test_or_train)
+    r2 = parody_plot_with_std(test_labels.to_numpy(), current_predictions, uncertainties, saving_folder, label_to_predict, model_type, testtrain=test_or_train, show=True)
     
     return r2, np.array(current_predictions), np.array(uncertainties), np.array(test_labels).flatten()
 

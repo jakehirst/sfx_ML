@@ -146,7 +146,7 @@ def plot_impact_site_with_uncertainty_2D(CIs_wanted, x_pred, x_std, y_pred, y_st
     plt.close()
     
     
-def plot_impact_site_with_uncertainty_2D_with_ellipse(CIs_wanted, x_pred, x_std, y_pred, y_std, x_true, y_true, saving_path=None):
+def plot_impact_site_with_uncertainty_2D_with_ellipse_before_recalibration(CIs_wanted, x_pred, x_std, y_pred, y_std, x_true, y_true, saving_path=None):
     def plot_confidence_ellipses(ax, x_pred, y_pred, x_std, y_std, confidence_intervals):
         """
         Adds confidence interval ellipses to the provided axes object.
@@ -171,7 +171,7 @@ def plot_impact_site_with_uncertainty_2D_with_ellipse(CIs_wanted, x_pred, x_std,
             # ellipse = Ellipse((x_pred, y_pred), width, height, edgecolor='blue', facecolor='none', label=f'{confidence}% CI')
             # ax.add_patch(ellipse) 
             ellipse_color = colors[i % len(colors)]  # Use modulo to loop over colors if necessary
-            ellipse = Ellipse((x_pred, y_pred), width, height, edgecolor=ellipse_color, facecolor='none', label=f'{confidence}% CI')
+            ellipse = Ellipse((x_pred, y_pred), width, height, edgecolor=ellipse_color, facecolor='none', label=f'{confidence}% Confidence interval', linewidth=3)
             ax.add_patch(ellipse)
               
     #material basis vectors for RPA bone
@@ -201,16 +201,16 @@ def plot_impact_site_with_uncertainty_2D_with_ellipse(CIs_wanted, x_pred, x_std,
     # Existing code for loading data and converting coordinates remains the same...
 
     # Create a 2D figure
-    fig, ax = plt.subplots(figsize=(10, 8))
+    fig, ax = plt.subplots(figsize=(20, 16))
 
     # Scatter plot for the parietal bone nodes
-    ax.scatter(RPA_x, RPA_y, c='grey', alpha=.15, label='Parietal bone')
+    ax.scatter(RPA_x, RPA_y, s=100,  c='grey', alpha=.15, label='Parietal bone', zorder=1)
 
-    point_size = 50
+    point_size = 100
 
     # Scatter plot for the mean predicted and true impact locations
-    ax.scatter(x_pred, y_pred, c='cyan', label='Mean prediction', s=point_size)
-    ax.scatter(x_true, y_true, c='orange', label='True impact location', s=point_size)
+    ax.scatter(x_pred, y_pred, c='cyan', label='Mean prediction', s=point_size*2, zorder=3)
+    ax.scatter(x_true, y_true, c='orange', label='True impact location', s=point_size*2, zorder=3)
 
     # Add confidence interval ellipses
     plot_confidence_ellipses(ax, x_pred, y_pred, x_std, y_std, CIs_wanted)

@@ -225,13 +225,17 @@ def train_model(model_type, train_features, train_labels, hyperparameter_folder)
         degree = 4
         model = make_pipeline(PolynomialFeatures(degree),LinearRegression())  
     elif(model_type == 'GPR'):
-        c, length_scale, noise_level = get_best_hyperparameters_GPR(label_to_predict=train_labels.columns[0], hyperparameter_folder=hyperparameter_folder)
-        kernel = ConstantKernel(constant_value=c) * RBF(length_scale=length_scale) + WhiteKernel(noise_level=noise_level)
+        kernel = ConstantKernel(constant_value_bounds=(1e-3, 1e3)) * RBF(length_scale_bounds=(1e2, 1e6)) + WhiteKernel(noise_level_bounds=(1e-10, 1e+3)) 
+        # model = GaussianProcessRegressor(kernel=kernel, random_state=0, n_restarts_optimizer=200)
+        model = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=50) #COMMENT removed random state
+        
+        # c, length_scale, noise_level = get_best_hyperparameters_GPR(label_to_predict=train_labels.columns[0], hyperparameter_folder=hyperparameter_folder)
+        # kernel = ConstantKernel(constant_value=c) * RBF(length_scale=length_scale) + WhiteKernel(noise_level=noise_level)
         # kernel = ConstantKernel(1.0) + ConstantKernel(1.0) * RBF() + WhiteKernel(noise_level=1) #TODO trying this one out... using best hyperparams underfits when bagging
         # kernel = ConstantKernel(1.0) * RBF() + WhiteKernel(noise_level=1) #TODO trying this one out... using best hyperparams underfits when bagging
         # kernel = ConstantKernel() + Matern() + WhiteKernel(noise_level=1) #TODO trying kernel from paper
         # model = GaussianProcessRegressor(kernel=kernel, random_state=0, alpha=50, n_restarts_optimizer=25) 
-        model = GaussianProcessRegressor(kernel=kernel, random_state=0, n_restarts_optimizer=25)
+        # model = GaussianProcessRegressor(kernel=kernel, random_state=0, n_restarts_optimizer=25)
     
     # '''doing Z-score normalization on features (mean of 0, std of 1)'''
     # # Initialize the StandardScaler
