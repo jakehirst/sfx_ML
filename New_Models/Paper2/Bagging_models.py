@@ -40,7 +40,7 @@ def parody_plot_with_std(y_test, y_pred_test, y_pred_test_std, saving_folder, la
         return r2_score(y_test, y_pred_test)
     else:
         plt.savefig(saving_folder +  f'/ensemble_UQ_parody_plot_{testtrain}_set.png')
-    plt.close()
+        plt.close()
     return r2_score(y_test, y_pred_test)
 
 ''' specifically saves models for ensembling '''
