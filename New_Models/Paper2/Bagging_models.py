@@ -61,7 +61,7 @@ The training sets for each of these models are taken from the training_features 
 def make_linear_regression_models_for_ensemble(training_features, training_labels, model_saving_folder, label_to_predict, num_models, features_to_keep, hyperparam_folder, num_training_points=False, model_type=None): 
     models = []
     training_features = training_features[features_to_keep]
-    if(not os.path.exists(model_saving_folder)): os.mkdir(model_saving_folder)
+    if(not os.path.exists(model_saving_folder)): os.makedirs(model_saving_folder)
     # training_features['crack len'] = np.arange(0, 195)
     # training_labels['impact site x'] = np.arange(0, 195)
 
@@ -113,7 +113,7 @@ def Get_predictions_and_uncertainty_with_bagging(test_features_path, test_labels
     if(saving_folder == None): print('not saving parody plot')
     elif(not os.path.exists(saving_folder)): os.makedirs(saving_folder)
     test_features = pd.read_csv(test_features_path)[features_to_keep]
-    test_labels = pd.read_csv(test_labels_path) 
+    test_labels = pd.read_csv(test_labels_path, index_col=0) 
     
     # Initialize an empty list to store the loaded models
     models = []
@@ -150,8 +150,8 @@ def Get_predictions_and_uncertainty_with_bagging(test_features_path, test_labels
         ensemble_uncertanties.append(std_prediction*2) #uncertainty will be 2 * the std of the predictions
     test_or_train = test_features_path.split('_')[-2].split('/')[-1]
     
-    r2 = parody_plot_with_std(test_labels.to_numpy(), ensemble_predictions, ensemble_uncertanties, saving_folder, label_to_predict, model_type, testtrain=test_or_train, show=True)
-    
+    # r2 = parody_plot_with_std(test_labels.to_numpy(), ensemble_predictions, ensemble_uncertanties, saving_folder, label_to_predict, model_type, testtrain=test_or_train, show=True)
+    r2 = r2_score(test_labels.to_numpy().flatten(), current_predictions)
     return r2, np.array(ensemble_predictions), np.array(ensemble_uncertanties), np.array(test_labels).flatten()
 
 
