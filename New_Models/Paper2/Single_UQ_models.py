@@ -141,7 +141,7 @@ def make_UQ_model(training_features, training_labels, model_saving_folder, label
     elif(model_type == 'NN_fed_RF'):
         # c, length_scale, noise_level = get_best_hyperparameters_NN_fed_GPR(label_to_predict=training_labels.columns[0], hyperparameter_folder=hyperparam_folder)
         model = NN_fed_RF()
-        model.fit(training_features, training_labels, hyperparam_folder, num_optimization_tries=100, hyperparam_folder=f'/Volumes/Jake_ssd/Paper 2/without_transformations/optimized_hyperparams/NN_fed_RF/{current_label}')
+        model.fit(training_features, training_labels, hyperparam_folder, num_optimization_tries=30, hyperparam_folder=f'/Volumes/Jake_ssd/Paper 2/without_transformations/optimized_hyperparams/NN_fed_RF/{current_label}')
         save_ensemble_model(model, 1, model_saving_folder) 
 
     save_ensemble_model(model, 1, model_saving_folder) 

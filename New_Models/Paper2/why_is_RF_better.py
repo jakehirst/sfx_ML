@@ -372,11 +372,53 @@ def train_models_on_smoothed_labels(model_type, labels, smoothing_labels_folder)
     
     return
 
-def plot_performances(model_types, labels, performances_folder):    
+'''plots histograms of the performances across folds for each lengthscale and each model type.'''
+# def make_performances_graphic(model_types, label, performances_folder): 
+#     label_folder = performances_folder + f'/{label}'
+#     for model_type in model_types:
+#         performances_dict = {0.0:[], 0.5:[], 1.0:[], 1.5:[], 2.0:[]}
+#         for fold_no in range(1,6):
+#             performances = pd.read_csv(performances_folder + f'/{label}/{model_type}/fold_{fold_no}/performances_for_all_lengthscales_{model_type}_fold_{fold_no}.csv', index_col=0)
+#             for row_num, content in performances.iterrows():
+#                 performances_dict[content['lengthscale']].append(content['r2'])
+#             print('here')
     
     
+#     return
+
+def make_performances_graphic(model_types, label, performances_folder): 
+    performances_data = []
+    label_folder = performances_folder + f'/{label}'
     
-    return
+    for model_type in model_types:
+        performances_dict = {0.0:[], 0.5:[], 1.0:[], 1.5:[], 2.0:[]}
+        
+        for fold_no in range(1, 6):
+            performances = pd.read_csv(performances_folder + f'/{label}/{model_type}/fold_{fold_no}/performances_for_all_lengthscales_{model_type}_fold_{fold_no}.csv', index_col=0)
+            
+            for row_num, content in performances.iterrows():
+                performances_dict[content['lengthscale']].append(content['r2'])
+        
+        # Prepare the data for plotting
+        for lengthscale, r2_values in performances_dict.items():
+            for r2 in r2_values:
+                performances_data.append({'Model Type': model_type, 'Lengthscale': lengthscale, 'R2': r2})
+
+    # Convert the data to a DataFrame
+    df_performances = pd.DataFrame(performances_data)
+    
+    # Create the plot
+    plt.figure(figsize=(10, 8))
+    sns.boxplot(x='Lengthscale', y='R2', hue='Model Type', data=df_performances, palette='Set2')
+    plt.ylim((0,1))
+    # Add some styling to make it look nice
+    plt.title(f'{label.capitalize()}')
+    plt.xlabel('Lengthscale of the Gaussian Kernel Smoother')
+    plt.ylabel('$R^2$')
+    plt.legend(title='Model Type')
+    
+    plt.show()
+
 
 
 def main():
@@ -386,12 +428,12 @@ def main():
 
 
     model_types = ['ANN', 'GPR', 'RF', 'ridge', 'Single RF', 'Single GPR', 'NN_fed_GPR', 'NN_fed_RF', 'RF_fed_GPR']
-    model_types = ['GPR','ridge',  'RF', 'Single GPR', 'NN_fed_GPR', 'NN_fed_RF']
-    model_types = ['Single GPR', 'ridge']
-
-    labels = ['impact site x', 'impact site y', 'height', ]
-    # labels = ['impact site y', 'height']
-    # labels = ['height']
+    model_types = ['GPR', 'RF', 'NN_fed_GPR', 'NN_fed_RF']
+    model_types = ['NN_fed_GPR', 'NN_fed_RF']
+    model_types = ['GPR', 'Single RF', 'ANN', 'RF_fed_GPR']
+    model_types = ['NN_fed_RF']
+    # labels = ['impact site x', 'impact site y', 'height',]
+    labels = ['height']
 
     # parietal_nodes_folder = ''
     # for fold_no in range(1,2):
@@ -409,11 +451,14 @@ def main():
             Evaluate and record their performance on the original (unsmoothed) test set to ensure comparability.'''
     smoothing_labels_folder = '/Volumes/Jake_ssd/Smoothing_labels'
     # make_smooth_outputs_of_training_set(labels, smoothing_labels_folder)
+    
+    '''train the models and record performances'''
     for model_type in model_types:
         train_models_on_smoothed_labels(model_type, labels, smoothing_labels_folder)
     
-
-
+    '''plot the performances'''
+    # for label in labels:
+    #     make_performances_graphic(model_types, label, smoothing_labels_folder + '/performances')
 
 if __name__ == "__main__":
     main()
