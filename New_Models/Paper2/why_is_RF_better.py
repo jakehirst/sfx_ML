@@ -391,6 +391,11 @@ def make_performances_graphic(model_types, label, performances_folder):
     label_folder = performances_folder + f'/{label}'
     
     for model_type in model_types:
+        if(model_type == 'RF_fed_GPR'): legend_model_type = 'RF-fed GPR'
+        elif(model_type == 'NN_fed_GPR'): legend_model_type = 'NN-fed GPR'
+        elif(model_type == 'NN_fed_RF'): legend_model_type = 'NN-fed RF'
+        else: legend_model_type = model_type
+
         performances_dict = {0.0:[], 0.5:[], 1.0:[], 1.5:[], 2.0:[]}
         
         for fold_no in range(1, 6):
@@ -402,22 +407,47 @@ def make_performances_graphic(model_types, label, performances_folder):
         # Prepare the data for plotting
         for lengthscale, r2_values in performances_dict.items():
             for r2 in r2_values:
-                performances_data.append({'Model Type': model_type, 'Lengthscale': lengthscale, 'R2': r2})
+                performances_data.append({'Model Type': legend_model_type, 'Lengthscale': lengthscale, 'R2': r2})
 
     # Convert the data to a DataFrame
     df_performances = pd.DataFrame(performances_data)
     
+    color_palette = {
+        'ANN': 'tab:blue',
+        'GPR': 'tab:orange',
+        'RF': 'tab:green',
+        'ridge': 'tab:red',
+        'Single RF': 'tab:purple',
+        'Single GPR': 'tab:brown',
+        'NN-fed GPR': 'tab:pink',
+        'NN-fed RF': 'tab:gray',
+        'RF-fed GPR': 'tab:olive'
+    }
+    
     # Create the plot
-    plt.figure(figsize=(10, 8))
-    sns.boxplot(x='Lengthscale', y='R2', hue='Model Type', data=df_performances, palette='Set2')
+    plt.figure(figsize=(12, 8))
+    
+
+    # Plot the background shading
+    for i in range(0, len(performances_dict), 2):
+        plt.axvspan(i-0.5, i+0.5, color='lightgrey', alpha=0.5, zorder=0)
+    
+    sns.boxplot(x='Lengthscale', y='R2', hue='Model Type', data=df_performances, palette=color_palette, zorder=1)
+
+    axis_size = 15
+    # if(label == 'height'): plt.ylim((0,0.4))
+    # elif(label == 'impact site x'): plt.ylim((0.2,0.9))
+    # elif(label == 'impact site y'): plt.ylim((0.1,0.9))
     plt.ylim((0,1))
     # Add some styling to make it look nice
-    plt.title(f'{label.capitalize()}')
-    plt.xlabel('Lengthscale of the Gaussian Kernel Smoother')
-    plt.ylabel('$R^2$')
-    plt.legend(title='Model Type')
+    plt.title(f'{label.capitalize()}', fontsize=axis_size+5)
+    plt.xlabel('Lengthscale of the Gaussian Kernel Smoother', fontsize=axis_size)
+    plt.ylabel('$R^2$', fontsize=axis_size)
+    plt.legend(fontsize=axis_size-5)
     
-    plt.show()
+    # plt.show()
+    plt.savefig(f'/Volumes/Jake_ssd/Smoothing_labels/figures/{label}.png')
+    plt.close()
 
 
 
@@ -428,12 +458,12 @@ def main():
 
 
     model_types = ['ANN', 'GPR', 'RF', 'ridge', 'Single RF', 'Single GPR', 'NN_fed_GPR', 'NN_fed_RF', 'RF_fed_GPR']
-    model_types = ['GPR', 'RF', 'NN_fed_GPR', 'NN_fed_RF']
-    model_types = ['NN_fed_GPR', 'NN_fed_RF']
-    model_types = ['GPR', 'Single RF', 'ANN', 'RF_fed_GPR']
-    model_types = ['NN_fed_RF']
-    # labels = ['impact site x', 'impact site y', 'height',]
-    labels = ['height']
+    # model_types = ['GPR', 'RF', 'NN_fed_GPR', 'NN_fed_RF']
+    # model_types = ['NN_fed_GPR', 'NN_fed_RF']
+    # model_types = ['GPR', 'Single RF', 'ANN', 'RF_fed_GPR']
+    # model_types = ['NN_fed_RF']
+    labels = ['impact site x', 'impact site y', 'height',]
+    # labels = ['height']
 
     # parietal_nodes_folder = ''
     # for fold_no in range(1,2):
@@ -453,12 +483,12 @@ def main():
     # make_smooth_outputs_of_training_set(labels, smoothing_labels_folder)
     
     '''train the models and record performances'''
-    for model_type in model_types:
-        train_models_on_smoothed_labels(model_type, labels, smoothing_labels_folder)
+    # for model_type in model_types:
+    #     train_models_on_smoothed_labels(model_type, labels, smoothing_labels_folder)
     
     '''plot the performances'''
-    # for label in labels:
-    #     make_performances_graphic(model_types, label, smoothing_labels_folder + '/performances')
+    for label in labels:
+        make_performances_graphic(model_types, label, smoothing_labels_folder + '/performances')
 
 if __name__ == "__main__":
     main()
