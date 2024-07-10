@@ -434,19 +434,19 @@ def make_performances_graphic(model_types, label, performances_folder):
     
     sns.boxplot(x='Lengthscale', y='R2', hue='Model Type', data=df_performances, palette=color_palette, zorder=1)
 
-    axis_size = 15
+    axis_size = 18
     # if(label == 'height'): plt.ylim((0,0.4))
     # elif(label == 'impact site x'): plt.ylim((0.2,0.9))
     # elif(label == 'impact site y'): plt.ylim((0.1,0.9))
     plt.ylim((0,1))
     # Add some styling to make it look nice
-    plt.title(f'{label.capitalize()}', fontsize=axis_size+5)
-    plt.xlabel('Lengthscale of the Gaussian Kernel Smoother', fontsize=axis_size)
-    plt.ylabel('$R^2$', fontsize=axis_size)
+    plt.title(f'{label.capitalize()}', fontsize=axis_size+5, weight='bold')
+    plt.xlabel('Lengthscale of the Gaussian Kernel Smoother', fontsize=axis_size, weight='bold')
+    plt.ylabel('$R^2$', fontsize=axis_size+3, weight='bold')
     plt.legend(fontsize=axis_size-5)
     
     # plt.show()
-    plt.savefig(f'/Volumes/Jake_ssd/Smoothing_labels/figures/{label}.png')
+    plt.savefig(f'/Volumes/Jake_ssd/Smoothing_labels/figures/{label}_smoothed_labels_figure.png')
     plt.close()
 
 
