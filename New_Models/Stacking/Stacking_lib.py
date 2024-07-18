@@ -4,7 +4,7 @@ sys.path.append('/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/New_Models')
 sys.path.append('/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/New_Models/Paper2')
 sys.path.append('/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/New_Models/Classifiers')
 
-from classifiers import *
+from classifier_lib import *
 from Bagging_models import *
 from ReCalibration import *
 from Backward_feature_selection import *
@@ -56,7 +56,7 @@ def make_UQ_model(training_features, training_labels, model_saving_folder, label
     return 
 
 
-def make_predictions(model_type, model_folder, label_to_predict, num_models, fold_no, validation_features_path, validation_labels_path, results_folder, features_to_keep):
+def make_predictions(model_type, model_folder, label_to_predict, num_models, fold_no, validation_features_path, validation_labels_path, results_folder, features_to_keep, num_bins=2):
     '''If the model is an ensemble type, then we train it using the code below'''
     if(model_type in ['ANN', 'RF', 'GPR', 'ridge']):
         model_saving_folder = f'{model_folder}/{label_to_predict}/{model_type}/{num_models}_models/fold_{fold_no}'
@@ -81,9 +81,17 @@ def make_predictions(model_type, model_folder, label_to_predict, num_models, fol
                                                                                                 features_to_keep, 
                                                                                                 label_to_predict, 
                                                                                                 model_type)
-    # #TODO now we need to implement the classification predictions   
-    # elif:
-    return r2, predictions, uncertanties, labels
+    #TODO now we need to implement the classification predictions   
+    elif(model_type in ['GB_classifier', 'RF_classifier']):
+        feats = pd.read_csv(validation_features_path)
+        model_saving_folder = f'{model_folder}/{label_to_predict}/{model_type}/fold_{fold_no}'
+        model = load_classifier(model_saving_folder + f'/{model_type}_{num_bins}_bins.pkl')
+        r2 = 0
+        predictions = model.predict(feats)
+
+        
+        
+    return r2, predictions
     
 '''combining all the base model predictions, and then making a meta prediciton using the meta_model'''
 def make_meta_predictions(meta_model, base_model_outputs):
@@ -104,3 +112,5 @@ def train_meta_model(meta_model_type, base_model_outputs, labels):
         
     
     return meta_model
+
+
