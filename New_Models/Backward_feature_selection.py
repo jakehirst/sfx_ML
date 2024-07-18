@@ -104,7 +104,7 @@ def get_non_significant_features(dataframe, label_to_predict, all_labels):
 
 #             fold_no += 1
 
-def make_5_fold_datasets_with_calibration_set(saving_folder, full_dataset_pathname, normalize=True, remove_small_cracks=False, label_chunks=None):
+def make_5_fold_datasets_with_calibration_set(saving_folder, full_dataset_pathname, normalize=True, remove_small_cracks=False, label_chunks=None, remove_timestep_init = True):
     all_labels = ['height', 'phi', 'theta', 
         'impact site x', 'impact site y', 'impact site z', 
         'impact site r', 'impact site phi', 'impact site theta']
@@ -117,6 +117,8 @@ def make_5_fold_datasets_with_calibration_set(saving_folder, full_dataset_pathna
         # if(not os.path.exists(f'{saving_folder}/{label_to_predict}')): os.mkdir(f'{saving_folder}/{label_to_predict}')
         # full_dataset_features, full_dataset_labels, important_features = prepare_dataset_Single_Output_Regression(full_dataset_pathname, image_folder, label_to_predict, all_labels, saving_folder=None, maximum_p_value=1)
         data = pd.read_csv(full_dataset_pathname, index_col=0)
+        if(remove_timestep_init == True):
+            data = data.drop('timestep_init', axis=1) # removing the timestep_init column
         
         if(remove_small_cracks):
             '''removing all of the examples whose crack length does not exceed max_len'''
@@ -130,7 +132,7 @@ def make_5_fold_datasets_with_calibration_set(saving_folder, full_dataset_pathna
         full_dataset_features = data.drop(all_labels, axis=1)
         if(normalize == True):
             # Zero-center the data
-            data_centered = full_dataset_features - data.mean()
+            data_centered = full_dataset_features - full_dataset_features.mean()
             # Normalize to the range [-1, 1]
             full_dataset_features = data_centered / data_centered.abs().max()
                         

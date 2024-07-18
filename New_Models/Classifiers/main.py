@@ -56,7 +56,7 @@ def main():
 
     labels_to_predict = ['impact site x', 'impact site y', 'height']
     labels_to_predict = ['height']
-    labels_to_predict = ['impact site x']
+    # labels_to_predict = ['impact site x']
 
     with_or_without_transformations = 'without'
 
@@ -95,9 +95,11 @@ def main():
 
 
 
-    model_types = ['XGBoost', 'RF']
+    model_types = ['XGBoost']
     for model_type in model_types:
         print(f'\nMODEL = {model_type}')
+        test_accuracies = []
+        train_accuracies = []
         for fold_no in range(1,6):
             print(fold_no)
             for label_to_predict in labels_to_predict:
@@ -109,14 +111,60 @@ def main():
                 y_test = pd.read_csv(f'/Volumes/Jake_ssd/classifiers/5fold_datasets/{label_to_predict}/fold{fold_no}/test_labels.csv')
                 
                 '''bin the labels'''
-                y_test_binned, y_train_binned = bin_labels(y_train, y_test, label_to_predict, 3)
+                y_test_binned, y_train_binned = bin_labels(y_train, y_test, label_to_predict, 2)
                 
                 if(model_type == 'RF'):
-                    train_random_forest_classifier(X_train, y_train_binned, X_test, y_test_binned, n_estimators=100, max_depth=5, random_state=None, bootstrap=True)
+                    model, y_pred_train, y_pred_test = train_random_forest_classifier(X_train, y_train_binned, X_test, y_test_binned, n_estimators=100, max_depth=5, random_state=None, bootstrap=True)
                 
                 elif(model_type == 'XGBoost'):
-                    train_gradient_boosting_classifier(X_train, y_train_binned, X_test, y_test_binned, n_estimators=100, learning_rate=0.1, max_depth=3, random_state=None)
+                    search_space = {
+                                        'n_estimators': Integer(20, 200),
+                                        'learning_rate': Real(0.01, 1.0, prior='log-uniform'),
+                                        # 'max_depth': Integer(1, 10),
+                                        # 'min_samples_split': Integer(2, 100),
+                                        # 'min_samples_leaf': Integer(1, 100),
+                                        # 'subsample': Real(0.5, 1.0)
+                                    }
+                    # Initialize the Bayesian optimization
+                    bayes_search = BayesSearchCV(
+                        estimator=GradientBoostingClassifier(random_state=0),
+                        search_spaces=search_space,
+                        n_iter=32,  # Number of parameter settings that are sampled
+                        cv=3,  # 3-fold cross-validation
+                        n_jobs=-1,  # Use all available cores
+                        verbose=1,
+                        scoring='accuracy',
+                        random_state=0
+                    )
+                    # Perform the search
+                    bayes_search.fit(X_train, y_train_binned)
+                    best_params = bayes_search.best_params_
+                    print(f'Best parameters: {best_params}')
+                    
+                    model, y_pred_train, y_pred_test = train_gradient_boosting_classifier(X_train, y_train_binned, X_test, y_test_binned, n_estimators=best_params['n_estimators'], learning_rate=best_params['learning_rate'], max_depth=3, random_state=None)
+                test_accuracies.append(accuracy_score(y_test_binned, model.predict(X_test)))
+                train_accuracies.append(accuracy_score(y_train_binned, model.predict(X_train)))
+                # threshold = 0.9
+                # # Get the probability predictions
+                # proba_predictions = model.predict_proba(X_test)
+                # # Get the class predictions
+                # class_predictions = model.predict(X_test)
+                # print(f'original len = {len(class_predictions)}')
+                # og_accuracy = accuracy_score(y_test_binned, class_predictions)
+                # print(f'original accuracy = {og_accuracy}')
+                # # Find the indices where the highest probability exceeds the threshold
+                # confident_indices = np.max(proba_predictions, axis=1) > threshold
+                # # Filter the predictions and labels based on these indices
+                # filtered_class_predictions = class_predictions[confident_indices]
+                # filtered_true_labels = y_test_binned[confident_indices]
+                # print(f'filtered len =  {len(filtered_class_predictions)}')
+                # # Calculate accuracy only for the confident predictions
+                # accuracy = accuracy_score(filtered_true_labels, filtered_class_predictions)
+                # print(f"Accuracy for predictions with confidence greater than {threshold}: {accuracy:.2f}")
                 
                 # print('here')
+            print(f'\n\naverage test_accruacy = {np.average(test_accuracies)}')
+            print(f'average train_accruacy = {np.average(train_accuracies)}')
+
 if __name__ == "__main__":
     main()

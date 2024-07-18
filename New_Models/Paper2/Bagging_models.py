@@ -113,7 +113,7 @@ def Get_predictions_and_uncertainty_with_bagging(test_features_path, test_labels
     if(saving_folder == None): print('not saving parody plot')
     elif(not os.path.exists(saving_folder)): os.makedirs(saving_folder)
     test_features = pd.read_csv(test_features_path)[features_to_keep]
-    test_labels = pd.read_csv(test_labels_path, index_col=0) 
+    test_labels = pd.read_csv(test_labels_path) 
     
     # Initialize an empty list to store the loaded models
     models = []

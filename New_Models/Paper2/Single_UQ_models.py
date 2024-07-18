@@ -22,7 +22,7 @@ def Get_predictions_and_uncertainty_single_model(test_features_path, test_labels
     if(saving_folder == None): print('not saving parody plot')
     elif(not os.path.exists(saving_folder)): os.makedirs(saving_folder)
     test_features = pd.read_csv(test_features_path)[features_to_keep]
-    test_labels = pd.read_csv(test_labels_path, index_col=0) 
+    test_labels = pd.read_csv(test_labels_path) 
 
     filename = model_folder + '/model_no1.sav'
     with open(os.path.join(model_folder, filename), 'rb') as file:
