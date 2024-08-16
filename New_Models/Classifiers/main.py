@@ -1,10 +1,13 @@
-from classifiers import *
+
+# from New_Models.Classifiers.classifier_lib import *
 
 '''First, we need to define the path of where to get the dataset, and define other parameters that we will need'''
 import sys
 sys.path.append('/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/New_Models')
 sys.path.append('/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/New_Models/Paper2')
+sys.path.append('/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML')
 
+from New_Models.Classifiers.classifier_lib import *
 from Bagging_models import *
 from ReCalibration import *
 from Backward_feature_selection import *
@@ -12,41 +15,7 @@ import ast
 from sklearn.ensemble import GradientBoostingClassifier, GradientBoostingRegressor
 
 
-# def bin_labels(data_folder, labels, num_bins):
-#     all_labels = {}
-#     '/Volumes/Jake_ssd/classifiers/5fold_datasets/impact site x/fold1/test_labels.csv'
-#     for label in labels:
-#         if(label == 'impact site x'):
-#             min_value = -55 ; max_value = 45
-#         elif(label == 'impact site y'):
-#             min_value = -35 ; max_value = 45
-#         elif(label == 'height'):
-#             min_value = 1 ; max_value = 5
-#         else: print('wrong label... ')
-        
-#         for fold in range(1,6):
-#             test_labels = pd.read_csv(f'/Volumes/Jake_ssd/classifiers/5fold_datasets/{label}/fold{fold}/test_labels.csv')
-#             train_labels = pd.read_csv(f'/Volumes/Jake_ssd/classifiers/5fold_datasets/{label}/fold{fold}/train_labels.csv')
-#             binned_test_labels = pd.cut(test_labels[label], bins=np.linspace(min_value, max_value, num_bins + 1), labels=False, include_lowest=True)
-#             binned_train_labels = pd.cut(train_labels[label], bins=np.linspace(min_value, max_value, num_bins + 1), labels=False, include_lowest=True)
-            
-#     return
 
-def bin_labels(train_labels, test_labels, label, num_bins):
-    all_labels = {}
-    '/Volumes/Jake_ssd/classifiers/5fold_datasets/impact site x/fold1/test_labels.csv'
-    if(label == 'impact site x'):
-        min_value = -55 ; max_value = 45
-    elif(label == 'impact site y'):
-        min_value = -35 ; max_value = 45
-    elif(label == 'height'):
-        min_value = 1 ; max_value = 5
-    else: print('wrong label... ')
-        
-    binned_test_labels = pd.cut(test_labels[label], bins=np.linspace(min_value, max_value, num_bins + 1), labels=False, include_lowest=True)
-    binned_train_labels = pd.cut(train_labels[label], bins=np.linspace(min_value, max_value, num_bins + 1), labels=False, include_lowest=True)
-            
-    return binned_test_labels, binned_train_labels
             
             
 def main():
@@ -55,8 +24,8 @@ def main():
                             'impact site r', 'impact site phi', 'impact site theta']
 
     labels_to_predict = ['impact site x', 'impact site y', 'height']
+    labels_to_predict = ['impact site y']
     labels_to_predict = ['height']
-    # labels_to_predict = ['impact site x']
 
     with_or_without_transformations = 'without'
 
@@ -95,7 +64,8 @@ def main():
 
 
 
-    model_types = ['XGBoost']
+    model_types = ['RF']
+    num_bins = 5
     for model_type in model_types:
         print(f'\nMODEL = {model_type}')
         test_accuracies = []
@@ -103,6 +73,7 @@ def main():
         for fold_no in range(1,6):
             print(fold_no)
             for label_to_predict in labels_to_predict:
+                print(label_to_predict)
                 X_train = pd.read_csv(f'/Volumes/Jake_ssd/classifiers/5fold_datasets/{label_to_predict}/fold{fold_no}/train_features.csv')
                 X_test = pd.read_csv(f'/Volumes/Jake_ssd/classifiers/5fold_datasets/{label_to_predict}/fold{fold_no}/test_features.csv')
                 X_train = X_train.drop('timestep_init', axis=1)
@@ -111,10 +82,13 @@ def main():
                 y_test = pd.read_csv(f'/Volumes/Jake_ssd/classifiers/5fold_datasets/{label_to_predict}/fold{fold_no}/test_labels.csv')
                 
                 '''bin the labels'''
-                y_test_binned, y_train_binned = bin_labels(y_train, y_test, label_to_predict, 2)
+                y_test_binned = bin_labels(y_test.to_numpy(), label_to_predict, num_bins)
+                y_train_binned = bin_labels(y_train.to_numpy(), label_to_predict, num_bins)
+
+                # y_test_binned, y_train_binned = bin_labels(y_train, y_test, label_to_predict, 2)
                 
                 if(model_type == 'RF'):
-                    model, y_pred_train, y_pred_test = train_random_forest_classifier(X_train, y_train_binned, X_test, y_test_binned, n_estimators=100, max_depth=5, random_state=None, bootstrap=True)
+                    model, y_pred_train = train_random_forest_classifier(X_train, y_train_binned, n_estimators=100, max_depth=5, random_state=None, bootstrap=True)
                 
                 elif(model_type == 'XGBoost'):
                     search_space = {
@@ -140,8 +114,7 @@ def main():
                     bayes_search.fit(X_train, y_train_binned)
                     best_params = bayes_search.best_params_
                     print(f'Best parameters: {best_params}')
-                    
-                    model, y_pred_train, y_pred_test = train_gradient_boosting_classifier(X_train, y_train_binned, X_test, y_test_binned, n_estimators=best_params['n_estimators'], learning_rate=best_params['learning_rate'], max_depth=3, random_state=None)
+                    model, y_pred_train = train_gradient_boosting_classifier(X_train, y_train_binned, n_estimators=best_params['n_estimators'], learning_rate=best_params['learning_rate'], max_depth=3, random_state=None)
                 test_accuracies.append(accuracy_score(y_test_binned, model.predict(X_test)))
                 train_accuracies.append(accuracy_score(y_train_binned, model.predict(X_train)))
                 # threshold = 0.9
@@ -163,8 +136,9 @@ def main():
                 # print(f"Accuracy for predictions with confidence greater than {threshold}: {accuracy:.2f}")
                 
                 # print('here')
-            print(f'\n\naverage test_accruacy = {np.average(test_accuracies)}')
-            print(f'average train_accruacy = {np.average(train_accuracies)}')
+            print(f'\n\n*** current *** average test_accruacy = {np.average(test_accuracies)}')
+        print(f'\n\naverage test_accruacy = {np.average(test_accuracies)}')
+        print(f'average train_accruacy = {np.average(train_accuracies)}')
 
 if __name__ == "__main__":
     main()

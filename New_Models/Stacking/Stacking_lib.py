@@ -9,6 +9,8 @@ from Bagging_models import *
 from ReCalibration import *
 from Backward_feature_selection import *
 import ast
+from sklearn.linear_model import BayesianRidge
+
 
 
 
@@ -99,18 +101,40 @@ def make_meta_predictions(meta_model, base_model_outputs):
     return meta_model.predict(X_test)
 
 '''training the meta model on features which are the outputs of the base models'''
-def train_meta_model(meta_model_type, base_model_outputs, labels):
+def train_meta_model(meta_model_type, base_model_outputs, labels, label_to_predict, features_to_keep, model_saving_folder, num_bins=3):
     X_val = base_model_outputs.to_numpy()
     y_val = np.array(labels)
     
     if(meta_model_type == 'linear'):
         meta_model = LinearRegression()
         meta_model.fit(X_val, y_val)
+        return meta_model
+    
+    elif(meta_model_type == 'GPR'):
+        kernel = ConstantKernel(constant_value_bounds=(1e-3, 1e3)) * RBF(length_scale_bounds=(1e5, 1e6)) + WhiteKernel(noise_level_bounds=(1e-10, 1e+3)) 
+        # kernel = ConstantKernel(1.0, (1e-3, 1e3)) * Matern(length_scale=10, length_scale_bounds=(1e-2, 1e3)) + WhiteKernel(noise_level=1, noise_level_bounds=(1e-10, 1e+3))#COMMENT this one works well
+        # model = GaussianProcessRegressor(kernel=kernel, random_state=0, n_restarts_optimizer=200)
+        model = GaussianProcessRegressor(kernel=kernel, n_restarts_optimizer=50) #COMMENT removed random state
+        meta_model = GaussianProcessRegressor()
+        meta_model.fit(X_val, y_val)
+        return meta_model
+    
+    elif(meta_model_type == 'Bayesian_linear'):
+        meta_model = BayesianRidge()
+        meta_model.fit(X_val, y_val)
+        return meta_model
+
+
+    elif(meta_model_type == 'RF_classifier'):
+        binned_labels = bin_labels(labels, label_to_predict, num_bins)
+        meta_model = train_classifier(X_val, binned_labels, model_saving_folder, label_to_predict, features_to_keep, meta_model_type, num_bins=num_bins)
+        # meta_model.fit(X_val, y_val)
+        return meta_model, binned_labels
 
     else:
         print('model not defined')
+        return
         
     
-    return meta_model
 
 
