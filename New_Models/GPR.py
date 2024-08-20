@@ -1,6 +1,6 @@
 from sklearn.model_selection import train_test_split
 from prepare_data import *
-from CNN import *
+# from CNN import *
 from sklearn.model_selection import KFold
 from sklearn.gaussian_process import GaussianProcessRegressor
 from sklearn.gaussian_process.kernels import RBF, ConstantKernel, WhiteKernel, ExpSineSquared, DotProduct, Matern, RationalQuadratic

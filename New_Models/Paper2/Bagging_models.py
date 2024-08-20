@@ -12,7 +12,7 @@ from lasso_regression import *
 from ridge_regression import *
 from polynomial_regression import *
 from GPR import *
-from CNN import *
+# from CNN import *
 # from mastml.plots import *
 # from mastml.models import *
 # from mastml.error_analysis import *
