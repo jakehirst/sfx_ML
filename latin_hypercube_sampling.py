@@ -29,9 +29,9 @@ samples = latin_hypercube_samples(num_samples, variable_ranges)
 height, phi, theta = samples[:, 0], samples[:, 1], samples[:, 2]
 
 # Print the generated samples
-print(f'Generated Height values: {height}')
-print(f'Generated Phi values: {phi}')
-print(f'Generated Theta values: {theta}')
+print(f'\nGenerated Height values: {height}')
+print(f'\nGenerated Phi values: {phi}')
+print(f'\nGenerated Theta values: {theta}')
 
 dataframe = pd.DataFrame(data=samples, columns = ['height', 'phi', 'theta'])
 print('here')
