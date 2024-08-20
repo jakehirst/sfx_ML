@@ -134,6 +134,11 @@ def get_std_thickness(opposite_nodes_and_distances):
     distances = np.fromiter(opposite_nodes_and_distances.values(), dtype=float)
     return np.std(distances)
 
+''' gets the sum of the thickness of the skull along the crack. '''
+def get_sum_thickness(opposite_nodes_and_distances):
+    distances = np.fromiter(opposite_nodes_and_distances.values(), dtype=float)
+    return np.sum(distances)
+
 """ gets the max and mean thickness along the crack """
 def get_max_and_mean_thickness(folder_path, simulation):
     max_step_uci = get_max_dynamic_step(folder_path, simulation)
@@ -144,8 +149,9 @@ def get_max_and_mean_thickness(folder_path, simulation):
     median = get_median_thickness(opposite_nodes_and_distances)
     var = get_var_thickness(opposite_nodes_and_distances)
     std = get_std_thickness(opposite_nodes_and_distances)
+    SuM = get_sum_thickness(opposite_nodes_and_distances)
 
-    return max, mean, median, var, std
+    return max, mean, median, var, std, SuM
 
 '''gets the average thickness of the skull at the 10 closest nodes at a location'''
 def get_thickness_at_location(location, outer_surface_nodes_df, inner_surface_nodes_df):
@@ -169,4 +175,5 @@ def get_thickness_at_location(location, outer_surface_nodes_df, inner_surface_no
         closest_distances.append(closest_inner_node['Distance_to_outer_node'])
     '''get the average thickness of those nodes'''
     return np.average(closest_distances)
+
 

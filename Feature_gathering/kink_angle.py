@@ -161,4 +161,3 @@ def kink_angle_call(folder_path, key):
     var_kinks = get_var_of_kinks(kinks)
 
     return max, abs_val_mean, mean, sum, abs_val_sum, median_kink, std_kinks, var_kinks
-

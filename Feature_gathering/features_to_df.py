@@ -274,6 +274,7 @@ def create_df():
             "median_thickness", 
             "var_thickness", 
             "std_thickness",
+            "sum_thickness",
             "thickness_at_init",
             "max_kink",
             "abs_val_mean_kink",
@@ -309,6 +310,7 @@ def create_df():
     median_thickness_arr = []
     var_thickness_arr = []
     std_thickness_arr = []
+    sum_thickness_arr = []
     max_kink_arr = []
     abs_val_mean_kink_arr = []
     mean_kink_arr = []
@@ -351,7 +353,7 @@ def create_df():
         # thickness_at_impact = get_thickness_at_impact(impa)
         linearity = get_linearity(folder_path, key)
         max_kink, abs_val_mean_kink, mean_kink, sum_kink, abs_val_sum_kink, median_kink, std_kinks, var_kinks = kink_angle_call(folder_path, key)
-        max_thickness, mean_thickness, median_thickness, var_thickness, std_thickness = get_max_and_mean_thickness(folder_path, key)
+        max_thickness, mean_thickness, median_thickness, var_thickness, std_thickness, sum_thickness = get_max_and_mean_thickness(folder_path, key)
 
         current_thickness_at_init = get_thickness_at_location(initiation_cite, outer_surface_nodes_df, inner_surface_nodes_df)
         max_propagation_speed, avg_propagation_speed, intitation_timestep = get_propagation_speed_features(folder_path, key)
@@ -384,6 +386,7 @@ def create_df():
         median_thickness_arr.append(median_thickness)
         var_thickness_arr.append(var_thickness)
         std_thickness_arr.append(std_thickness)
+        sum_thickness_arr.append(sum_thickness)
 
         i += 1
                 
@@ -404,6 +407,7 @@ def create_df():
         "median_thickness": median_thickness_arr, 
         "var_thickness": var_thickness_arr, 
         "std_thickness": std_thickness_arr,
+        "sum_thickness": sum_thickness_arr,
         "thickness_at_init":thickness_at_init,
         "max_kink": max_kink_arr,
         "abs_val_mean_kink": abs_val_mean_kink_arr,
@@ -520,6 +524,7 @@ def create_df():
 
 # FOLDER_PATH = "F:\\Jake\\good_simies\\"
 FOLDER_PATH = "F:\\Jake\\good_simies_new_R_curve_j_3.5_q_2.5\\"
+# FOLDER_PATH = "F:\\Jake\\constant_impact_angles\\"
 # FOLDER_PATH = "F:\\Jake\\good_simies_old_R_curve\\" #making data from old simulations so that we can delete them
 
 df = create_df()
@@ -534,9 +539,11 @@ Pearson_Correlations_for_df(df, "theta")
 # save_df(train_df, "C:\\Users\\u1056\\sfx\\sfx_ML\\sfx_ML\\Feature_gathering\\New_Crack_Len_TRAIN_OG_dataframe.csv")
 # save_df(df, "F:\\Jake\\good_simies_old_R_curve\\Old_R_curve_data_"+ current_date_string +".csv")
 save_df(df, "C:\\Users\\u1056\\sfx\\sfx_ML_data\\feature_data\\New_Crack_Len_FULL_OG_dataframe_" + current_date_string + ".csv")
+# save_df(df, "F:\\Jake\\constant_impact_angles\\Constant_impact_angle_data_" + current_date_string + ".csv")
+
 df = PhiTheta_to_cartesian(df)
 # save_df(df, "F:\\Jake\\good_simies_old_R_curve\\Old_R_curve_data_cartesian_"+ current_date_string +".csv")
-save_df(df, "C:\\Users\\u1056\\sfx\\sfx_ML_data\\feature_data\\OG_dataframe_cartesian_" + current_date_string + ".csv")
+# save_df(df, "C:\\Users\\u1056\\sfx\\sfx_ML_data\\feature_data\\OG_dataframe_cartesian_" + current_date_string + ".csv")
 Pearson_Correlations_for_df(df, "x")
 Pearson_Correlations_for_df(df, "y")
 Pearson_Correlations_for_df(df, "z")
