@@ -4,7 +4,8 @@ import matplotlib.pyplot as plt
 import csv
 import os
 import sys
-sys.path.insert(0,'C:\\Users\\u1056\\sfx\\sfx_ML\\sfx_ML\\Feature_gathering') #making sure i can import things from here
+# sys.path.insert(0,'C:\\Users\\u1056\\sfx\\sfx_ML\\sfx_ML\\Feature_gathering') #making sure i can import things from here
+sys.path.append('/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML')
 from Feature_gathering.initiation_sites import *
 from Feature_gathering.thickness import *
 from Feature_gathering.front_locations import *
