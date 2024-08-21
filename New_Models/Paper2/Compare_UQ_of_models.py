@@ -7,7 +7,7 @@ import numpy as np
 makes 4 plots in a grid via seaborn showing test_R2, miscal_area, sharpness, 
 and dispersion all in order from best performinc (left) to worst performing (right) in each plot.
 '''
-def make_seaborn_plots(df, overall_title, saving_folder):
+def make_seaborn_plots(df, overall_title, saving_folder=None):
     # Set the aesthetic style of the plots
     sns.set_style("whitegrid")
 
@@ -106,7 +106,9 @@ def main():
         '''great seaborn plots for organized performances of each model_type'''
         title = f'Performance of models predicting {label_to_predict.capitalize()} \n ordered from best (left) to worst (right)'
         saving_folder = base_folder + f'{label_to_predict}'
-        make_seaborn_plots(this_label_result_df, overall_title=title, saving_folder=saving_folder)
+        make_seaborn_plots(this_label_result_df, overall_title=title)
+
+        # make_seaborn_plots(this_label_result_df, overall_title=title, saving_folder=saving_folder)
         
     
     
