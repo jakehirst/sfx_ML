@@ -7,7 +7,7 @@ sys.path.append('/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/New_Models/Clas
 from classifier_lib import *
 from Bagging_models import *
 from ReCalibration import *
-from Backward_feature_selection import *
+from New_Models.Paper1.Backward_feature_selection import *
 import ast
 from sklearn.linear_model import BayesianRidge
 

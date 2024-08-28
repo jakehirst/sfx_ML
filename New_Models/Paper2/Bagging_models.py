@@ -16,7 +16,7 @@ from CNN import *
 # from mastml.plots import *
 # from mastml.models import *
 # from mastml.error_analysis import *
-from Backward_feature_selection import *
+from New_Models.Paper1.Backward_feature_selection import *
 
 # full_dataset_pathname = "/Users/jakehirst/Desktop/sfx/sfx_ML_data/New_Crack_Len_FULL_OG_dataframe_2023_10_14.csv"
 # image_folder = '/Users/jakehirst/Desktop/sfx/sfx_ML_data/images_sfx/new_dataset/Visible_cracks'

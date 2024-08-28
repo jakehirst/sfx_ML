@@ -86,7 +86,8 @@ table_img.scale(1.2, 1.2)
 
 # Save the table as a .png image
 plt.title(f'Model Comparisons when predicting {label_to_predict}')
-plt.savefig(parent_folder_path + f'/metric_comparisons_{label_to_predict}.png', bbox_inches='tight', dpi=300)   
+plt.show()
+# plt.savefig(parent_folder_path + f'/metric_comparisons_{label_to_predict}.png', bbox_inches='tight', dpi=300)   
     
     
         

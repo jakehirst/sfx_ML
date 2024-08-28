@@ -2,7 +2,7 @@ import sys
 sys.path.append('/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/New_Models')
 
 from New_Models.Paper2.Bagging_models import *
-from Backward_feature_selection import *
+from New_Models.Paper1.Backward_feature_selection import *
 
 """
 Creates a parity plot comparing predictions to true labels, with uncertainties visualized as error bars.

@@ -5,7 +5,7 @@ from NN_fed_GPR import *
 from NN_fed_RF import *
 from RF_fed_GPR import *
 from Bagging_models import *
-from Backward_feature_selection import *
+from New_Models.Paper1.Backward_feature_selection import *
 from Single_UQ_models import *
 import ast
 import ipywidgets as widgets

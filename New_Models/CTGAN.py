@@ -6,7 +6,7 @@ import pandas as pd
 import matplotlib.pyplot as plt
 import seaborn as sns
 from sdv.evaluation.single_table import evaluate_quality
-from Backward_feature_selection import *
+from New_Models.Paper1.Backward_feature_selection import *
 from sklearn.metrics import r2_score
 import plotly.graph_objs as go
 from plotly.subplots import make_subplots

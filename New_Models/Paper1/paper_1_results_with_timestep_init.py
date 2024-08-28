@@ -1,7 +1,7 @@
 import sys
 sys.path.append('/Users/jakehirst/Desktop/sfx/sfx_ML_code/sfx_ML/New_Models')
 
-from Backward_feature_selection import *
+from New_Models.Paper1.Backward_feature_selection import *
 
 all_labels = ['height', 'phi', 'theta', 
         'impact site x', 'impact site y', 'impact site z', 

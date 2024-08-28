@@ -42,30 +42,6 @@ def split_test_and_training_datasets(full_dataset, raw_images, full_dataset_labe
     full_dataset_labels = np.delete(full_dataset_labels, test_indicies, axis=0)
     return full_df, test_df, full_images, test_images, full_dataset_labels, y_test
 
-'''
-makes a parody plot of the predictions from GPR including the standard deviations
-'''
-# def parody_plot_with_std(y_test, y_pred_test, y_pred_test_std, fold_no, saving_folder, label_to_predict):
-#     plt.figure()
-#     plt.errorbar(y_test, y_pred_test, yerr=y_pred_test_std, fmt='o')
-#     plt.plot(y_test, y_test, c='r')
-#     plt.title('Fold ' + str(fold_no) + ' Gaussian Process Regression, R2=%.2f' % r2_score(y_test, y_pred_test))
-#     plt.xlabel('Actual')
-#     plt.ylabel('Predicted')
-#     plt.savefig(saving_folder +  f'/{label_to_predict}_fold_{fold_no}_parody_plot.png')
-#     # plt.show()
-#     plt.close()
-# def parody_plot_with_std(y_test, y_pred_test, y_pred_test_std, fold_no, saving_folder, label_to_predict):
-#     plt.figure()
-#     plt.errorbar(y_test, y_pred_test, yerr=y_pred_test_std, fmt='o')
-#     plt.plot(y_test, y_test, c='r')
-#     plt.title('Fold ' + str(fold_no) + ' Gaussian Process Regression, R2=%.2f' % r2_score(y_test, y_pred_test))
-#     plt.xlabel('Actual')
-#     plt.ylabel('Predicted')
-#     plt.savefig(saving_folder +  f'/{label_to_predict}_fold_{fold_no}_parody_plot.png')
-#     # plt.show()
-#     plt.close()
-
 
 ''' 
 Converts the xs ys and zs from the ABAQUS basis into the basis that is centered at the center of mass of the skull CM, and 
@@ -85,11 +61,7 @@ def convert_coordinates_to_new_basis(Material_X, Material_Y, Material_Z, CM, xs,
         x2.append(new_point[0][0])
         y2.append(new_point[0][1])
         z2.append(new_point[0][2])
-        
 
-
-    # print("Coordinates in the target basis:")
-    # print(f"x2: {x2}, y2: {y2}, z2: {z2}")
         
     return np.array(x2), np.array(y2), np.array(z2)
 
@@ -128,7 +100,7 @@ def plot_test_predictions_heatmap(full_dataset, labels_to_predict, all_labels, a
 
     for i in range(len(full_dataset)):
         '''3d plot of RPA nodes and the predicted x, y and z values in '''
-        # Create a 3D figure
+        #Create a 3D figure
         fig = plt.figure(figsize=(10,8))
         ax = fig.add_subplot(111, projection='3d')
         ax.grid(False)
@@ -154,17 +126,17 @@ def plot_test_predictions_heatmap(full_dataset, labels_to_predict, all_labels, a
         ax.legend()
         
         normal_vector = np.array([0,1,0])
-        # Calculate the azimuthal and polar angles
+        #Calculate the azimuthal and polar angles
         azimuth = np.arctan2(normal_vector[1], normal_vector[0])
         polar = np.arccos(normal_vector[2])
-        # Convert angles to degrees
+        #Convert angles to degrees
         azimuth = np.degrees(azimuth)
         polar = np.degrees(polar)
         # # Set the camera direction using the angles (customizing a bit)
         ax.view_init(elev=-5, azim=azimuth + 270)
-        # # Show the plot
-        plt.savefig(saving_folder + f'prediction_{i}.png')
-        # plt.show()
+        #how the plot
+        # plt.savefig(saving_folder + f'prediction_{i}.png')
+        plt.show()
         
         """Creating animation gif that rotates 360 degrees"""
         # if(i == 2 or i == 4 or i == 6):
@@ -258,37 +230,6 @@ def Kfold_Gaussian_Process_Regression(full_dataset, full_dataset_labels, importa
         # kernel = ConstantKernel(1.0) + ConstantKernel(1.0) * ExpSineSquared()+ WhiteKernel(noise_level=1)
         
         model = GaussianProcessRegressor(kernel=kernel, random_state=0, alpha=50, n_restarts_optimizer=50)
-        # model = GaussianProcessRegressor(kernel=kernel, random_state=0, alpha=50)
-        
-        """ fitting and making predictions based on non-scaled data """
-        # model.fit(train_df.to_numpy(), y_train)
-        
-        # print(model.get_params())
-        # y_pred_train, y_pred_train_std = model.predict(train_df.to_numpy(), return_std=True)
-        # y_pred_test, y_pred_test_std = model.predict(test_df.to_numpy(), return_std=True)
-        
-        # train_uncertainty, train_uncertainty_values = evaluate_uncertainty(y_pred_train, y_pred_train_std, y_train, 'Train')
-        # print(f'\ntrain uncertainty = \n {train_uncertainty}')
-        # test_uncertainty, test_uncertainty_values = evaluate_uncertainty(y_pred_test, y_pred_test_std, y_test, 'Test')
-        # print(f'\ntest uncertainty = \n {test_uncertainty}')
-
-        
-        # if(save_data):
-        #     save_GPR_model(model, fold_no, saving_folder)            
-        #     collect_and_save_metrics(y_train, y_pred_train, y_test, y_pred_test, list(train_df.columns), fold_no, saving_folder)
-            
-        #     # adding the uncertainty metrics to the metric data
-        #     metric_data = pd.read_csv(saving_folder + f'/model_metrics_fold_{fold_no}.csv')
-        #     metric_data = metric_data.assign(**train_uncertainty)
-        #     metric_data = metric_data.assign(**test_uncertainty)
-        #     metric_data.to_csv(saving_folder + f'/model_metrics_fold_{fold_no}.csv')
-            
-        #     #plot_test_predictions_heatmap(y_test, y_pred_test, y_pred_test_std, fold_no, saving_folder)
-        #     parody_plot_with_std(y_test, y_pred_test, y_pred_test_std, fold_no, saving_folder, label_to_predict)
-        # models.append((model, y_test, test_df, y_train, train_df))
-
-        """ fitting and making predictions based on non-scaled data """
-
 
 
         """ fitting and making predictions based on scaled data """
@@ -389,9 +330,6 @@ def do_bayesian_optimization_GPR(feature_df, label_df, num_tries=100, saving_fol
     X = feature_df.to_numpy()
     y = label_df.to_numpy()
 
-    '''not needed since the BayesSearchCV already splits it into training and validation sets.'''
-    # X_train, X_test, y_train, y_test = train_test_split(X, y, test_size=0.2, random_state=42)
-
     # Define the parameter space for the Gaussian Process Regression
     param_space = {
         'kernel__k1__k2__length_scale': Real(1e-9, 1e5),  # Length scale of the RBF kernel
@@ -408,8 +346,8 @@ def do_bayesian_optimization_GPR(feature_df, label_df, num_tries=100, saving_fol
                         param_space, 
                         n_iter=num_tries, 
                         random_state=0, 
-                        cv=5,
-                        verbose=3,
+                        cv=5, #number of folds in cross validation
+                        verbose=3, #1 2 or 3, higher value prints more to the console.
                         scoring= 'neg_mean_absolute_error')
                         # scoring='r2')
 
@@ -460,10 +398,6 @@ def get_best_hyperparameters_GPR(label_to_predict, hyperparameter_folder):
 def plot_hyperparameter_performance(opt, hyperparameter_name, saving_folder):
     '''
     Plots the mean TEST performance of a model for each value of a specified hyperparameter.
-
-    Parameters:
-    opt (BayesSearchCV): The fitted BayesSearchCV object after running the optimization.
-    hyperparameter_name (str): The name of the hyperparameter to plot.
     '''
     
     # Extract the scores from the optimization results
@@ -554,7 +488,7 @@ def do_bayesian_optimization_GPR(feature_df, label_df, num_tries=100, saving_fol
     return opt
 
 
-'''gets the best hyperparameters to use for GPR when predicting label_to_predict'''
+'''gets the best saved hyperparameters to use for GPR when predicting label_to_predict'''
 def get_best_hyperparameters_GPR(label_to_predict, hyperparameter_folder):
     import ast
     best_hp_path = f'{hyperparameter_folder}/{label_to_predict}/GPR/best_hyperparams.txt'
